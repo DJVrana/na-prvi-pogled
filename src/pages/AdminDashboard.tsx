@@ -166,7 +166,7 @@ export default function AdminDashboard() {
       timeStr: eventToEdit.timeStr,
       location: eventToEdit.location,
       price: eventToEdit.price,
-      maxRegistrations: eventToEdit.maxRegistrations || '',
+      maxRegistrations: eventToEdit.maxRegistrations ? String(eventToEdit.maxRegistrations) : '',
       introText: eventToEdit.introText || 'Hvala ti što si nam ukazao/la povjerenje i odlučio/la biti dio prvog "Na prvi pogled" speed dating eventa!',
       noteText: eventToEdit.noteText || 'Napomena: Ako ti se ipak dogodi da iz nekog razloga ne možeš doći, molimo te da nam to javiš najkasnije do 14. rujna, kako bismo tvoje mjesto mogli ponuditi nekome drugome.',
       closingText: eventToEdit.closingText || 'Kotizaciju od 10 € plaćaš prilikom evidencije sudionika prije početka događaja.\n\nProgram završavamo oko 22:00, a nakon toga ostavljamo vrijeme za neformalno druženje.',
