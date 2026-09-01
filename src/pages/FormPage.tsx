@@ -6,7 +6,6 @@ import type { User } from 'firebase/auth';
 import { ArrowLeft, CheckCircle2, Heart, LogOut, Loader2 } from 'lucide-react';
 import { FaGoogle } from 'react-icons/fa';
 import { Link } from 'react-router';
-import emailjs from '@emailjs/browser';
 
 export interface CustomField {
   id: string;
@@ -34,7 +33,6 @@ interface ActiveEvent {
 
 export default function FormPage() {
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
   
   const [user, setUser] = useState<User | null>(null);
@@ -54,7 +52,7 @@ export default function FormPage() {
 
   const [customAnswers, setCustomAnswers] = useState<Record<string, any>>({});
 
-  const [alreadyRegistered, setAlreadyRegistered] = useState(false);
+  const [existingRegistration, setExistingRegistration] = useState<any | null>(null);
   const [checkRegistrationLoading, setCheckRegistrationLoading] = useState(false);
 
   useEffect(() => {
@@ -69,7 +67,11 @@ export default function FormPage() {
             limit(1)
           );
           const snap = await getDocs(q);
-          setAlreadyRegistered(!snap.empty);
+          if (!snap.empty) {
+            setExistingRegistration(snap.docs[0].data());
+          } else {
+            setExistingRegistration(null);
+          }
         } catch (err) {
           console.error("Greška pri provjeri prijave:", err);
         } finally {
@@ -114,8 +116,9 @@ export default function FormPage() {
 
           if (data.maxRegistrations && Number(data.maxRegistrations) > 0) {
             const prijaveQ = query(collection(db, 'prijave'), where('eventId', '==', docData.id));
-            const countSnap = await getCountFromServer(prijaveQ);
-            if (countSnap.data().count >= Number(data.maxRegistrations)) {
+            const prijaveSnap = await getDocs(prijaveQ);
+            const validCount = prijaveSnap.docs.filter(doc => doc.data().status !== 'rejected').length;
+            if (validCount >= Number(data.maxRegistrations)) {
               isFull = true;
             }
           }
@@ -203,8 +206,9 @@ export default function FormPage() {
       // Check count again right before saving to prevent race conditions
       if (activeEvent.maxRegistrations && Number(activeEvent.maxRegistrations) > 0) {
         const prijaveQ = query(collection(db, 'prijave'), where('eventId', '==', activeEvent.id));
-        const countSnap = await getCountFromServer(prijaveQ);
-        if (countSnap.data().count >= Number(activeEvent.maxRegistrations)) {
+        const prijaveSnap = await getDocs(prijaveQ);
+        const validCount = prijaveSnap.docs.filter(doc => doc.data().status !== 'rejected').length;
+        if (validCount >= Number(activeEvent.maxRegistrations)) {
           setError("Nažalost, u međuvremenu su se popunila sva mjesta.");
           setLoading(false);
           setIsEventFull(true);
@@ -219,33 +223,15 @@ export default function FormPage() {
         uid: user.uid,
         eventId: activeEvent.id, // Link to the active event
         customAnswers: customAnswersArray,
+        status: 'pending', // Postavljamo početni status
         createdAt: serverTimestamp()
       });
 
-      try {
-        await emailjs.send(
-          'default_service', // Napomena: Zamijeni sa svojim pravim Service ID-jem s EmailJS-a
-          'template_uuvkcp3',
-          {
-            name: formData.imePrezime.split(' ')[0],
-            email: formData.email,
-            introText: activeEvent.introText || '',
-            noteText: activeEvent.noteText || '',
-            closingText: activeEvent.closingText || '',
-            timeNote: activeEvent.timeNote || '',
-            dateStr: activeEvent.dateStr || '',
-            timeStr: activeEvent.timeStr || '',
-            location: activeEvent.location || '',
-            ageGroup: activeEvent.ageGroup || '',
-            price: activeEvent.price || ''
-          },
-          'u1xSiCheIxgLpWexO'
-        );
-      } catch (emailErr) {
-        console.error("Greška pri slanju emaila: ", emailErr);
-      }
-
-      setSuccess(true);
+      // Postavljamo u state kako bi korisnik odmah vidio ekran "Na čekanju"
+      setExistingRegistration({
+        status: 'pending',
+        ...formData
+      });
     } catch (err) {
       console.error("Error adding document: ", err);
       setError('Došlo je do greške prilikom prijave. Pokušajte ponovno.');
@@ -262,22 +248,8 @@ export default function FormPage() {
     );
   }
 
-  if (success) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-6 bg-peach text-brand font-sans">
-        <div className="bg-white/60 backdrop-blur-md p-10 rounded-3xl shadow-xl max-w-md w-full text-center border border-white">
-          <CheckCircle2 size={64} className="mx-auto text-green-600 mb-6" />
-          <h2 className="text-3xl font-serif font-bold mb-4">Prijava uspješna!</h2>
-          <p className="text-brand/80 mb-8 font-light">
-            Hvala na prijavi. Javiti ćemo ti se povratno sa svim informacijama. Veselimo se susretu!
-          </p>
-          <Link to="/" className="inline-flex items-center gap-2 bg-brand text-white px-6 py-3 rounded-full font-medium hover:bg-brand-light transition-colors">
-            <ArrowLeft size={18} /> Povratak na naslovnicu
-          </Link>
-        </div>
-      </div>
-    );
-  }
+  // Ovdje više ne koristimo success blok jer existingRegistration upravlja ekranom
+
 
   // If someone enters the URL directly when there is no active event
   if (!activeEvent) {
@@ -314,7 +286,7 @@ export default function FormPage() {
             <span className="bg-brand/10 text-brand text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider mb-3 inline-block">
               {activeEvent.title}
             </span>
-            {!alreadyRegistered && (
+            {!existingRegistration && (
               <>
                 <h1 className="text-4xl font-serif font-bold mb-3 uppercase tracking-tight mt-2">Prijava</h1>
                 <p className="text-brand/80 font-light">
@@ -352,11 +324,32 @@ export default function FormPage() {
              <div className="flex justify-center items-center py-12 text-brand/50">
                <Loader2 className="animate-spin" size={32} />
              </div>
-          ) : alreadyRegistered ? (
+          ) : existingRegistration ? (
              <div className="text-center py-8">
-                <CheckCircle2 size={48} className="mx-auto text-brand mb-4" />
-                <h2 className="text-2xl font-serif font-bold mb-2">Već ste prijavljeni!</h2>
-                <p className="text-brand/80 mb-8 font-light">Pronašli smo vašu prijavu za ovaj događaj. Hvala na interesu!</p>
+                {(!existingRegistration.status || existingRegistration.status === 'accepted') && (
+                  <>
+                    <CheckCircle2 size={48} className="mx-auto text-green-500 mb-4" />
+                    <h2 className="text-2xl font-serif font-bold mb-2">Prijava prihvaćena!</h2>
+                    <p className="text-brand/80 mb-8 font-light">Tvoja prijava za ovaj događaj je uspješno prihvaćena i osigurano ti je mjesto. Vidimo se!</p>
+                  </>
+                )}
+                {existingRegistration.status === 'pending' && (
+                  <>
+                    <Loader2 size={48} className="mx-auto text-yellow-500 mb-4 animate-spin-slow" />
+                    <h2 className="text-2xl font-serif font-bold mb-2">Prijava je poslana</h2>
+                    <p className="text-brand/80 mb-8 font-light">Tvoja prijava je uspješno zaprimljena i trenutačno čeka na pregled organizatora. Javit ćemo ti se povratno na email!</p>
+                  </>
+                )}
+                {existingRegistration.status === 'rejected' && (
+                  <>
+                    <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
+                      <div className="text-red-500 text-2xl font-bold">X</div>
+                    </div>
+                    <h2 className="text-2xl font-serif font-bold mb-2 text-red-600">Prijava odbijena</h2>
+                    <p className="text-brand/80 mb-8 font-light">Nažalost, nismo u mogućnosti potvrditi tvoju prijavu za ovaj događaj. Hvala ti na interesu!</p>
+                  </>
+                )}
+
                 <Link to="/" className="inline-flex items-center gap-2 bg-brand text-white px-6 py-3 rounded-full font-medium hover:bg-brand-light transition-colors">
                   <ArrowLeft size={18} /> Povratak na naslovnicu
                 </Link>

@@ -5,6 +5,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import type { User } from 'firebase/auth';
 import { Link, Navigate } from 'react-router';
 import { ArrowLeft, Users, UserRound, ArrowDown01, Loader2, Plus, Calendar as CalendarIcon, CheckCircle2, List, PlayCircle, StopCircle, Trash2, X, ChevronDown, Pencil } from 'lucide-react';
+import emailjs from '@emailjs/browser';
 
 const ADMIN_UIDS = ['iKe7lzl7Msf7hd3kWyHC1ysyS3C3', 'Izt37mNGtpY82AKZTbyYsnctoxJ2', 'JRms1cPi2Bc513TOW0WBEFZMzrC3'];
 
@@ -46,6 +47,7 @@ interface Prijava {
   eventId?: string;
   uid?: string;
   customAnswers?: { label: string; value: any }[];
+  status?: 'pending' | 'accepted' | 'rejected';
 }
 
 export default function AdminDashboard() {
@@ -85,9 +87,19 @@ export default function AdminDashboard() {
 
   // Modal state
   const [selectedPrijava, setSelectedPrijava] = useState<Prijava | null>(null);
+  const [rejectModalOpen, setRejectModalOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState('Nažalost, zbog ograničenog broja mjesta i velikog interesa, ovaj put ti nismo u mogućnosti potvrditi sudjelovanje. Mjesta su se popunila vrlo brzo ili pokušavamo balansirati omjer sudionika.');
+  const [rejectDropdownOpen, setRejectDropdownOpen] = useState(false);
+
+  const REJECT_REASONS = [
+    { id: 'full', label: 'Popunjena mjesta', text: 'Nažalost, zbog ograničenog broja mjesta i velikog interesa, ovaj put ti nismo u mogućnosti potvrditi sudjelovanje. Mjesta su se popunila vrlo brzo ili pokušavamo balansirati omjer sudionika.' },
+    { id: 'age', label: 'Dobna skupina', text: 'Nažalost, za ovaj događaj prednost smo morali dati prijavama koje se točno uklapaju u predviđenu dobnu skupinu kako bismo osigurali najbolje iskustvo za sve sudionike.' },
+    { id: 'other', label: 'Općenito', text: 'Nažalost, ovaj put ti nismo u mogućnosti potvrditi sudjelovanje.' },
+  ];
 
   // Dropdown state
   const [filterDropdownOpen, setFilterDropdownOpen] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -235,6 +247,102 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleAcceptPrijava = async (prijava: Prijava) => {
+    setActionLoading(true);
+    try {
+      const activeEvent = events.find(e => e.id === prijava.eventId);
+      if (!activeEvent) {
+        alert("Greška: Događaj nije pronađen.");
+        setActionLoading(false);
+        return;
+      }
+      
+      await updateDoc(doc(db, 'prijave', prijava.id), { status: 'accepted' });
+      
+      try {
+        await emailjs.send(
+          'default_service',
+          'template_uuvkcp3',
+          {
+            name: prijava.imePrezime.split(' ')[0],
+            email: prijava.email,
+            introText: activeEvent.introText || '',
+            noteText: activeEvent.noteText || '',
+            closingText: activeEvent.closingText || '',
+            timeNote: activeEvent.timeNote || '',
+            dateStr: activeEvent.dateStr || '',
+            timeStr: activeEvent.timeStr || '',
+            location: activeEvent.location || '',
+            ageGroup: activeEvent.ageGroup || '',
+            price: activeEvent.price || ''
+          },
+          'u1xSiCheIxgLpWexO'
+        );
+      } catch (emailErr) {
+        console.error("Greška pri slanju emaila o prihvaćanju: ", emailErr);
+        alert("Status je ažuriran, ali slanje emaila nije uspjelo.");
+      }
+      
+      setSelectedPrijava({ ...prijava, status: 'accepted' });
+      fetchPrijave(selectedEventId);
+    } catch (err) {
+      console.error("Greška pri prihvaćanju:", err);
+      alert("Dogodila se greška prilikom prihvaćanja prijave.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const confirmRejectPrijava = async () => {
+    if (!selectedPrijava) return;
+    
+    setActionLoading(true);
+    try {
+      await updateDoc(doc(db, 'prijave', selectedPrijava.id), { status: 'rejected' });
+      
+      const htmlMessage = `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
+          <h2 style="color: #E85D75; text-align: center; text-transform: uppercase; margin-bottom: 5px;">Na prvi pogled</h2>
+          <p style="text-align: center; color: #888; font-size: 14px; margin-top: 0; margin-bottom: 25px;">Obavijest o prijavi</p>
+          <p>Draga/i <strong>${selectedPrijava.imePrezime.split(' ')[0]}</strong>,</p>
+          <p>Zahvaljujemo ti na interesu i poslanoj prijavi za nadolazeći <em>Na prvi pogled</em> speed dating event.</p>
+          <div style="background-color: #f9f9f9; border-left: 4px solid #ccc; padding: 15px; margin: 25px 0;">
+            <p style="margin: 0;">${rejectReason}</p>
+          </div>
+          <p>Iskreno se nadamo da ćeš nam se pridružiti na nekom od sljedećih događaja. Prati nas i dalje za nove najave!</p>
+          <div style="margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px;">
+            <p style="color: #555; font-size: 14px; margin: 0;">Srdačan pozdrav,<br/><strong style="color: #333;">Tim Na prvi pogled</strong></p>
+          </div>
+        </div>
+      `;
+
+      try {
+        await emailjs.send(
+          'default_service',
+          'template_apq7zys',
+          {
+            name: selectedPrijava.imePrezime.split(' ')[0],
+            email: selectedPrijava.email,
+            html_message: htmlMessage
+          },
+          'u1xSiCheIxgLpWexO'
+        );
+      } catch (emailErr) {
+        console.error("Greška pri slanju emaila o odbijanju: ", emailErr);
+        alert("Status je ažuriran, ali slanje emaila nije uspjelo.");
+      }
+      
+      setSelectedPrijava({ ...selectedPrijava, status: 'rejected' });
+      setRejectModalOpen(false);
+      fetchPrijave(selectedEventId);
+    } catch (err) {
+      console.error("Greška pri odbijanju:", err);
+      alert("Dogodila se greška prilikom odbijanja prijave.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const toggleEventActive = async (eventToToggle: EventData) => {
     try {
       const batch = writeBatch(db);
@@ -273,10 +381,11 @@ export default function AdminDashboard() {
   }
 
   // Calculate statistics for currently displayed prijave
-  const total = prijave.length;
-  const femaleCount = prijave.filter(p => p.spol === 'Ž' || p.spol === 'Z' || p.spol.toLowerCase() === 'žensko').length;
-  const maleCount = prijave.filter(p => p.spol === 'M' || p.spol.toLowerCase() === 'muško').length;
-  const avgAge = total > 0 ? (prijave.reduce((sum, p) => sum + (Number(p.godine) || 0), 0) / total).toFixed(1) : 0;
+  const validPrijave = prijave.filter(p => p.status !== 'rejected');
+  const total = validPrijave.length;
+  const femaleCount = validPrijave.filter(p => p.spol === 'Ž' || p.spol === 'Z' || p.spol.toLowerCase() === 'žensko').length;
+  const maleCount = validPrijave.filter(p => p.spol === 'M' || p.spol.toLowerCase() === 'muško').length;
+  const avgAge = total > 0 ? (validPrijave.reduce((sum, p) => sum + (Number(p.godine) || 0), 0) / total).toFixed(1) : 0;
 
   return (
     <div className="min-h-screen bg-[#f8f9fa] text-gray-800 font-sans p-6">
@@ -726,6 +835,7 @@ export default function AdminDashboard() {
                       <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Spol</th>
                       <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Godine</th>
                       <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Napomena</th>
+                      <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
                       <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Datum</th>
                     </tr>
                   </thead>
@@ -765,6 +875,14 @@ export default function AdminDashboard() {
                           <td className="p-4 text-gray-600 text-sm max-w-xs truncate" title={prijava.napomena}>
                             {prijava.napomena || '-'}
                           </td>
+                          <td className="p-4">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                              prijava.status === 'pending' ? 'bg-yellow-100 text-yellow-700' : 
+                              prijava.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
+                            }`}>
+                              {prijava.status === 'pending' ? 'Na čekanju' : prijava.status === 'rejected' ? 'Odbijeno' : 'Prihvaćeno'}
+                            </span>
+                          </td>
                           <td className="p-4 text-gray-500 text-xs">
                             {prijava.createdAt?.toDate ? prijava.createdAt.toDate().toLocaleString('hr-HR') : 'Nedavno'}
                           </td>
@@ -794,6 +912,16 @@ export default function AdminDashboard() {
             </div>
             
             <div className="p-6 overflow-y-auto flex-1 space-y-6">
+              <div className="mb-2">
+                <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold ${
+                  selectedPrijava.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                  selectedPrijava.status === 'rejected' ? 'bg-red-100 text-red-700' :
+                  'bg-green-100 text-green-700'
+                }`}>
+                  {selectedPrijava.status === 'pending' ? 'Status: Na čekanju' : selectedPrijava.status === 'rejected' ? 'Status: Odbijeno' : 'Status: Prihvaćeno'}
+                </span>
+              </div>
+              
               <div>
                 <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">Osnovni podaci</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -839,17 +967,126 @@ export default function AdminDashboard() {
             </div>
             
             <div className="p-6 border-t border-gray-100 bg-gray-50 rounded-b-2xl flex justify-between items-center flex-wrap gap-4">
-              <button 
-                onClick={() => handleDeletePrijava(selectedPrijava.id)}
-                className="px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 rounded-lg font-medium transition-colors flex items-center gap-2 text-sm"
-              >
-                <Trash2 size={16} /> Izbriši prijavu
-              </button>
+              <div className="flex gap-2 flex-wrap">
+                <button 
+                  onClick={() => handleDeletePrijava(selectedPrijava.id)}
+                  className="px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 rounded-lg font-medium transition-colors flex items-center gap-2 text-sm"
+                >
+                  <Trash2 size={16} /> Izbriši
+                </button>
+                {selectedPrijava.status === 'pending' && (
+                  <>
+                    <button 
+                      onClick={() => handleAcceptPrijava(selectedPrijava)}
+                      disabled={actionLoading}
+                      className="px-4 py-2 bg-green-600 text-white hover:bg-green-700 rounded-lg font-medium transition-colors flex items-center gap-2 text-sm disabled:opacity-50"
+                    >
+                      <CheckCircle2 size={16} /> Prihvati
+                    </button>
+                    <button 
+                      onClick={() => setRejectModalOpen(true)}
+                      disabled={actionLoading}
+                      className="px-4 py-2 bg-yellow-600 text-white hover:bg-yellow-700 rounded-lg font-medium transition-colors flex items-center gap-2 text-sm disabled:opacity-50"
+                    >
+                      <X size={16} /> Odbij
+                    </button>
+                  </>
+                )}
+              </div>
               <button 
                 onClick={() => setSelectedPrijava(null)}
                 className="w-full sm:w-auto px-6 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
               >
                 Zatvori
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reject Reason Modal */}
+      {rejectModalOpen && selectedPrijava && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white w-full max-w-lg rounded-2xl shadow-xl flex flex-col">
+            <div className="flex items-center justify-between p-6 border-b border-gray-100">
+              <h3 className="text-xl font-serif font-bold text-brand flex items-center gap-2">
+                <X size={20} className="text-yellow-600" />
+                Odbijanje Prijave
+              </h3>
+              <button 
+                onClick={() => setRejectModalOpen(false)}
+                className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="p-6">
+              <p className="text-sm text-gray-600 mb-4">
+                Odaberi razlog odbijanja za korisnika <strong>{selectedPrijava.imePrezime}</strong>. Ovaj tekst bit će uključen u email poruku.
+              </p>
+              
+              <div className="relative mb-6">
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Razlog odbijanja</label>
+                <button
+                  type="button"
+                  onClick={() => setRejectDropdownOpen(!rejectDropdownOpen)}
+                  className="w-full flex items-center justify-between bg-white hover:bg-gray-50 border border-gray-300 text-gray-800 text-sm rounded-lg px-4 py-3 transition-colors focus:outline-none focus:ring-2 focus:ring-brand/20"
+                >
+                  <span className="truncate pr-2 font-medium">
+                    {REJECT_REASONS.find(r => r.text === rejectReason)?.label || 'Prilagođeni razlog'}
+                  </span>
+                  <ChevronDown size={16} className={`text-gray-500 transition-transform duration-200 flex-shrink-0 ${rejectDropdownOpen ? 'rotate-180' : ''}`} />
+                </button>
+                
+                {rejectDropdownOpen && (
+                  <>
+                    <div className="fixed inset-0 z-10" onClick={() => setRejectDropdownOpen(false)}></div>
+                    <div className="absolute z-20 mt-2 w-full bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden py-1">
+                      {REJECT_REASONS.map(option => (
+                        <button
+                          key={option.id}
+                          type="button"
+                          onClick={() => {
+                            setRejectReason(option.text);
+                            setRejectDropdownOpen(false);
+                          }}
+                          className={`w-full text-left px-4 py-3 text-sm transition-colors ${rejectReason === option.text ? 'bg-brand/5 text-brand font-semibold' : 'text-gray-700 hover:bg-gray-50'}`}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Tekst u emailu</label>
+                <textarea
+                  value={rejectReason}
+                  onChange={(e) => setRejectReason(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-brand focus:border-brand text-sm bg-gray-50 min-h-[100px]"
+                  placeholder="Unesite razlog odbijanja..."
+                />
+                <p className="text-xs text-gray-500 mt-1">Možeš urediti tekst prije slanja.</p>
+              </div>
+            </div>
+            
+            <div className="p-6 border-t border-gray-100 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
+              <button 
+                onClick={() => setRejectModalOpen(false)}
+                className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                Odustani
+              </button>
+              <button 
+                onClick={confirmRejectPrijava}
+                disabled={actionLoading || !rejectReason.trim()}
+                className="px-6 py-2 bg-yellow-600 text-white hover:bg-yellow-700 rounded-lg font-medium transition-colors flex items-center gap-2 text-sm disabled:opacity-50"
+              >
+                {actionLoading ? <Loader2 size={16} className="animate-spin" /> : <X size={16} />}
+                Potvrdi i pošalji email
               </button>
             </div>
           </div>

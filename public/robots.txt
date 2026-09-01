@@ -2,4 +2,4 @@ User-agent: *
 Allow: /
 Disallow: /admin
 
-Sitemap: https://naprvi-pogled.com/sitemap.xml
+Sitemap: https://naprvipogled.com/sitemap.xml
