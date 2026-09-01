@@ -6,7 +6,7 @@ import App from './App.tsx'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <BrowserRouter basename="/na-prvi-pogled/">
+    <BrowserRouter>
       <App />
     </BrowserRouter>
   </StrictMode>,

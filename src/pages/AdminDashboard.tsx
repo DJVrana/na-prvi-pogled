@@ -276,7 +276,7 @@ export default function AdminDashboard() {
             ageGroup: activeEvent.ageGroup || '',
             price: activeEvent.price || ''
           },
-          'u1xSiCheIxgLpWexO'
+          import.meta.env.VITE_EMAILJS_PUBLIC_KEY
         );
       } catch (emailErr) {
         console.error("Greška pri slanju emaila o prihvaćanju: ", emailErr);
@@ -325,7 +325,7 @@ export default function AdminDashboard() {
             email: selectedPrijava.email,
             html_message: htmlMessage
           },
-          'u1xSiCheIxgLpWexO'
+          import.meta.env.VITE_EMAILJS_PUBLIC_KEY
         );
       } catch (emailErr) {
         console.error("Greška pri slanju emaila o odbijanju: ", emailErr);
