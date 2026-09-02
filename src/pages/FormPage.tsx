@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, addDoc, serverTimestamp, query, where, getDocs, limit } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, getDocs, limit, getDoc, doc, updateDoc, increment } from 'firebase/firestore';
 import { db, auth, provider } from '../firebase';
 import { onAuthStateChanged, signInWithPopup } from 'firebase/auth';
 import type { User } from 'firebase/auth';
@@ -115,9 +115,7 @@ export default function FormPage() {
           let isFull = false;
 
           if (data.maxRegistrations && Number(data.maxRegistrations) > 0) {
-            const prijaveQ = query(collection(db, 'prijave'), where('eventId', '==', docData.id));
-            const prijaveSnap = await getDocs(prijaveQ);
-            const validCount = prijaveSnap.docs.filter(doc => doc.data().status !== 'rejected').length;
+            const validCount = Number(data.registrationCount) || 0;
             if (validCount >= Number(data.maxRegistrations)) {
               isFull = true;
             }
@@ -205,15 +203,16 @@ export default function FormPage() {
 
       // Check count again right before saving to prevent race conditions
       if (activeEvent.maxRegistrations && Number(activeEvent.maxRegistrations) > 0) {
-        const prijaveQ = query(collection(db, 'prijave'), where('eventId', '==', activeEvent.id));
-        const prijaveSnap = await getDocs(prijaveQ);
-        const validCount = prijaveSnap.docs.filter(doc => doc.data().status !== 'rejected').length;
-        if (validCount >= Number(activeEvent.maxRegistrations)) {
-          setError("Nažalost, u međuvremenu su se popunila sva mjesta.");
-          setLoading(false);
-          setIsEventFull(true);
-          setActiveEvent(null);
-          return;
+        const eventSnap = await getDoc(doc(db, 'events', activeEvent.id));
+        if (eventSnap.exists()) {
+          const validCount = Number(eventSnap.data().registrationCount) || 0;
+          if (validCount >= Number(activeEvent.maxRegistrations)) {
+            setError("Nažalost, u međuvremenu su se popunila sva mjesta.");
+            setLoading(false);
+            setIsEventFull(true);
+            setActiveEvent(null);
+            return;
+          }
         }
       }
 
@@ -225,6 +224,11 @@ export default function FormPage() {
         customAnswers: customAnswersArray,
         status: 'pending', // Postavljamo početni status
         createdAt: serverTimestamp()
+      });
+
+      // Increment the event registration count safely
+      await updateDoc(doc(db, 'events', activeEvent.id), {
+        registrationCount: increment(1)
       });
 
       // Postavljamo u state kako bi korisnik odmah vidio ekran "Na čekanju"

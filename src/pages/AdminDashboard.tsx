@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, getDocs, query, orderBy, addDoc, serverTimestamp, doc, writeBatch, where, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, addDoc, serverTimestamp, doc, writeBatch, where, updateDoc, deleteDoc, increment } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import type { User } from 'firebase/auth';
@@ -34,6 +34,7 @@ interface EventData {
   noteText?: string;
   closingText?: string;
   timeNote?: string;
+  registrationCount?: number;
 }
 
 interface Prijava {
@@ -224,6 +225,7 @@ export default function AdminDashboard() {
           ...newEvent,
           maxRegistrations: newEvent.maxRegistrations ? Number(newEvent.maxRegistrations) : null,
           customFields: mappedCustomFields,
+          registrationCount: 0,
           isActive: false, // Default to inactive, admin must manually activate
           createdAt: serverTimestamp()
         });
@@ -241,6 +243,11 @@ export default function AdminDashboard() {
     setActionLoading(true);
     try {
       await deleteDoc(doc(db, 'prijave', selectedPrijava.id));
+      if (selectedPrijava.status !== 'rejected') {
+        await updateDoc(doc(db, 'events', selectedEventId), {
+          registrationCount: increment(-1)
+        });
+      }
       setSelectedPrijava(null);
       setDeleteModalOpen(false);
       fetchPrijave(selectedEventId);
@@ -263,6 +270,11 @@ export default function AdminDashboard() {
       }
 
       await updateDoc(doc(db, 'prijave', prijava.id), { status: 'accepted' });
+      if (prijava.status === 'rejected') {
+        await updateDoc(doc(db, 'events', activeEvent.id), {
+          registrationCount: increment(1)
+        });
+      }
 
       try {
         await emailjs.send(
@@ -304,6 +316,11 @@ export default function AdminDashboard() {
     setActionLoading(true);
     try {
       await updateDoc(doc(db, 'prijave', selectedPrijava.id), { status: 'rejected' });
+      if (selectedPrijava.status !== 'rejected') {
+        await updateDoc(doc(db, 'events', selectedEventId), {
+          registrationCount: increment(-1)
+        });
+      }
 
       const htmlMessage = `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
