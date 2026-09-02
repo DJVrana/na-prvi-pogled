@@ -41,13 +41,13 @@ jobs:
           VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
           VITE_EMAILJS_PUBLIC_KEY: ${{ secrets.VITE_EMAILJS_PUBLIC_KEY }}
       - name: Create 404.html for SPA routing
-        run: cp dist/index.html dist/404.html
+        run: cp dist/client/__spa-fallback.html dist/client/404.html
       - name: Setup Pages
         uses: actions/configure-pages@v4
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: './dist'
+          path: './dist/client'
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
