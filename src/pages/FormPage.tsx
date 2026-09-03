@@ -6,6 +6,7 @@ import type { User } from 'firebase/auth';
 import { ArrowLeft, CheckCircle2, Heart, LogOut, Loader2 } from 'lucide-react';
 import { FaGoogle } from 'react-icons/fa';
 import { Link } from 'react-router';
+import emailjs from '@emailjs/browser';
 
 export interface CustomField {
   id: string;
@@ -34,10 +35,10 @@ interface ActiveEvent {
 export default function FormPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  
+
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
-  
+
   const [activeEvent, setActiveEvent] = useState<ActiveEvent | null>(null);
   const [eventLoading, setEventLoading] = useState(true);
   const [isEventFull, setIsEventFull] = useState(false);
@@ -61,7 +62,7 @@ export default function FormPage() {
         setCheckRegistrationLoading(true);
         try {
           const q = query(
-            collection(db, 'prijave'), 
+            collection(db, 'prijave'),
             where('eventId', '==', activeEvent.id),
             where('uid', '==', user.uid),
             limit(1)
@@ -125,8 +126,8 @@ export default function FormPage() {
             setIsEventFull(true);
             setActiveEvent(null);
           } else {
-            setActiveEvent({ 
-              id: docData.id, 
+            setActiveEvent({
+              id: docData.id,
               title: data.title,
               customFields: data.customFields || [],
               maxRegistrations: data.maxRegistrations,
@@ -188,7 +189,7 @@ export default function FormPage() {
       setError("Prijave su trenutno zatvorene.");
       return;
     }
-    
+
     setLoading(true);
     setError('');
 
@@ -230,6 +231,38 @@ export default function FormPage() {
       await updateDoc(doc(db, 'events', activeEvent.id), {
         registrationCount: increment(1)
       });
+
+      try {
+        const adminHtmlMessage = `
+          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
+            <h2 style="color: #E85D75; text-align: center; text-transform: uppercase; margin-bottom: 5px;">Na prvi pogled</h2>
+            <p style="text-align: center; color: #888; font-size: 14px; margin-top: 0; margin-bottom: 25px;">Nova prijava</p>
+            <p>Zaprimljena je nova prijava za događaj <strong>${activeEvent.title}</strong>.</p>
+            <div style="background-color: #f9f9f9; border-left: 4px solid #E85D75; padding: 15px; margin: 25px 0;">
+              <p style="margin: 0 0 10px 0;"><strong>Ime i prezime:</strong> ${formData.imePrezime}</p>
+              <p style="margin: 0 0 10px 0;"><strong>Email:</strong> ${formData.email}</p>
+              <p style="margin: 0 0 10px 0;"><strong>Spol:</strong> ${formData.spol}</p>
+              <p style="margin: 0 0 10px 0;"><strong>Godine:</strong> ${formData.godine}</p>
+              <p style="margin: 0 0 10px 0;"><strong>Napomena:</strong> ${formData.napomena}</p>
+            </div>
+            <p>Detalje i odgovore na dodatna pitanja možete provjeriti u Admin panelu.</p>
+          </div>
+        `;
+
+        await emailjs.send(
+          'default_service',
+          'template_uuvkcp3',
+          {
+            name: "Admin",
+            email: "naprvipogled.events@gmail.com",
+            subject: "Pristigla je nova prijava za događaj! 📢",
+            html_message: adminHtmlMessage
+          },
+          import.meta.env.VITE_EMAILJS_PUBLIC_KEY
+        );
+      } catch (emailErr) {
+        console.error("Greška pri slanju obavijesti adminu: ", emailErr);
+      }
 
       // Postavljamo u state kako bi korisnik odmah vidio ekran "Na čekanju"
       setExistingRegistration({
@@ -274,7 +307,7 @@ export default function FormPage() {
 
   return (
     <div className="min-h-screen py-12 px-6 sm:px-12 flex justify-center bg-peach text-brand relative overflow-x-hidden">
-      
+
       {/* Decorative */}
       <div className="absolute top-20 right-[-20px] text-brand-light/10 rotate-[25deg] pointer-events-none">
         <Heart size={200} strokeWidth={1} />
@@ -284,7 +317,7 @@ export default function FormPage() {
         <Link to="/" className="inline-flex items-center gap-2 text-brand/70 hover:text-brand mb-8 transition-colors font-medium">
           <ArrowLeft size={18} /> Natrag
         </Link>
-        
+
         <div className="bg-white/40 backdrop-blur-md p-8 sm:p-12 rounded-3xl shadow-xl border border-white/50">
           <div className="text-center mb-6">
             <span className="bg-brand/10 text-brand text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider mb-3 inline-block">
@@ -325,39 +358,39 @@ export default function FormPage() {
               </p>
             </div>
           ) : checkRegistrationLoading ? (
-             <div className="flex justify-center items-center py-12 text-brand/50">
-               <Loader2 className="animate-spin" size={32} />
-             </div>
+            <div className="flex justify-center items-center py-12 text-brand/50">
+              <Loader2 className="animate-spin" size={32} />
+            </div>
           ) : existingRegistration ? (
-             <div className="text-center py-8">
-                {(!existingRegistration.status || existingRegistration.status === 'accepted') && (
-                  <>
-                    <CheckCircle2 size={48} className="mx-auto text-green-500 mb-4" />
-                    <h2 className="text-2xl font-serif font-bold mb-2">Prijava prihvaćena!</h2>
-                    <p className="text-brand/80 mb-8 font-light">Tvoja prijava za ovaj događaj je uspješno prihvaćena i osigurano ti je mjesto. Vidimo se!</p>
-                  </>
-                )}
-                {existingRegistration.status === 'pending' && (
-                  <>
-                    <Loader2 size={48} className="mx-auto text-yellow-500 mb-4 animate-spin-slow" />
-                    <h2 className="text-2xl font-serif font-bold mb-2">Prijava je poslana</h2>
-                    <p className="text-brand/80 mb-8 font-light">Tvoja prijava je uspješno zaprimljena i trenutačno čeka na pregled organizatora. Javit ćemo ti se povratno na email!</p>
-                  </>
-                )}
-                {existingRegistration.status === 'rejected' && (
-                  <>
-                    <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
-                      <div className="text-red-500 text-2xl font-bold">X</div>
-                    </div>
-                    <h2 className="text-2xl font-serif font-bold mb-2 text-red-600">Prijava odbijena</h2>
-                    <p className="text-brand/80 mb-8 font-light">Nažalost, nismo u mogućnosti potvrditi tvoju prijavu za ovaj događaj. Hvala ti na interesu!</p>
-                  </>
-                )}
+            <div className="text-center py-8">
+              {(!existingRegistration.status || existingRegistration.status === 'accepted') && (
+                <>
+                  <CheckCircle2 size={48} className="mx-auto text-green-500 mb-4" />
+                  <h2 className="text-2xl font-serif font-bold mb-2">Prijava prihvaćena!</h2>
+                  <p className="text-brand/80 mb-8 font-light">Tvoja prijava za ovaj događaj je uspješno prihvaćena i osigurano ti je mjesto. Vidimo se!</p>
+                </>
+              )}
+              {existingRegistration.status === 'pending' && (
+                <>
+                  <Loader2 size={48} className="mx-auto text-yellow-500 mb-4 animate-spin-slow" />
+                  <h2 className="text-2xl font-serif font-bold mb-2">Prijava je poslana</h2>
+                  <p className="text-brand/80 mb-8 font-light">Tvoja prijava je uspješno zaprimljena i trenutačno čeka na pregled organizatora. Javit ćemo ti se povratno na email!</p>
+                </>
+              )}
+              {existingRegistration.status === 'rejected' && (
+                <>
+                  <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
+                    <div className="text-red-500 text-2xl font-bold">X</div>
+                  </div>
+                  <h2 className="text-2xl font-serif font-bold mb-2 text-red-600">Prijava odbijena</h2>
+                  <p className="text-brand/80 mb-8 font-light">Nažalost, nismo u mogućnosti potvrditi tvoju prijavu za ovaj događaj. Hvala ti na interesu!</p>
+                </>
+              )}
 
-                <Link to="/" className="inline-flex items-center gap-2 bg-brand text-white px-6 py-3 rounded-full font-medium hover:bg-brand-light transition-colors">
-                  <ArrowLeft size={18} /> Povratak na naslovnicu
-                </Link>
-             </div>
+              <Link to="/" className="inline-flex items-center gap-2 bg-brand text-white px-6 py-3 rounded-full font-medium hover:bg-brand-light transition-colors">
+                <ArrowLeft size={18} /> Povratak na naslovnicu
+              </Link>
+            </div>
           ) : (
             <>
               <div className="flex items-center justify-between mb-8 pb-4 border-b border-brand/10">
@@ -374,7 +407,7 @@ export default function FormPage() {
                     <p className="text-brand/60 text-xs">{user.email}</p>
                   </div>
                 </div>
-                <button 
+                <button
                   onClick={handleLogout}
                   className="p-2 text-brand/60 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
                   title="Odjavi se"
@@ -384,7 +417,7 @@ export default function FormPage() {
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-6">
-                
+
                 <div>
                   <label htmlFor="imePrezime" className="block text-sm font-semibold text-brand mb-2">Ime i prezime *</label>
                   <input
@@ -481,7 +514,7 @@ export default function FormPage() {
                         <label htmlFor={field.id} className="block text-sm font-semibold text-brand mb-2">
                           {field.label} {field.required && '*'}
                         </label>
-                        
+
                         {field.type === 'text' && (
                           <input
                             type="text"
@@ -492,7 +525,7 @@ export default function FormPage() {
                             className="w-full px-4 py-3 rounded-xl bg-white/60 border border-white focus:border-brand focus:ring-1 focus:ring-brand outline-none transition-all"
                           />
                         )}
-                        
+
                         {field.type === 'textarea' && (
                           <textarea
                             id={field.id}
@@ -503,7 +536,7 @@ export default function FormPage() {
                             className="w-full px-4 py-3 rounded-xl bg-white/60 border border-white focus:border-brand focus:ring-1 focus:ring-brand outline-none transition-all resize-none"
                           />
                         )}
-                        
+
                         {field.type === 'select' && (
                           <div className="space-y-2">
                             {field.options?.map((option, idx) => (
@@ -522,7 +555,7 @@ export default function FormPage() {
                             ))}
                           </div>
                         )}
-                        
+
                         {field.type === 'multiselect' && (
                           <div className="space-y-2">
                             {field.options?.map((option, idx) => {
@@ -551,7 +584,7 @@ export default function FormPage() {
                             })}
                             {/* Hidden input to enforce 'required' for multiselect */}
                             {field.required && (customAnswers[field.id]?.length || 0) === 0 && (
-                               <input type="checkbox" required className="opacity-0 absolute w-0 h-0" />
+                              <input type="checkbox" required className="opacity-0 absolute w-0 h-0" />
                             )}
                           </div>
                         )}
@@ -565,7 +598,7 @@ export default function FormPage() {
                   disabled={loading}
                   className="w-full bg-brand hover:bg-brand-light text-white font-semibold py-4 rounded-xl shadow-lg transition-all transform hover:scale-[1.02] disabled:opacity-70 disabled:hover:scale-100 flex justify-center items-center gap-2"
                 >
-                  {loading ? 'Slanje...' : 'Prijavi se'} 
+                  {loading ? 'Slanje...' : 'Prijavi se'}
                   {!loading && <Heart size={18} className="fill-white" />}
                 </button>
                 <p className="text-center text-xs text-brand/60 mt-4">

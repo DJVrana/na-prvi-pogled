@@ -362,6 +362,7 @@ export default function AdminDashboard() {
           {
             name: prijava.imePrezime.split(' ')[0],
             email: prijava.email,
+            subject: "Tvoja prijava je potvrđena! ✨",
             html_message: acceptHtmlMessage
           },
           import.meta.env.VITE_EMAILJS_PUBLIC_KEY
@@ -412,10 +413,11 @@ export default function AdminDashboard() {
       try {
         await emailjs.send(
           'default_service',
-          'template_apq7zys',
+          'template_uuvkcp3',
           {
             name: selectedPrijava.imePrezime.split(' ')[0],
             email: selectedPrijava.email,
+            subject: "Tvoja prijava je odbijena!",
             html_message: htmlMessage
           },
           import.meta.env.VITE_EMAILJS_PUBLIC_KEY
