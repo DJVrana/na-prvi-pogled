@@ -96,8 +96,7 @@ export default function FormPage() {
       if (currentUser) {
         setFormData(prev => ({
           ...prev,
-          email: currentUser.email || '',
-          imePrezime: currentUser.displayName || prev.imePrezime
+          email: currentUser.email || ''
         }));
       }
       setAuthLoading(false);
@@ -427,6 +426,7 @@ export default function FormPage() {
                     required
                     value={formData.imePrezime}
                     onChange={handleChange}
+                    autoComplete="off"
                     className="w-full px-4 py-3 rounded-xl bg-white/60 border border-white focus:border-brand focus:ring-1 focus:ring-brand outline-none transition-all"
                     placeholder="Unesite ime i prezime"
                   />

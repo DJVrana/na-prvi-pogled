@@ -4,7 +4,7 @@ import { db, auth } from '../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import type { User } from 'firebase/auth';
 import { Link, Navigate } from 'react-router';
-import { ArrowLeft, Users, UserRound, ArrowDown01, Loader2, Plus, Calendar as CalendarIcon, CheckCircle2, List, PlayCircle, StopCircle, Trash2, X, ChevronDown, Pencil } from 'lucide-react';
+import { ArrowLeft, Users, UserRound, ArrowDown01, Loader2, Plus, Calendar as CalendarIcon, CheckCircle2, List, PlayCircle, StopCircle, Trash2, X, ChevronDown, Pencil, Clock, XCircle } from 'lucide-react';
 import emailjs from '@emailjs/browser';
 
 const ADMIN_UIDS = ['iKe7lzl7Msf7hd3kWyHC1ysyS3C3', 'Izt37mNGtpY82AKZTbyYsnctoxJ2', 'JRms1cPi2Bc513TOW0WBEFZMzrC3'];
@@ -482,6 +482,11 @@ export default function AdminDashboard() {
   const maleCount = validPrijave.filter(p => p.spol === 'M' || p.spol.toLowerCase() === 'muško').length;
   const avgAge = total > 0 ? (validPrijave.reduce((sum, p) => sum + (Number(p.godine) || 0), 0) / total).toFixed(1) : 0;
 
+  const totalAll = prijave.length;
+  const approvedCount = prijave.filter(p => p.status === 'accepted').length;
+  const rejectedCount = prijave.filter(p => p.status === 'rejected').length;
+  const pendingCount = prijave.filter(p => p.status === 'pending' || !p.status).length;
+
   return (
     <div className="min-h-screen bg-[#f8f9fa] text-gray-800 font-sans p-6">
       <div className="max-w-6xl mx-auto">
@@ -893,13 +898,52 @@ export default function AdminDashboard() {
             </div>
 
             {/* Statistics Widgets */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+              <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4">
+                <div className="bg-brand/10 p-3 rounded-full text-brand">
+                  <Users size={24} />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 font-medium">Sve prijave</p>
+                  <p className="text-2xl font-bold">{totalAll}</p>
+                </div>
+              </div>
+              <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4">
+                <div className="bg-green-100 p-3 rounded-full text-green-600">
+                  <CheckCircle2 size={24} />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 font-medium">Odobreno</p>
+                  <p className="text-2xl font-bold">{approvedCount}</p>
+                </div>
+              </div>
+              <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4">
+                <div className="bg-yellow-100 p-3 rounded-full text-yellow-600">
+                  <Clock size={24} />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 font-medium">Na čekanju</p>
+                  <p className="text-2xl font-bold">{pendingCount}</p>
+                </div>
+              </div>
+              <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4">
+                <div className="bg-red-100 p-3 rounded-full text-red-600">
+                  <XCircle size={24} />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 font-medium">Odbijeno</p>
+                  <p className="text-2xl font-bold">{rejectedCount}</p>
+                </div>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
               <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4">
                 <div className="bg-brand/10 p-3 rounded-full text-brand">
                   <Users size={24} />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500 font-medium">Ukupno prijava</p>
+                  <p className="text-sm text-gray-500 font-medium">Važeće prijave (bez odbijenih)</p>
                   <p className="text-2xl font-bold">{total}</p>
                 </div>
               </div>
@@ -908,7 +952,7 @@ export default function AdminDashboard() {
                   <UserRound size={24} />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500 font-medium">Žene</p>
+                  <p className="text-sm text-gray-500 font-medium">Žene (Važeće)</p>
                   <p className="text-2xl font-bold">{femaleCount}</p>
                 </div>
               </div>
@@ -917,7 +961,7 @@ export default function AdminDashboard() {
                   <UserRound size={24} />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500 font-medium">Muškarci</p>
+                  <p className="text-sm text-gray-500 font-medium">Muškarci (Važeće)</p>
                   <p className="text-2xl font-bold">{maleCount}</p>
                 </div>
               </div>
