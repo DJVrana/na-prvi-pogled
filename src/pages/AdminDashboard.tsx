@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, getDocs, query, orderBy, addDoc, serverTimestamp, doc, writeBatch, where, updateDoc, deleteDoc, increment } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, addDoc, serverTimestamp, doc, where, updateDoc, deleteDoc, increment } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import type { User } from 'firebase/auth';
@@ -440,22 +440,8 @@ export default function AdminDashboard() {
 
   const toggleEventActive = async (eventToToggle: EventData) => {
     try {
-      const batch = writeBatch(db);
-
-      // If we are activating this one, deactivate all others
-      if (!eventToToggle.isActive) {
-        const activeEvents = events.filter(e => e.isActive);
-        activeEvents.forEach(e => {
-          const eRef = doc(db, 'events', e.id);
-          batch.update(eRef, { isActive: false });
-        });
-      }
-
-      // Toggle the target event
       const targetRef = doc(db, 'events', eventToToggle.id);
-      batch.update(targetRef, { isActive: !eventToToggle.isActive });
-
-      await batch.commit();
+      await updateDoc(targetRef, { isActive: !eventToToggle.isActive });
       fetchEvents();
     } catch (err) {
       console.error("Error toggling event:", err);

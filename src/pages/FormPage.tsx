@@ -3,9 +3,9 @@ import { collection, addDoc, serverTimestamp, query, where, getDocs, limit, getD
 import { db, auth, provider } from '../firebase';
 import { onAuthStateChanged, signInWithPopup } from 'firebase/auth';
 import type { User } from 'firebase/auth';
-import { ArrowLeft, CheckCircle2, Heart, LogOut, Loader2 } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Heart, LogOut, Loader2, Sparkles, Calendar, Users } from 'lucide-react';
 import { FaGoogle } from 'react-icons/fa';
-import { Link } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import emailjs from '@emailjs/browser';
 
 export interface CustomField {
@@ -21,6 +21,7 @@ interface ActiveEvent {
   title: string;
   customFields?: CustomField[];
   maxRegistrations?: number | string;
+  registrationCount?: number;
   introText?: string;
   noteText?: string;
   closingText?: string;
@@ -39,6 +40,10 @@ export default function FormPage() {
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
 
+  const [searchParams, setSearchParams] = useSearchParams();
+  const eventIdFromUrl = searchParams.get('eventId');
+
+  const [activeEvents, setActiveEvents] = useState<ActiveEvent[]>([]);
   const [activeEvent, setActiveEvent] = useState<ActiveEvent | null>(null);
   const [eventLoading, setEventLoading] = useState(true);
   const [isEventFull, setIsEventFull] = useState(false);
@@ -105,31 +110,19 @@ export default function FormPage() {
   }, []);
 
   useEffect(() => {
-    const fetchActiveEvent = async () => {
+    const fetchActiveEvents = async () => {
       try {
-        const q = query(collection(db, 'events'), where('isActive', '==', true), limit(1));
+        const q = query(collection(db, 'events'), where('isActive', '==', true));
         const snapshot = await getDocs(q);
         if (!snapshot.empty) {
-          const docData = snapshot.docs[0];
-          const data = docData.data();
-          let isFull = false;
-
-          if (data.maxRegistrations && Number(data.maxRegistrations) > 0) {
-            const validCount = Number(data.registrationCount) || 0;
-            if (validCount >= Number(data.maxRegistrations)) {
-              isFull = true;
-            }
-          }
-
-          if (isFull) {
-            setIsEventFull(true);
-            setActiveEvent(null);
-          } else {
-            setActiveEvent({
+          const list: ActiveEvent[] = snapshot.docs.map(docData => {
+            const data = docData.data();
+            return {
               id: docData.id,
               title: data.title,
               customFields: data.customFields || [],
               maxRegistrations: data.maxRegistrations,
+              registrationCount: data.registrationCount || 0,
               introText: data.introText || '',
               noteText: data.noteText || '',
               closingText: data.closingText || '',
@@ -139,9 +132,54 @@ export default function FormPage() {
               location: data.location || '',
               ageGroup: data.ageGroup || '',
               price: data.price || ''
-            });
+            };
+          });
+
+          setActiveEvents(list);
+
+          let target = list.find(e => e.id === eventIdFromUrl) || null;
+          if (!target && eventIdFromUrl) {
+            const singleDoc = await getDoc(doc(db, 'events', eventIdFromUrl));
+            if (singleDoc.exists()) {
+              const data = singleDoc.data();
+              target = {
+                id: singleDoc.id,
+                title: data.title,
+                customFields: data.customFields || [],
+                maxRegistrations: data.maxRegistrations,
+                registrationCount: data.registrationCount || 0,
+                introText: data.introText || '',
+                noteText: data.noteText || '',
+                closingText: data.closingText || '',
+                timeNote: data.timeNote || '',
+                dateStr: data.dateStr || '',
+                timeStr: data.timeStr || '',
+                location: data.location || '',
+                ageGroup: data.ageGroup || '',
+                price: data.price || ''
+              };
+            }
+          }
+
+          if (!target && list.length > 0) {
+            target = list[0];
+          }
+
+          if (target) {
+            setActiveEvent(target);
+            let isFull = false;
+            if (target.maxRegistrations && Number(target.maxRegistrations) > 0) {
+              const validCount = Number(target.registrationCount) || 0;
+              if (validCount >= Number(target.maxRegistrations)) {
+                isFull = true;
+              }
+            }
+            setIsEventFull(isFull);
+          } else {
+            setActiveEvent(null);
           }
         } else {
+          setActiveEvents([]);
           setActiveEvent(null);
         }
       } catch (err) {
@@ -150,8 +188,23 @@ export default function FormPage() {
         setEventLoading(false);
       }
     };
-    fetchActiveEvent();
-  }, []);
+    fetchActiveEvents();
+  }, [eventIdFromUrl]);
+
+  const handleSelectEvent = (evt: ActiveEvent) => {
+    setActiveEvent(evt);
+    setSearchParams({ eventId: evt.id }, { replace: true });
+    let isFull = false;
+    if (evt.maxRegistrations && Number(evt.maxRegistrations) > 0) {
+      const validCount = Number(evt.registrationCount) || 0;
+      if (validCount >= Number(evt.maxRegistrations)) {
+        isFull = true;
+      }
+    }
+    setIsEventFull(isFull);
+    setCustomAnswers({});
+    setError('');
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({
@@ -210,7 +263,6 @@ export default function FormPage() {
             setError("Nažalost, u međuvremenu su se popunila sva mjesta.");
             setLoading(false);
             setIsEventFull(true);
-            setActiveEvent(null);
             return;
           }
         }
@@ -290,11 +342,12 @@ export default function FormPage() {
   // If someone enters the URL directly when there is no active event
   if (!activeEvent) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6 bg-peach text-brand font-sans">
-        <div className="bg-white/60 backdrop-blur-md p-10 rounded-3xl shadow-xl max-w-md w-full text-center border border-white">
-          <h2 className="text-2xl font-serif font-bold mb-4">{isEventFull ? "Prijave su popunjene" : "Prijave su zatvorene"}</h2>
-          <p className="text-brand/80 mb-8 font-light">
-            {isEventFull ? "Nažalost, sva mjesta za ovaj događaj su popunjena." : "Trenutno nema aktivnih događaja za koje se moguće prijaviti."}
+      <div className="min-h-screen flex items-center justify-center p-6 bg-peach text-brand font-sans relative overflow-hidden">
+        <div className="absolute -top-10 -left-10 w-72 h-72 rounded-full bg-rose-200/30 blur-3xl animate-ambient-drift pointer-events-none" />
+        <div className="bg-white/60 backdrop-blur-md p-10 rounded-3xl shadow-xl max-w-md w-full text-center border border-white relative z-10">
+          <h2 className="text-2xl font-serif font-bold mb-4">Prijave su trenutno zatvorene</h2>
+          <p className="text-brand/80 mb-8 font-light leading-relaxed">
+            Trenutno nema aktivnih događaja za koje se moguće prijaviti. Pratite naš Instagram za najave novih susreta!
           </p>
           <Link to="/" className="inline-flex items-center gap-2 bg-brand text-white px-6 py-3 rounded-full font-medium hover:bg-brand-light transition-colors">
             <ArrowLeft size={18} /> Povratak na naslovnicu
@@ -305,27 +358,86 @@ export default function FormPage() {
   }
 
   return (
-    <div className="min-h-screen py-12 px-6 sm:px-12 flex justify-center bg-peach text-brand relative overflow-x-hidden">
+    <div className="min-h-screen py-12 px-4 sm:px-8 md:px-12 flex justify-center bg-peach text-brand relative overflow-x-hidden">
 
-      {/* Decorative */}
-      <div className="absolute top-20 right-[-20px] text-brand-light/10 rotate-[25deg] pointer-events-none">
+      {/* Decorative ambient blobs */}
+      <div className="absolute top-10 left-[-5%] w-80 h-80 rounded-full bg-rose-300/20 blur-[90px] animate-ambient-drift pointer-events-none" />
+      <div className="absolute bottom-10 right-[-5%] w-96 h-96 rounded-full bg-brand/10 blur-[100px] animate-ambient-drift pointer-events-none" />
+
+      {/* Decorative floating icons */}
+      <div className="absolute top-20 right-[-20px] text-brand-light/10 rotate-[25deg] pointer-events-none animate-float-slow hidden sm:block">
         <Heart size={200} strokeWidth={1} />
       </div>
 
       <div className="max-w-xl w-full z-10">
-        <Link to="/" className="inline-flex items-center gap-2 text-brand/70 hover:text-brand mb-8 transition-colors font-medium">
-          <ArrowLeft size={18} /> Natrag
+        <Link to="/" className="inline-flex items-center gap-2 text-brand/70 hover:text-brand mb-6 transition-colors font-medium text-sm">
+          <ArrowLeft size={18} /> Natrag na početnu
         </Link>
 
-        <div className="bg-white/40 backdrop-blur-md p-8 sm:p-12 rounded-3xl shadow-xl border border-white/50">
+        <div className="bg-white/50 backdrop-blur-xl p-6 sm:p-10 rounded-3xl shadow-2xl shadow-brand/10 border border-white/80 animate-fade-in-up">
+          
+          {/* Active Events Switcher in FormPage */}
+          {activeEvents.length > 1 && (
+            <div className="mb-6 p-3.5 rounded-2xl bg-white/70 border border-white/90 shadow-sm">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-brand/70 flex items-center gap-1.5">
+                  <Sparkles size={13} className="text-brand-light" /> Odaberi termin za prijavu:
+                </span>
+                <span className="text-[11px] font-semibold text-brand/50">
+                  {activeEvents.length} termina
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {activeEvents.map(evt => {
+                  const isCurrent = evt.id === activeEvent.id;
+                  const isFull = evt.maxRegistrations && Number(evt.maxRegistrations) > 0 
+                    ? Number(evt.registrationCount || 0) >= Number(evt.maxRegistrations) 
+                    : false;
+
+                  return (
+                    <button
+                      key={evt.id}
+                      type="button"
+                      onClick={() => handleSelectEvent(evt)}
+                      className={`p-3 rounded-xl text-left transition-all border cursor-pointer ${
+                        isCurrent
+                          ? 'bg-brand text-white border-brand shadow-md font-semibold'
+                          : 'bg-white/70 text-brand hover:bg-white border-white/80'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-1 mb-1">
+                        <span className="font-bold text-xs truncate">{evt.title}</span>
+                        {isFull && (
+                          <span className="bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase">
+                            Popunjeno
+                          </span>
+                        )}
+                      </div>
+                      <div className={`text-[11px] flex items-center justify-between ${isCurrent ? 'text-white/80' : 'text-brand/60'}`}>
+                        <span>Dob: {evt.ageGroup}</span>
+                        <span>{evt.dateStr}</span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Header of the event */}
           <div className="text-center mb-6">
-            <span className="bg-brand/10 text-brand text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider mb-3 inline-block">
+            <span className="bg-brand/10 text-brand text-xs font-bold px-3.5 py-1 rounded-full uppercase tracking-wider mb-2 inline-block">
               {activeEvent.title}
             </span>
+            <div className="flex items-center justify-center gap-4 text-xs text-brand/70 mb-3">
+              <span className="flex items-center gap-1"><Calendar size={13} className="text-brand-light" /> {activeEvent.dateStr} u {activeEvent.timeStr}</span>
+              <span className="flex items-center gap-1"><Users size={13} className="text-brand-light" /> {activeEvent.ageGroup}</span>
+            </div>
+
             {!existingRegistration && (
               <>
-                <h1 className="text-4xl font-serif font-bold mb-3 uppercase tracking-tight mt-2">Prijava</h1>
-                <p className="text-brand/80 font-light">
+                <h1 className="text-3xl sm:text-4xl font-serif font-bold mb-2 uppercase tracking-tight text-brand">Prijava</h1>
+                <p className="text-brand/80 font-light text-sm">
                   {!user ? "Prijava je zaštićena. Molimo potvrdite svoj identitet kako bi pristupili formi." : "Ispuni podatke ispod. Sva polja s "}
                   {user && <span className="text-red-500">*</span>}
                   {user && " su obavezna."}
@@ -333,6 +445,20 @@ export default function FormPage() {
               </>
             )}
           </div>
+
+          {/* Event Full Warning banner */}
+          {isEventFull && (
+            <div className="bg-red-50/90 border border-red-200 text-red-800 p-5 rounded-2xl mb-6 text-center shadow-sm">
+              <p className="font-bold text-base mb-1">Popunjena sva mjesta za ovaj događaj</p>
+              <p className="text-xs text-red-700/90 mb-3">
+                Nažalost, sva mjesta za <strong>{activeEvent.title}</strong> ({activeEvent.dateStr}) su već popunjena.
+                {activeEvents.length > 1 ? " Molimo odaberi drugi dostupni termin iznad." : " Prati naš Instagram profil za najave novih termina!"}
+              </p>
+              <Link to="/" className="inline-flex items-center gap-1.5 text-xs font-bold text-brand hover:underline">
+                <ArrowLeft size={13} /> Povratak na naslovnicu
+              </Link>
+            </div>
+          )}
 
           {error && (
             <div className="bg-red-100 border border-red-200 text-red-700 px-4 py-3 rounded-xl mb-6 text-sm">
@@ -595,11 +721,11 @@ export default function FormPage() {
 
                 <button
                   type="submit"
-                  disabled={loading}
-                  className="w-full bg-brand hover:bg-brand-light text-white font-semibold py-4 rounded-xl shadow-lg transition-all transform hover:scale-[1.02] disabled:opacity-70 disabled:hover:scale-100 flex justify-center items-center gap-2"
+                  disabled={loading || isEventFull}
+                  className="w-full bg-brand hover:bg-brand-light text-white font-semibold py-4 rounded-xl shadow-lg transition-all transform hover:scale-[1.02] disabled:opacity-70 disabled:hover:scale-100 flex justify-center items-center gap-2 cursor-pointer disabled:cursor-not-allowed"
                 >
-                  {loading ? 'Slanje...' : 'Prijavi se'}
-                  {!loading && <Heart size={18} className="fill-white" />}
+                  {loading ? 'Slanje...' : isEventFull ? 'Mjesta su popunjena' : 'Prijavi se'}
+                  {!loading && !isEventFull && <Heart size={18} className="fill-white" />}
                 </button>
                 <p className="text-center text-xs text-brand/60 mt-4">
                   Pritiskom na gumb potvrđuješ prijavu. Podaci se koriste isključivo u svrhu organizacije eventa.
