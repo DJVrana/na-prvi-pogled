@@ -63,6 +63,7 @@ export default function Home() {
   const [user, setUser] = useState<User | null>(null);
   
   const [activeEvents, setActiveEvents] = useState<ActiveEvent[]>([]);
+  const [matchingEvent, setMatchingEvent] = useState<ActiveEvent | null>(null);
   const [selectedEventId, setSelectedEventId] = useState<string>('');
   const [loadingEvents, setLoadingEvents] = useState(true);
 
@@ -92,6 +93,15 @@ export default function Home() {
         } else {
           setActiveEvents([]);
           setSelectedEventId('');
+        }
+
+        // Check if any event has matching active
+        const matchingQuery = query(collection(db, 'events'), where('isMatchingActive', '==', true));
+        const matchingSnap = await getDocs(matchingQuery);
+        if (!matchingSnap.empty) {
+          setMatchingEvent({ id: matchingSnap.docs[0].id, ...(matchingSnap.docs[0].data() as any) });
+        } else {
+          setMatchingEvent(null);
         }
       } catch (err) {
         console.error("Greška pri dohvaćanju aktivnih događaja:", err);
@@ -264,20 +274,23 @@ export default function Home() {
       {/* Top right discrete auth widget */}
       <div className="absolute top-6 right-6 z-30 flex items-center gap-4">
         {user ? (
-          <div className="flex items-center gap-3 bg-white/70 backdrop-blur-md px-4 py-2 rounded-full border border-white/80 shadow-sm transition-all hover:bg-white/90">
+          <div className="flex items-center gap-2 sm:gap-3 bg-white/70 backdrop-blur-md px-3 sm:px-4 py-1.5 sm:py-2 rounded-full border border-white/80 shadow-sm transition-all hover:bg-white/90">
             {ADMIN_UIDS.includes(user.uid) && (
-              <Link to="/admin" className="text-brand flex items-center gap-1 text-xs font-bold uppercase tracking-wider mr-2 hover:text-brand-light transition-colors">
+              <Link to="/admin" className="text-brand flex items-center gap-1 text-xs font-bold uppercase tracking-wider mr-1 hover:text-brand-light transition-colors">
                 <ShieldAlert size={14} /> Admin
               </Link>
             )}
-            {user.photoURL ? (
-              <img src={user.photoURL} alt="Profile" referrerPolicy="no-referrer" className="w-6 h-6 rounded-full border border-brand/20 shadow-inner" />
-            ) : (
-              <div className="w-6 h-6 rounded-full bg-brand/10 flex items-center justify-center font-bold text-brand text-xs">
-                {user.email?.charAt(0).toUpperCase()}
-              </div>
-            )}
-            <button onClick={handleLogout} className="text-brand/60 hover:text-red-500 transition-colors" title="Odjavi se">
+            <Link to="/profil" className="flex items-center gap-2 text-brand hover:text-brand-light transition-colors" title="Moj profil">
+              {user.photoURL ? (
+                <img src={user.photoURL} alt="Profile" referrerPolicy="no-referrer" className="w-6 h-6 rounded-full border border-brand/20 shadow-inner" />
+              ) : (
+                <div className="w-6 h-6 rounded-full bg-brand/10 flex items-center justify-center font-bold text-brand text-xs">
+                  {user.email?.charAt(0).toUpperCase()}
+                </div>
+              )}
+              <span className="text-xs font-semibold hidden sm:inline">Moj profil</span>
+            </Link>
+            <button onClick={handleLogout} className="text-brand/60 hover:text-red-500 transition-colors ml-1" title="Odjavi se">
               <LogOut size={16} />
             </button>
           </div>
@@ -291,6 +304,20 @@ export default function Home() {
           </button>
         )}
       </div>
+
+      {/* Active Matching Announcement Banner */}
+      {matchingEvent && (
+        <div className="z-20 mt-14 sm:mt-10 mb-2 animate-fade-in-up">
+          <Link
+            to={`/matching?eventId=${matchingEvent.id}`}
+            className="inline-flex items-center gap-2 bg-gradient-to-r from-rose-500 to-brand text-white px-4 py-2 rounded-full text-xs font-bold shadow-lg hover:shadow-rose-500/25 transition-all transform hover:scale-105"
+          >
+            <Flame size={15} className="animate-pulse" />
+            <span>Matching je otvoren za {matchingEvent.title}! Pronađi svoje simpatije ✨</span>
+            <ChevronRight size={14} />
+          </Link>
+        </div>
+      )}
 
       {/* ========================================================================= */}
       {/* 5. MAIN CARD WRAPPER WITH SURROUNDING FLOATING ACCENTS                     */}

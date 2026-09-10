@@ -5,5 +5,5 @@ export default {
   appDirectory: "src/app",
   buildDirectory: "dist",
   basename: "/",
-  prerender: ["/", "/prijava", "/admin"],
+  prerender: ["/", "/prijava", "/admin", "/profil", "/matching"],
 } satisfies Config;

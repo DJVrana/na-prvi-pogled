@@ -3,7 +3,7 @@ import { collection, addDoc, serverTimestamp, query, where, getDocs, limit, getD
 import { db, auth, provider } from '../firebase';
 import { onAuthStateChanged, signInWithPopup } from 'firebase/auth';
 import type { User } from 'firebase/auth';
-import { ArrowLeft, CheckCircle2, Heart, LogOut, Loader2, Sparkles, Calendar, Users } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Heart, LogOut, Loader2, Sparkles, Calendar, Users, UserRound } from 'lucide-react';
 import { FaGoogle } from 'react-icons/fa';
 import { Link, useSearchParams } from 'react-router';
 import emailjs from '@emailjs/browser';
@@ -512,9 +512,14 @@ export default function FormPage() {
                 </>
               )}
 
-              <Link to="/" className="inline-flex items-center gap-2 bg-brand text-white px-6 py-3 rounded-full font-medium hover:bg-brand-light transition-colors">
-                <ArrowLeft size={18} /> Povratak na naslovnicu
-              </Link>
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                <Link to="/profil" className="inline-flex items-center gap-2 bg-brand text-white px-6 py-3 rounded-full font-medium hover:bg-brand-light transition-colors text-sm">
+                  <UserRound size={16} /> Pregledaj u profilu
+                </Link>
+                <Link to="/" className="inline-flex items-center gap-2 bg-white/80 hover:bg-white text-brand px-6 py-3 rounded-full font-medium transition-colors text-sm border border-brand/20">
+                  <ArrowLeft size={16} /> Povratak na naslovnicu
+                </Link>
+              </div>
             </div>
           ) : (
             <>
@@ -532,14 +537,22 @@ export default function FormPage() {
                     <p className="text-brand/60 text-xs">{user.email}</p>
                   </div>
                 </div>
-                <button
-                  onClick={handleLogout}
-                  className="p-2 text-brand/60 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
-                  title="Odjavi se"
-                >
-                  <LogOut size={18} />
-                </button>
-              </div>
+                  <div className="flex items-center gap-2">
+                    <Link
+                      to="/profil"
+                      className="text-xs font-semibold text-brand hover:text-brand-light bg-white/80 px-3 py-1.5 rounded-full border border-brand/10 transition-colors flex items-center gap-1.5 shadow-xs"
+                    >
+                      <UserRound size={13} /> Moj profil
+                    </Link>
+                    <button
+                      onClick={handleLogout}
+                      className="p-2 text-brand/60 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
+                      title="Odjavi se"
+                    >
+                      <LogOut size={18} />
+                    </button>
+                  </div>
+                </div>
 
               <form onSubmit={handleSubmit} className="space-y-6">
 

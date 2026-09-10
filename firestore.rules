@@ -1,0 +1,94 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Funkcija za provjeru administratorskih prava
+    function isAdmin() {
+      return request.auth != null && (
+        request.auth.uid == 'iKe7lzl7Msf7hd3kWyHC1ysyS3C3' || 
+        request.auth.uid == 'Izt37mNGtpY82AKZTbyYsnctoxJ2' || 
+        request.auth.uid == 'JRms1cPi2Bc513TOW0WBEFZMzrC3'
+      );
+    }
+
+    // DOGAĐAJI
+    match /events/{eventId} {
+      // Svi posjetitelji mogu čitati događaje
+      allow read: if true;
+      allow create, delete: if isAdmin();
+      // Korisnik smije ažurirati SAMO ako mijenja isključivo "registrationCount" (prijava ili odjava)
+      allow update: if isAdmin() || (
+        request.auth != null &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['registrationCount'])
+      );
+    }
+
+    // PRIJAVE
+    match /prijave/{prijavaId} {
+      // Korisnik može čitati svoju prijavu ili prihvaćene prijave za matching
+      allow read: if isAdmin() || (
+        request.auth != null && (
+          resource.data.uid == request.auth.uid || 
+          resource.data.status == 'accepted'
+        )
+      );
+      // Korisnik može kreirati samo prijavu sa svojim UID-om
+      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+      // Korisnik smije ažurirati svoju prijavu (npr. odjava/status cancelled ili unos kontakt podatka), ali ne može sam potvrditi prijavu
+      allow update: if isAdmin() || (
+        request.auth != null &&
+        resource.data.uid == request.auth.uid &&
+        request.resource.data.uid == request.auth.uid &&
+        (request.resource.data.status == resource.data.status || request.resource.data.status == 'cancelled')
+      );
+      allow delete: if isAdmin();
+    }
+
+    // KORISNIČKI PROFILI (kontakt postavke - Instagram, broj mobitela)
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin() || (request.auth != null && request.auth.uid == userId);
+    }
+
+    // LAJKOVI / SIMPATIJE (Tinder matching)
+    match /event_likes/{likeId} {
+      // Korisnik može pročitati lajk koji je on poslao ili koji je poslan njemu (za provjeru uzajamnog matcha)
+      allow read: if isAdmin() || (
+        request.auth != null && (
+          resource.data.fromUid == request.auth.uid || 
+          resource.data.toUid == request.auth.uid
+        )
+      );
+      // Korisnik može spremati samo svoj glas
+      allow create, update: if isAdmin() || (
+        request.auth != null && 
+        request.resource.data.fromUid == request.auth.uid
+      );
+      allow delete: if isAdmin();
+    }
+
+    // OSTVARENI MATCHVI
+    match /event_matches/{matchId} {
+      // Korisnik može čitati matcheve u kojima je on jedan od sudionika
+      allow read: if isAdmin() || (
+        request.auth != null && (
+          resource.data.maleUid == request.auth.uid || 
+          resource.data.femaleUid == request.auth.uid
+        )
+      );
+      // Kreiranje matcha dopušteno je sudioniku kada se detektira obostrana simpatija
+      allow create: if isAdmin() || (
+        request.auth != null && (
+          request.resource.data.maleUid == request.auth.uid || 
+          request.resource.data.femaleUid == request.auth.uid
+        )
+      );
+      allow update, delete: if isAdmin();
+    }
+
+    // Sve ostalo je zaključano
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

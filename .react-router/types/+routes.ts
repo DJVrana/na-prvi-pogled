@@ -20,12 +20,18 @@ type Pages = {
   "/admin": {
     params: {};
   };
+  "/profil": {
+    params: {};
+  };
+  "/matching": {
+    params: {};
+  };
 };
 
 type RouteFiles = {
   "root.tsx": {
     id: "root";
-    page: "/" | "/prijava" | "/admin";
+    page: "/" | "/prijava" | "/admin" | "/profil" | "/matching";
   };
   "../pages/Home.tsx": {
     id: "../pages/Home";
@@ -39,6 +45,14 @@ type RouteFiles = {
     id: "../pages/AdminDashboard";
     page: "/admin";
   };
+  "../pages/ProfilePage.tsx": {
+    id: "../pages/ProfilePage";
+    page: "/profil";
+  };
+  "../pages/MatchingPage.tsx": {
+    id: "../pages/MatchingPage";
+    page: "/matching";
+  };
 };
 
 type RouteModules = {
@@ -46,4 +60,6 @@ type RouteModules = {
   "../pages/Home": unknown;
   "../pages/FormPage": unknown;
   "../pages/AdminDashboard": unknown;
+  "../pages/ProfilePage": unknown;
+  "../pages/MatchingPage": unknown;
 };

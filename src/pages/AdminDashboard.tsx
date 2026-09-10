@@ -4,7 +4,7 @@ import { db, auth } from '../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import type { User } from 'firebase/auth';
 import { Link, Navigate } from 'react-router';
-import { ArrowLeft, Users, UserRound, ArrowDown01, Loader2, Plus, Calendar as CalendarIcon, CheckCircle2, List, PlayCircle, StopCircle, Trash2, X, ChevronDown, Pencil, Clock, XCircle } from 'lucide-react';
+import { ArrowLeft, Users, UserRound, ArrowDown01, Loader2, Plus, Calendar as CalendarIcon, CheckCircle2, List, PlayCircle, StopCircle, Trash2, X, ChevronDown, Pencil, Clock, XCircle, Flame, Heart, UserX } from 'lucide-react';
 import emailjs from '@emailjs/browser';
 
 const ADMIN_UIDS = ['iKe7lzl7Msf7hd3kWyHC1ysyS3C3', 'Izt37mNGtpY82AKZTbyYsnctoxJ2', 'JRms1cPi2Bc513TOW0WBEFZMzrC3'];
@@ -27,6 +27,7 @@ interface EventData {
   location: string;
   price: string;
   isActive: boolean;
+  isMatchingActive?: boolean;
   createdAt: any;
   customFields?: CustomField[];
   maxRegistrations?: number | string;
@@ -59,7 +60,9 @@ interface Prijava {
   eventId?: string;
   uid?: string;
   customAnswers?: { label: string; value: any }[];
-  status?: 'pending' | 'accepted' | 'rejected';
+  status?: 'pending' | 'accepted' | 'rejected' | 'cancelled';
+  cancelledAt?: any;
+  contactHandle?: string;
 }
 
 export default function AdminDashboard() {
@@ -108,6 +111,11 @@ export default function AdminDashboard() {
   const [selectedPrijava, setSelectedPrijava] = useState<Prijava | null>(null);
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [matchesModalOpen, setMatchesModalOpen] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'accepted' | 'pending' | 'rejected' | 'cancelled'>('all');
+  const [selectedEventForMatches, setSelectedEventForMatches] = useState<EventData | null>(null);
+  const [eventMatchesList, setEventMatchesList] = useState<any[]>([]);
+  const [loadingMatchesModal, setLoadingMatchesModal] = useState(false);
   const [rejectReason, setRejectReason] = useState('Nažalost, zbog ograničenog broja mjesta i velikog interesa, ovaj put ti nismo u mogućnosti potvrditi sudjelovanje. Mjesta su se popunila vrlo brzo ili pokušavamo balansirati omjer sudionika.');
   const [rejectDropdownOpen, setRejectDropdownOpen] = useState(false);
 
@@ -267,7 +275,7 @@ export default function AdminDashboard() {
     setActionLoading(true);
     try {
       await deleteDoc(doc(db, 'prijave', selectedPrijava.id));
-      if (selectedPrijava.status !== 'rejected') {
+      if (selectedPrijava.status !== 'rejected' && selectedPrijava.status !== 'cancelled') {
         await updateDoc(doc(db, 'events', selectedEventId), {
           registrationCount: increment(-1)
         });
@@ -294,7 +302,7 @@ export default function AdminDashboard() {
       }
 
       await updateDoc(doc(db, 'prijave', prijava.id), { status: 'accepted' });
-      if (prijava.status === 'rejected') {
+      if (prijava.status === 'rejected' || prijava.status === 'cancelled') {
         await updateDoc(doc(db, 'events', activeEvent.id), {
           registrationCount: increment(1)
         });
@@ -449,6 +457,33 @@ export default function AdminDashboard() {
     }
   };
 
+  const toggleEventMatching = async (eventToToggle: EventData) => {
+    try {
+      const targetRef = doc(db, 'events', eventToToggle.id);
+      await updateDoc(targetRef, { isMatchingActive: !eventToToggle.isMatchingActive });
+      fetchEvents();
+    } catch (err) {
+      console.error("Error toggling matching:", err);
+      setError("Greška pri promjeni statusa matchinga.");
+    }
+  };
+
+  const openMatchesModal = async (eventItem: EventData) => {
+    setSelectedEventForMatches(eventItem);
+    setMatchesModalOpen(true);
+    setLoadingMatchesModal(true);
+    try {
+      const q = query(collection(db, 'event_matches'), where('eventId', '==', eventItem.id));
+      const snap = await getDocs(q);
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      setEventMatchesList(list);
+    } catch (err) {
+      console.error("Greška pri dohvaćanju matcheva:", err);
+    } finally {
+      setLoadingMatchesModal(false);
+    }
+  };
+
   if (authLoading) {
     return (
       <div className="min-h-screen bg-peach flex items-center justify-center">
@@ -462,7 +497,7 @@ export default function AdminDashboard() {
   }
 
   // Calculate statistics for currently displayed prijave
-  const validPrijave = prijave.filter(p => p.status !== 'rejected');
+  const validPrijave = prijave.filter(p => p.status !== 'rejected' && p.status !== 'cancelled');
   const total = validPrijave.length;
   const femaleCount = validPrijave.filter(p => p.spol === 'Ž' || p.spol === 'Z' || p.spol.toLowerCase() === 'žensko').length;
   const maleCount = validPrijave.filter(p => p.spol === 'M' || p.spol.toLowerCase() === 'muško').length;
@@ -472,6 +507,13 @@ export default function AdminDashboard() {
   const approvedCount = prijave.filter(p => p.status === 'accepted').length;
   const rejectedCount = prijave.filter(p => p.status === 'rejected').length;
   const pendingCount = prijave.filter(p => p.status === 'pending' || !p.status).length;
+  const cancelledCount = prijave.filter(p => p.status === 'cancelled').length;
+
+  const displayedPrijave = prijave.filter(p => {
+    if (statusFilter === 'all') return true;
+    if (statusFilter === 'pending') return p.status === 'pending' || !p.status;
+    return p.status === statusFilter;
+  });
 
   return (
     <div className="min-h-screen bg-[#f8f9fa] text-gray-800 font-sans p-6">
@@ -791,25 +833,46 @@ export default function AdminDashboard() {
                   events.map(event => (
                     <div key={event.id} className={`p-4 rounded-xl border ${event.isActive ? 'border-brand bg-brand/5' : 'border-gray-200 bg-white'} flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all`}>
                       <div>
-                        <div className="flex items-center gap-2 mb-1">
+                        <div className="flex flex-wrap items-center gap-2 mb-1">
                           <h3 className="font-bold text-gray-900">{event.title}</h3>
-                          {event.isActive && <span className="bg-brand text-white text-[10px] uppercase font-bold px-2 py-0.5 rounded-full flex items-center gap-1"><CheckCircle2 size={12} /> Aktivno</span>}
+                          {event.isActive && <span className="bg-brand text-white text-[10px] uppercase font-bold px-2 py-0.5 rounded-full flex items-center gap-1"><CheckCircle2 size={12} /> Prijave Aktivne</span>}
+                          {event.isMatchingActive && <span className="bg-rose-600 text-white text-[10px] uppercase font-bold px-2 py-0.5 rounded-full flex items-center gap-1 animate-pulse"><Flame size={12} /> Matching Aktivan</span>}
                         </div>
                         <p className="text-sm text-gray-600">{event.dateStr} u {event.timeStr} • {event.location}</p>
                         <p className="text-xs text-gray-500 mt-1">Dob: {event.ageGroup} | Cijena: {event.price} {event.maxRegistrations ? `| Max prijava: ${event.maxRegistrations}` : ''}</p>
                       </div>
-                      <div className="flex items-center gap-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          onClick={() => openMatchesModal(event)}
+                          className="px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-1.5 transition-colors bg-white hover:bg-rose-50 border border-rose-200 text-rose-700"
+                          title="Pregledaj obostrane matcheve za ovaj događaj"
+                        >
+                          <Heart size={16} className="text-rose-600" />
+                          <span className="hidden sm:inline">Matchevi</span>
+                        </button>
+                        <button
+                          onClick={() => toggleEventMatching(event)}
+                          className={`px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-1.5 transition-colors ${
+                            event.isMatchingActive
+                              ? 'bg-rose-100 text-rose-800 hover:bg-rose-200 border border-rose-300'
+                              : 'bg-white hover:bg-gray-50 text-gray-700 border border-gray-200'
+                          }`}
+                          title={event.isMatchingActive ? "Zaustavi matching" : "Pokreni matching"}
+                        >
+                          <Flame size={16} className={event.isMatchingActive ? "text-rose-600" : "text-gray-400"} />
+                          <span>{event.isMatchingActive ? 'Zaustavi Matching' : 'Pokreni Matching'}</span>
+                        </button>
                         <button
                           onClick={() => openEditEvent(event)}
-                          className="px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors bg-white hover:bg-gray-100 border border-gray-200 text-gray-700"
+                          className="px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-1.5 transition-colors bg-white hover:bg-gray-100 border border-gray-200 text-gray-700"
                         >
                           <Pencil size={16} /> <span className="hidden sm:inline">Uredi</span>
                         </button>
                         <button
                           onClick={() => toggleEventActive(event)}
-                          className={`px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors ${event.isActive ? 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-200' : 'bg-green-50 text-green-600 hover:bg-green-100 border border-green-200'}`}
+                          className={`px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-1.5 transition-colors ${event.isActive ? 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-200' : 'bg-green-50 text-green-600 hover:bg-green-100 border border-green-200'}`}
                         >
-                          {event.isActive ? <><StopCircle size={16} /> Završi / Deaktiviraj</> : <><PlayCircle size={16} /> Postavi kao Aktivno</>}
+                          {event.isActive ? <><StopCircle size={16} /> Završi prijave</> : <><PlayCircle size={16} /> Otvori prijave</>}
                         </button>
                       </div>
                     </div>
@@ -884,7 +947,7 @@ export default function AdminDashboard() {
             </div>
 
             {/* Statistics Widgets */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-4">
               <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4">
                 <div className="bg-brand/10 p-3 rounded-full text-brand">
                   <Users size={24} />
@@ -921,15 +984,24 @@ export default function AdminDashboard() {
                   <p className="text-2xl font-bold">{rejectedCount}</p>
                 </div>
               </div>
+              <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4 col-span-2 sm:col-span-1">
+                <div className="bg-gray-100 p-3 rounded-full text-gray-600">
+                  <UserX size={24} />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 font-medium">Otkazano</p>
+                  <p className="text-2xl font-bold text-gray-700">{cancelledCount}</p>
+                </div>
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
               <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4">
                 <div className="bg-brand/10 p-3 rounded-full text-brand">
                   <Users size={24} />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500 font-medium">Važeće prijave (bez odbijenih)</p>
+                  <p className="text-sm text-gray-500 font-medium">Aktivne prijave (bez odb/otk)</p>
                   <p className="text-2xl font-bold">{total}</p>
                 </div>
               </div>
@@ -962,6 +1034,51 @@ export default function AdminDashboard() {
               </div>
             </div>
 
+            {/* Status Filter Tabs */}
+            <div className="flex flex-wrap items-center gap-2 mb-4 bg-white p-3 rounded-2xl shadow-sm border border-gray-100">
+              <span className="text-xs font-semibold text-gray-500 mr-2">Status:</span>
+              <button
+                onClick={() => setStatusFilter('all')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                  statusFilter === 'all' ? 'bg-brand text-white shadow-sm' : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-200'
+                }`}
+              >
+                Sve ({totalAll})
+              </button>
+              <button
+                onClick={() => setStatusFilter('accepted')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                  statusFilter === 'accepted' ? 'bg-green-600 text-white shadow-sm' : 'bg-gray-50 text-gray-600 hover:bg-green-50 border border-gray-200'
+                }`}
+              >
+                Odobreno ({approvedCount})
+              </button>
+              <button
+                onClick={() => setStatusFilter('pending')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                  statusFilter === 'pending' ? 'bg-yellow-500 text-white shadow-sm' : 'bg-gray-50 text-gray-600 hover:bg-yellow-50 border border-gray-200'
+                }`}
+              >
+                Na čekanju ({pendingCount})
+              </button>
+              <button
+                onClick={() => setStatusFilter('rejected')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                  statusFilter === 'rejected' ? 'bg-red-600 text-white shadow-sm' : 'bg-gray-50 text-gray-600 hover:bg-red-50 border border-gray-200'
+                }`}
+              >
+                Odbijeno ({rejectedCount})
+              </button>
+              <button
+                onClick={() => setStatusFilter('cancelled')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                  statusFilter === 'cancelled' ? 'bg-gray-700 text-white shadow-sm' : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-200'
+                }`}
+              >
+                Otkazano ({cancelledCount})
+              </button>
+            </div>
+
             {/* Data Table */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
               <div className="overflow-x-auto">
@@ -980,26 +1097,33 @@ export default function AdminDashboard() {
                   <tbody className="divide-y divide-gray-100">
                     {dataLoading ? (
                       <tr>
-                        <td colSpan={6} className="p-8 text-center text-gray-500">
+                        <td colSpan={7} className="p-8 text-center text-gray-500">
                           <div className="flex justify-center items-center gap-2">
                             <Loader2 className="animate-spin" size={16} /> Učitavanje podataka...
                           </div>
                         </td>
                       </tr>
-                    ) : prijave.length === 0 ? (
+                    ) : displayedPrijave.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="p-8 text-center text-gray-500">
-                          Još nema pristiglih prijava za odabrani događaj.
+                        <td colSpan={7} className="p-8 text-center text-gray-500">
+                          Nema prijava za odabrani filter.
                         </td>
                       </tr>
                     ) : (
-                      prijave.map((prijava) => (
+                      displayedPrijave.map((prijava) => (
                         <tr
                           key={prijava.id}
                           onClick={() => setSelectedPrijava(prijava)}
-                          className="hover:bg-brand/5 cursor-pointer transition-colors group"
+                          className={`cursor-pointer transition-colors group ${
+                            prijava.status === 'cancelled'
+                              ? 'bg-gray-50/70 hover:bg-gray-100/80 opacity-75'
+                              : 'hover:bg-brand/5'
+                          }`}
                         >
-                          <td className="p-4 font-medium text-brand group-hover:text-brand-light">{prijava.imePrezime}</td>
+                          <td className="p-4 font-medium text-brand group-hover:text-brand-light flex items-center gap-1.5">
+                            {prijava.status === 'cancelled' && <UserX size={14} className="text-gray-400 flex-shrink-0" />}
+                            <span>{prijava.imePrezime}</span>
+                          </td>
                           <td className="p-4 text-gray-600 text-sm">{prijava.email}</td>
                           <td className="p-4">
                             <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${prijava.spol === 'Ž' ? 'bg-pink-100 text-pink-700' :
@@ -1013,10 +1137,16 @@ export default function AdminDashboard() {
                             {prijava.napomena || '-'}
                           </td>
                           <td className="p-4">
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${prijava.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                              prijava.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
-                              }`}>
-                              {prijava.status === 'pending' ? 'Na čekanju' : prijava.status === 'rejected' ? 'Odbijeno' : 'Prihvaćeno'}
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              prijava.status === 'pending' || !prijava.status ? 'bg-yellow-100 text-yellow-800' :
+                              prijava.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                              prijava.status === 'cancelled' ? 'bg-gray-200 text-gray-700 border border-gray-300' :
+                              'bg-green-100 text-green-800'
+                            }`}>
+                              {prijava.status === 'pending' || !prijava.status ? 'Na čekanju' :
+                               prijava.status === 'rejected' ? 'Odbijeno' :
+                               prijava.status === 'cancelled' ? 'Otkazano' :
+                               'Prihvaćeno'}
                             </span>
                           </td>
                           <td className="p-4 text-gray-500 text-xs">
@@ -1048,14 +1178,36 @@ export default function AdminDashboard() {
             </div>
 
             <div className="p-6 overflow-y-auto flex-1 space-y-6">
-              <div className="mb-2">
-                <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold ${selectedPrijava.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                  selectedPrijava.status === 'rejected' ? 'bg-red-100 text-red-700' :
-                    'bg-green-100 text-green-700'
-                  }`}>
-                  {selectedPrijava.status === 'pending' ? 'Status: Na čekanju' : selectedPrijava.status === 'rejected' ? 'Status: Odbijeno' : 'Status: Prihvaćeno'}
+              <div className="flex flex-wrap items-center gap-2 mb-2">
+                <span className={`inline-flex items-center px-3.5 py-1 rounded-full text-sm font-semibold ${
+                  selectedPrijava.status === 'pending' || !selectedPrijava.status ? 'bg-yellow-100 text-yellow-800' :
+                  selectedPrijava.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                  selectedPrijava.status === 'cancelled' ? 'bg-gray-200 text-gray-800 border border-gray-300' :
+                  'bg-green-100 text-green-800'
+                }`}>
+                  {selectedPrijava.status === 'pending' || !selectedPrijava.status ? 'Status: Na čekanju' :
+                   selectedPrijava.status === 'rejected' ? 'Status: Odbijeno' :
+                   selectedPrijava.status === 'cancelled' ? 'Status: Otkazana prijava' :
+                   'Status: Prihvaćeno'}
                 </span>
               </div>
+
+              {selectedPrijava.status === 'cancelled' && (
+                <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-600 flex items-start gap-3">
+                  <UserX size={18} className="text-gray-500 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <span className="font-bold text-gray-800 block text-sm">Korisnik je samostalno otkazao prijavu</span>
+                    <span className="text-gray-500">
+                      Mjesto na događaju je automatski oslobođeno kada se korisnik odjavio sa svog profila.
+                    </span>
+                    {selectedPrijava.cancelledAt && (
+                      <div className="mt-1 font-medium text-gray-700">
+                        Datum i vrijeme odjave: {selectedPrijava.cancelledAt?.toDate ? selectedPrijava.cancelledAt.toDate().toLocaleString('hr-HR') : 'Nedavno'}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               <div>
                 <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">Osnovni podaci</h4>
@@ -1105,27 +1257,27 @@ export default function AdminDashboard() {
               <div className="flex gap-2 flex-wrap">
                 <button
                   onClick={() => setDeleteModalOpen(true)}
-                  className="px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 rounded-lg font-medium transition-colors flex items-center gap-2 text-sm"
+                  className="px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 rounded-lg font-medium transition-colors flex items-center gap-2 text-sm cursor-pointer"
                 >
                   <Trash2 size={16} /> Izbriši
                 </button>
+                {(selectedPrijava.status === 'pending' || selectedPrijava.status === 'cancelled') && (
+                  <button
+                    onClick={() => handleAcceptPrijava(selectedPrijava)}
+                    disabled={actionLoading}
+                    className="px-4 py-2 bg-green-600 text-white hover:bg-green-700 rounded-lg font-medium transition-colors flex items-center gap-2 text-sm disabled:opacity-50 cursor-pointer"
+                  >
+                    <CheckCircle2 size={16} /> {selectedPrijava.status === 'cancelled' ? 'Reaktiviraj i prihvati' : 'Prihvati'}
+                  </button>
+                )}
                 {selectedPrijava.status === 'pending' && (
-                  <>
-                    <button
-                      onClick={() => handleAcceptPrijava(selectedPrijava)}
-                      disabled={actionLoading}
-                      className="px-4 py-2 bg-green-600 text-white hover:bg-green-700 rounded-lg font-medium transition-colors flex items-center gap-2 text-sm disabled:opacity-50"
-                    >
-                      <CheckCircle2 size={16} /> Prihvati
-                    </button>
-                    <button
-                      onClick={() => setRejectModalOpen(true)}
-                      disabled={actionLoading}
-                      className="px-4 py-2 bg-yellow-600 text-white hover:bg-yellow-700 rounded-lg font-medium transition-colors flex items-center gap-2 text-sm disabled:opacity-50"
-                    >
-                      <X size={16} /> Odbij
-                    </button>
-                  </>
+                  <button
+                    onClick={() => setRejectModalOpen(true)}
+                    disabled={actionLoading}
+                    className="px-4 py-2 bg-yellow-600 text-white hover:bg-yellow-700 rounded-lg font-medium transition-colors flex items-center gap-2 text-sm disabled:opacity-50 cursor-pointer"
+                  >
+                    <X size={16} /> Odbij
+                  </button>
                 )}
               </div>
               <button
@@ -1265,6 +1417,82 @@ export default function AdminDashboard() {
               >
                 {actionLoading ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
                 Obriši prijavu
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Matches Overview Modal */}
+      {matchesModalOpen && selectedEventForMatches && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white w-full max-w-2xl rounded-2xl shadow-xl flex flex-col max-h-[85vh]">
+            <div className="flex items-center justify-between p-6 border-b border-gray-100">
+              <div>
+                <h3 className="text-xl font-serif font-bold text-gray-900 flex items-center gap-2">
+                  <Heart size={22} className="text-rose-600 fill-rose-600" />
+                  Ostvareni matchevi: {selectedEventForMatches.title}
+                </h3>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Popis svih obostranih simpatija zabilježenih na ovom događaju ({eventMatchesList.length})
+                </p>
+              </div>
+              <button
+                onClick={() => setMatchesModalOpen(false)}
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-full transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto space-y-3 flex-1">
+              {loadingMatchesModal ? (
+                <div className="py-12 text-center text-gray-400 flex flex-col items-center justify-center">
+                  <Loader2 size={32} className="animate-spin mb-2" />
+                  <p className="text-sm">Učitavanje matcheva...</p>
+                </div>
+              ) : eventMatchesList.length === 0 ? (
+                <div className="py-12 text-center text-gray-500">
+                  <p className="font-semibold text-base mb-1">Nema zabilježenih matcheva</p>
+                  <p className="text-xs text-gray-400">
+                    {selectedEventForMatches.isMatchingActive 
+                      ? "Matching je aktivan. Čim dvoje sudionika označe jedno drugo, pojavit će se ovdje." 
+                      : "Matching za ovaj događaj trenutno nije aktivan. Pokrenite ga klikom na 'Pokreni Matching'."}
+                  </p>
+                </div>
+              ) : (
+                eventMatchesList.map((m, idx) => (
+                  <div key={m.id || idx} className="p-4 rounded-xl border border-gray-200 bg-gray-50/60 hover:bg-white transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center font-bold text-sm">
+                        #{idx + 1}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-gray-900">{m.maleName}</span>
+                          <span className="text-rose-500 text-xs font-bold">💞</span>
+                          <span className="font-bold text-gray-900">{m.femaleName}</span>
+                        </div>
+                        <div className="text-xs text-gray-500 mt-0.5 space-y-0.5">
+                          <div>
+                            <span className="font-semibold text-gray-600">M:</span> {m.maleContact || m.maleEmail || 'Nema kontakta'}
+                          </div>
+                          <div>
+                            <span className="font-semibold text-gray-600">Ž:</span> {m.femaleContact || m.femaleEmail || 'Nema kontakta'}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="p-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl flex justify-end">
+              <button
+                onClick={() => setMatchesModalOpen(false)}
+                className="px-5 py-2 text-sm bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium rounded-lg transition-colors"
+              >
+                Zatvori
               </button>
             </div>
           </div>
