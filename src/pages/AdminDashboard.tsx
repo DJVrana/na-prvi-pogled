@@ -60,7 +60,7 @@ interface Prijava {
   eventId?: string;
   uid?: string;
   customAnswers?: { label: string; value: any }[];
-  status?: 'pending' | 'accepted' | 'rejected' | 'cancelled';
+  status?: 'pending' | 'accepted' | 'rejected' | 'cancelled' | 'waiting_list';
   cancelledAt?: any;
   contactHandle?: string;
 }
@@ -110,9 +110,10 @@ export default function AdminDashboard() {
   // Modal state
   const [selectedPrijava, setSelectedPrijava] = useState<Prijava | null>(null);
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
+  const [waitlistModalOpen, setWaitlistModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [matchesModalOpen, setMatchesModalOpen] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<'all' | 'accepted' | 'pending' | 'rejected' | 'cancelled'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'accepted' | 'pending' | 'waiting_list' | 'rejected' | 'cancelled'>('all');
   const [selectedEventForMatches, setSelectedEventForMatches] = useState<EventData | null>(null);
   const [eventMatchesList, setEventMatchesList] = useState<any[]>([]);
   const [loadingMatchesModal, setLoadingMatchesModal] = useState(false);
@@ -124,6 +125,27 @@ export default function AdminDashboard() {
     { id: 'age', label: 'Dobna skupina', text: 'Nažalost, za ovaj događaj prednost smo morali dati prijavama koje se točno uklapaju u predviđenu dobnu skupinu kako bismo osigurali najbolje iskustvo za sve sudionike.' },
     { id: 'other', label: 'Općenito', text: 'Nažalost, ovaj put ti nismo u mogućnosti potvrditi sudjelovanje.' },
   ];
+
+  const WAITLIST_REASONS = [
+    {
+      id: 'ratio',
+      label: 'Balansiranje omjera sudionika (veći broj prijava)',
+      text: 'Zbog iznimno velikog broja prijava u tvojoj kategoriji i želje da osiguramo optimalan i uravnotežen omjer sudionika, tvoja prijava je trenutačno stavljena na listu čekanja. Čim se oslobodi mjesto ili se stvore uvjeti za tvoje sudjelovanje, javit ćemo ti se s potvrdom!'
+    },
+    {
+      id: 'capacity',
+      label: 'Trenutačno popunjena mjesta',
+      text: 'Trenutačni kapacitet mjesta za tvoju kategoriju je popunjen, stoga se tvoja prijava trenutačno nalazi na listi čekanja. Ako netko od sudionika otkaže ili se otvori dodatno mjesto, odmah ćemo te obavijestiti!'
+    },
+    {
+      id: 'general',
+      label: 'Općenito - Lista čekanja',
+      text: 'Tvoja prijava je zaprimljena i trenutačno se nalazi na listi čekanja za ovaj Speed Dating događaj. Obavijestit ćemo te čim bude novih informacija.'
+    }
+  ];
+
+  const [waitlistReason, setWaitlistReason] = useState(WAITLIST_REASONS[0].text);
+  const [waitlistDropdownOpen, setWaitlistDropdownOpen] = useState(false);
 
   // Dropdown state
   const [filterDropdownOpen, setFilterDropdownOpen] = useState(false);
@@ -275,7 +297,7 @@ export default function AdminDashboard() {
     setActionLoading(true);
     try {
       await deleteDoc(doc(db, 'prijave', selectedPrijava.id));
-      if (selectedPrijava.status !== 'rejected' && selectedPrijava.status !== 'cancelled') {
+      if (selectedPrijava.status !== 'rejected' && selectedPrijava.status !== 'cancelled' && selectedPrijava.status !== 'waiting_list') {
         await updateDoc(doc(db, 'events', selectedEventId), {
           registrationCount: increment(-1)
         });
@@ -302,7 +324,7 @@ export default function AdminDashboard() {
       }
 
       await updateDoc(doc(db, 'prijave', prijava.id), { status: 'accepted' });
-      if (prijava.status === 'rejected' || prijava.status === 'cancelled') {
+      if (prijava.status === 'rejected' || prijava.status === 'cancelled' || prijava.status === 'waiting_list') {
         await updateDoc(doc(db, 'events', activeEvent.id), {
           registrationCount: increment(1)
         });
@@ -396,7 +418,7 @@ export default function AdminDashboard() {
     setActionLoading(true);
     try {
       await updateDoc(doc(db, 'prijave', selectedPrijava.id), { status: 'rejected' });
-      if (selectedPrijava.status !== 'rejected') {
+      if (selectedPrijava.status !== 'rejected' && selectedPrijava.status !== 'cancelled' && selectedPrijava.status !== 'waiting_list') {
         await updateDoc(doc(db, 'events', selectedEventId), {
           registrationCount: increment(-1)
         });
@@ -441,6 +463,101 @@ export default function AdminDashboard() {
     } catch (err) {
       console.error("Greška pri odbijanju:", err);
       alert("Dogodila se greška prilikom odbijanja prijave.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const confirmWaitlistPrijava = async () => {
+    if (!selectedPrijava) return;
+
+    setActionLoading(true);
+    try {
+      const activeEvent = events.find(e => e.id === (selectedPrijava.eventId || selectedEventId));
+
+      await updateDoc(doc(db, 'prijave', selectedPrijava.id), { status: 'waiting_list' });
+
+      // If previously taking up an occupied spot, decrement registrationCount
+      if (selectedPrijava.status !== 'rejected' && selectedPrijava.status !== 'cancelled' && selectedPrijava.status !== 'waiting_list') {
+        const targetEvtId = selectedPrijava.eventId || selectedEventId;
+        if (targetEvtId) {
+          await updateDoc(doc(db, 'events', targetEvtId), {
+            registrationCount: increment(-1)
+          });
+        }
+      }
+
+      const isMale = selectedPrijava.spol === 'M' || selectedPrijava.spol.toLowerCase() === 'muško';
+      const eventTitle = activeEvent?.title || 'Speed Dating';
+
+      const htmlMessage = `
+<div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333333; line-height: 1.6; padding: 20px; background-color: #ffffff; border: 1px solid #f0f0f0; border-radius: 12px;">
+  <div style="text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid #eeeeee;">
+    <h1 style="color: #E85D75; margin: 0; font-size: 26px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">Na prvi pogled</h1>
+    <p style="color: #888888; font-size: 14px; margin-top: 5px;">Obavijest o prijavi – Lista čekanja</p>
+  </div>
+  
+  <p style="font-size: 16px;">${isMale ? 'Dragi' : 'Draga'} <strong>${selectedPrijava.imePrezime.split(' ')[0]}</strong>,</p>
+  
+  <p style="font-size: 16px;">Hvala ti na interesu i prijavi za događaj <strong>${eventTitle}</strong>!</p>
+  
+  <div style="background-color: #FFFBEB; border-left: 4px solid #F59E0B; padding: 16px 20px; margin: 25px 0; border-radius: 0 8px 8px 0;">
+    <p style="margin: 0; font-size: 16px; color: #B45309; font-weight: bold;">Status prijave: Na listi čekanja ⏳</p>
+  </div>
+  
+  <div style="background-color: #f9f9f9; border: 1px dashed #dddddd; padding: 18px; margin: 25px 0; border-radius: 8px;">
+    <p style="margin: 0; font-size: 15px; color: #444444; white-space: pre-wrap;">${waitlistReason}</p>
+  </div>
+  
+  <p style="font-size: 15px; color: #555555;">
+    Tvoje mjesto još nije definitivno potvrđeno niti otkazano. Pratimo stanje prijava te ćemo te kontaktirati čim se stvori mogućnost za sudjelovanje. Ako u međuvremenu znaš da nećeš moći doći, molimo te da se odjaviš putem svog profila.
+  </p>
+
+  ${activeEvent ? `
+  <div style="margin: 25px 0; padding: 15px 0; border-top: 1px solid #eeeeee; border-bottom: 1px solid #eeeeee;">
+    <h4 style="margin-top: 0; color: #555555; font-size: 15px; text-transform: uppercase;">Detalji događaja:</h4>
+    <table style="width: 100%; font-size: 14px; border-collapse: collapse; color: #555555;">
+      ${activeEvent.dateStr ? `<tr><td style="padding: 6px 0; width: 30px;">📅</td><td><strong>${activeEvent.dateStr}</strong></td></tr>` : ''}
+      ${activeEvent.timeStr ? `<tr><td style="padding: 6px 0;">🕖</td><td><strong>${activeEvent.timeStr}</strong></td></tr>` : ''}
+      ${activeEvent.location ? `<tr><td style="padding: 6px 0;">📍</td><td><strong>${activeEvent.location}</strong></td></tr>` : ''}
+      ${activeEvent.ageGroup ? `<tr><td style="padding: 6px 0;">🎂</td><td>Dobna skupina: <strong>${activeEvent.ageGroup}</strong></td></tr>` : ''}
+      ${activeEvent.price ? `<tr><td style="padding: 6px 0;">💳</td><td>Kotizacija: <strong>${activeEvent.price}</strong></td></tr>` : ''}
+    </table>
+  </div>
+  ` : ''}
+  
+  <div style="margin-top: 30px; border-top: 1px solid #eeeeee; padding-top: 20px;">
+    <p style="font-size: 15px; margin: 0; color: #666666;">
+      Srdačan pozdrav,<br>
+      <strong style="color: #333333; font-size: 16px;">Ivan</strong><br/>Na prvi pogled<br/>Upoznaj nekoga, kao nekad.
+    </p>
+  </div>
+</div>
+      `;
+
+      try {
+        await emailjs.send(
+          'default_service',
+          'template_uuvkcp3',
+          {
+            name: selectedPrijava.imePrezime.split(' ')[0],
+            email: selectedPrijava.email,
+            subject: "Tvoja prijava je na listi čekanja! ⏳",
+            html_message: htmlMessage
+          },
+          import.meta.env.VITE_EMAILJS_PUBLIC_KEY
+        );
+      } catch (emailErr) {
+        console.error("Greška pri slanju emaila o listi čekanja: ", emailErr);
+        alert("Status je ažuriran, ali slanje emaila nije uspjelo.");
+      }
+
+      setSelectedPrijava({ ...selectedPrijava, status: 'waiting_list' });
+      setWaitlistModalOpen(false);
+      fetchPrijave(selectedEventId);
+    } catch (err) {
+      console.error("Greška pri postavljanju na listu čekanja:", err);
+      alert("Dogodila se greška prilikom postavljanja prijave na listu čekanja.");
     } finally {
       setActionLoading(false);
     }
@@ -497,7 +614,7 @@ export default function AdminDashboard() {
   }
 
   // Calculate statistics for currently displayed prijave
-  const validPrijave = prijave.filter(p => p.status !== 'rejected' && p.status !== 'cancelled');
+  const validPrijave = prijave.filter(p => p.status !== 'rejected' && p.status !== 'cancelled' && p.status !== 'waiting_list');
   const total = validPrijave.length;
   const femaleCount = validPrijave.filter(p => p.spol === 'Ž' || p.spol === 'Z' || p.spol.toLowerCase() === 'žensko').length;
   const maleCount = validPrijave.filter(p => p.spol === 'M' || p.spol.toLowerCase() === 'muško').length;
@@ -507,6 +624,7 @@ export default function AdminDashboard() {
   const approvedCount = prijave.filter(p => p.status === 'accepted').length;
   const rejectedCount = prijave.filter(p => p.status === 'rejected').length;
   const pendingCount = prijave.filter(p => p.status === 'pending' || !p.status).length;
+  const waitingListCount = prijave.filter(p => p.status === 'waiting_list').length;
   const cancelledCount = prijave.filter(p => p.status === 'cancelled').length;
 
   const displayedPrijave = prijave.filter(p => {
@@ -947,7 +1065,7 @@ export default function AdminDashboard() {
             </div>
 
             {/* Statistics Widgets */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-4">
               <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4">
                 <div className="bg-brand/10 p-3 rounded-full text-brand">
                   <Users size={24} />
@@ -976,6 +1094,15 @@ export default function AdminDashboard() {
                 </div>
               </div>
               <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4">
+                <div className="bg-amber-100 p-3 rounded-full text-amber-600">
+                  <Clock size={24} />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 font-medium">Lista čekanja</p>
+                  <p className="text-2xl font-bold text-amber-600">{waitingListCount}</p>
+                </div>
+              </div>
+              <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4">
                 <div className="bg-red-100 p-3 rounded-full text-red-600">
                   <XCircle size={24} />
                 </div>
@@ -984,7 +1111,7 @@ export default function AdminDashboard() {
                   <p className="text-2xl font-bold">{rejectedCount}</p>
                 </div>
               </div>
-              <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4 col-span-2 sm:col-span-1">
+              <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4">
                 <div className="bg-gray-100 p-3 rounded-full text-gray-600">
                   <UserX size={24} />
                 </div>
@@ -1001,7 +1128,7 @@ export default function AdminDashboard() {
                   <Users size={24} />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500 font-medium">Aktivne prijave (bez odb/otk)</p>
+                  <p className="text-sm text-gray-500 font-medium">Zauzeta mjesta (potvrđeno / u obradi)</p>
                   <p className="text-2xl font-bold">{total}</p>
                 </div>
               </div>
@@ -1060,6 +1187,14 @@ export default function AdminDashboard() {
                 }`}
               >
                 Na čekanju ({pendingCount})
+              </button>
+              <button
+                onClick={() => setStatusFilter('waiting_list')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                  statusFilter === 'waiting_list' ? 'bg-amber-600 text-white shadow-sm' : 'bg-gray-50 text-gray-600 hover:bg-amber-50 border border-gray-200'
+                }`}
+              >
+                Lista čekanja ({waitingListCount})
               </button>
               <button
                 onClick={() => setStatusFilter('rejected')}
@@ -1139,11 +1274,13 @@ export default function AdminDashboard() {
                           <td className="p-4">
                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                               prijava.status === 'pending' || !prijava.status ? 'bg-yellow-100 text-yellow-800' :
+                              prijava.status === 'waiting_list' ? 'bg-amber-100 text-amber-800 border border-amber-300' :
                               prijava.status === 'rejected' ? 'bg-red-100 text-red-800' :
                               prijava.status === 'cancelled' ? 'bg-gray-200 text-gray-700 border border-gray-300' :
                               'bg-green-100 text-green-800'
                             }`}>
                               {prijava.status === 'pending' || !prijava.status ? 'Na čekanju' :
+                               prijava.status === 'waiting_list' ? 'Lista čekanja' :
                                prijava.status === 'rejected' ? 'Odbijeno' :
                                prijava.status === 'cancelled' ? 'Otkazano' :
                                'Prihvaćeno'}
@@ -1181,16 +1318,30 @@ export default function AdminDashboard() {
               <div className="flex flex-wrap items-center gap-2 mb-2">
                 <span className={`inline-flex items-center px-3.5 py-1 rounded-full text-sm font-semibold ${
                   selectedPrijava.status === 'pending' || !selectedPrijava.status ? 'bg-yellow-100 text-yellow-800' :
+                  selectedPrijava.status === 'waiting_list' ? 'bg-amber-100 text-amber-800 border border-amber-300' :
                   selectedPrijava.status === 'rejected' ? 'bg-red-100 text-red-800' :
                   selectedPrijava.status === 'cancelled' ? 'bg-gray-200 text-gray-800 border border-gray-300' :
                   'bg-green-100 text-green-800'
                 }`}>
                   {selectedPrijava.status === 'pending' || !selectedPrijava.status ? 'Status: Na čekanju' :
+                   selectedPrijava.status === 'waiting_list' ? 'Status: Na listi čekanja' :
                    selectedPrijava.status === 'rejected' ? 'Status: Odbijeno' :
                    selectedPrijava.status === 'cancelled' ? 'Status: Otkazana prijava' :
                    'Status: Prihvaćeno'}
                 </span>
               </div>
+
+              {selectedPrijava.status === 'waiting_list' && (
+                <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 flex items-start gap-3">
+                  <Clock size={18} className="text-amber-600 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <span className="font-bold text-amber-950 block text-sm">Korisnik je na listi čekanja</span>
+                    <span className="text-amber-800">
+                      Ova prijava trenutačno ne zauzima kapacitet mjesta. U bilo kojem trenutku možete je naknadno prihvatiti ili odbiti, pri čemu će korisnik primiti odgovarajući email.
+                    </span>
+                  </div>
+                </div>
+              )}
 
               {selectedPrijava.status === 'cancelled' && (
                 <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-600 flex items-start gap-3">
@@ -1261,20 +1412,33 @@ export default function AdminDashboard() {
                 >
                   <Trash2 size={16} /> Izbriši
                 </button>
-                {(selectedPrijava.status === 'pending' || selectedPrijava.status === 'cancelled') && (
+                {(selectedPrijava.status === 'pending' || selectedPrijava.status === 'cancelled' || selectedPrijava.status === 'waiting_list') && (
                   <button
                     onClick={() => handleAcceptPrijava(selectedPrijava)}
                     disabled={actionLoading}
                     className="px-4 py-2 bg-green-600 text-white hover:bg-green-700 rounded-lg font-medium transition-colors flex items-center gap-2 text-sm disabled:opacity-50 cursor-pointer"
                   >
-                    <CheckCircle2 size={16} /> {selectedPrijava.status === 'cancelled' ? 'Reaktiviraj i prihvati' : 'Prihvati'}
+                    <CheckCircle2 size={16} /> {
+                      selectedPrijava.status === 'cancelled' ? 'Reaktiviraj i prihvati' :
+                      selectedPrijava.status === 'waiting_list' ? 'Prihvati s liste čekanja' :
+                      'Prihvati'
+                    }
                   </button>
                 )}
                 {selectedPrijava.status === 'pending' && (
                   <button
+                    onClick={() => setWaitlistModalOpen(true)}
+                    disabled={actionLoading}
+                    className="px-4 py-2 bg-amber-600 text-white hover:bg-amber-700 rounded-lg font-medium transition-colors flex items-center gap-2 text-sm disabled:opacity-50 cursor-pointer"
+                  >
+                    <Clock size={16} /> Stavi na listu čekanja
+                  </button>
+                )}
+                {(selectedPrijava.status === 'pending' || selectedPrijava.status === 'waiting_list') && (
+                  <button
                     onClick={() => setRejectModalOpen(true)}
                     disabled={actionLoading}
-                    className="px-4 py-2 bg-yellow-600 text-white hover:bg-yellow-700 rounded-lg font-medium transition-colors flex items-center gap-2 text-sm disabled:opacity-50 cursor-pointer"
+                    className="px-4 py-2 bg-red-600 text-white hover:bg-red-700 rounded-lg font-medium transition-colors flex items-center gap-2 text-sm disabled:opacity-50 cursor-pointer"
                   >
                     <X size={16} /> Odbij
                   </button>
@@ -1370,7 +1534,7 @@ export default function AdminDashboard() {
               <button
                 onClick={confirmRejectPrijava}
                 disabled={actionLoading || !rejectReason.trim()}
-                className="px-6 py-2 bg-yellow-600 text-white hover:bg-yellow-700 rounded-lg font-medium transition-colors flex items-center gap-2 text-sm disabled:opacity-50"
+                className="px-6 py-2 bg-red-600 text-white hover:bg-red-700 rounded-lg font-medium transition-colors flex items-center gap-2 text-sm disabled:opacity-50 cursor-pointer"
               >
                 {actionLoading ? <Loader2 size={16} className="animate-spin" /> : <X size={16} />}
                 Potvrdi i pošalji email
@@ -1379,6 +1543,100 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
+
+      {/* Waitlist Modal */}
+      {waitlistModalOpen && selectedPrijava && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white w-full max-w-lg rounded-2xl shadow-xl flex flex-col">
+            <div className="flex items-center justify-between p-6 border-b border-gray-100">
+              <h3 className="text-xl font-serif font-bold text-amber-700 flex items-center gap-2">
+                <Clock size={20} className="text-amber-600" />
+                Stavljanje na Listu Čekanja
+              </h3>
+              <button
+                onClick={() => setWaitlistModalOpen(false)}
+                className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors cursor-pointer"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-6">
+              <p className="text-sm text-gray-600 mb-4">
+                Kandidata <strong>{selectedPrijava.imePrezime}</strong> stavljate na listu čekanja. Mjesto će biti oslobođeno na događaju, a korisnik će primiti email obavijest s navedenim tekstom.
+              </p>
+
+              <div className="relative mb-6">
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Predložak objašnjenja</label>
+                <button
+                  type="button"
+                  onClick={() => setWaitlistDropdownOpen(!waitlistDropdownOpen)}
+                  className="w-full flex items-center justify-between bg-white hover:bg-gray-50 border border-gray-300 text-gray-800 text-sm rounded-lg px-4 py-3 transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                >
+                  <span className="truncate pr-2 font-medium">
+                    {WAITLIST_REASONS.find(r => r.text === waitlistReason)?.label || 'Prilagođeni tekst'}
+                  </span>
+                  <ChevronDown size={16} className={`text-gray-500 transition-transform duration-200 flex-shrink-0 ${waitlistDropdownOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                {waitlistDropdownOpen && (
+                  <>
+                    <div className="fixed inset-0 z-10" onClick={() => setWaitlistDropdownOpen(false)}></div>
+                    <div className="absolute z-20 mt-2 w-full bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden py-1">
+                      {WAITLIST_REASONS.map(option => (
+                        <button
+                          key={option.id}
+                          type="button"
+                          onClick={() => {
+                            setWaitlistReason(option.text);
+                            setWaitlistDropdownOpen(false);
+                          }}
+                          className={`w-full text-left px-4 py-3 text-sm transition-colors ${waitlistReason === option.text ? 'bg-amber-50 text-amber-900 font-semibold' : 'text-gray-700 hover:bg-gray-50'}`}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Tekst objašnjenja u emailu</label>
+                <textarea
+                  value={waitlistReason}
+                  onChange={(e) => setWaitlistReason(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-amber-500 focus:border-amber-500 text-sm bg-gray-50 min-h-[110px]"
+                  placeholder="Unesite poruku za kandidata..."
+                />
+                <p className="text-xs text-gray-500 mt-1">Tekst možete dodatno urediti prema potrebi.</p>
+              </div>
+
+              <div className="mt-4 p-3 bg-amber-50/80 border border-amber-200/80 rounded-xl text-xs text-amber-900">
+                💡 <strong>Napomena:</strong> Kandidat ostaje evidentiran u sustavu pod statusom "Lista čekanja". Kasnije ga možete u bilo kojem trenutku odobriti ("Prihvati") ili odbiti po potrebi.
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-gray-100 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
+              <button
+                onClick={() => setWaitlistModalOpen(false)}
+                className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-200 rounded-lg transition-colors cursor-pointer"
+              >
+                Odustani
+              </button>
+              <button
+                onClick={confirmWaitlistPrijava}
+                disabled={actionLoading || !waitlistReason.trim()}
+                className="px-6 py-2 bg-amber-600 text-white hover:bg-amber-700 rounded-lg font-medium transition-colors flex items-center gap-2 text-sm disabled:opacity-50 cursor-pointer"
+              >
+                {actionLoading ? <Loader2 size={16} className="animate-spin" /> : <Clock size={16} />}
+                Potvrdi i pošalji email
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Delete Confirmation Modal */}
       {deleteModalOpen && selectedPrijava && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">

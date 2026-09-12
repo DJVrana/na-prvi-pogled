@@ -3,7 +3,7 @@ import { collection, addDoc, serverTimestamp, query, where, getDocs, limit, getD
 import { db, auth, provider } from '../firebase';
 import { onAuthStateChanged, signInWithPopup } from 'firebase/auth';
 import type { User } from 'firebase/auth';
-import { ArrowLeft, CheckCircle2, Heart, LogOut, Loader2, Sparkles, Calendar, Users, UserRound } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Heart, LogOut, Loader2, Sparkles, Calendar, Users, UserRound, Clock } from 'lucide-react';
 import { FaGoogle } from 'react-icons/fa';
 import { Link, useSearchParams } from 'react-router';
 import emailjs from '@emailjs/browser';
@@ -500,6 +500,15 @@ export default function FormPage() {
                   <Loader2 size={48} className="mx-auto text-yellow-500 mb-4 animate-spin-slow" />
                   <h2 className="text-2xl font-serif font-bold mb-2">Prijava je poslana</h2>
                   <p className="text-brand/80 mb-8 font-light">Tvoja prijava je uspješno zaprimljena i trenutačno čeka na pregled organizatora. Javit ćemo ti se povratno na email!</p>
+                </>
+              )}
+              {existingRegistration.status === 'waiting_list' && (
+                <>
+                  <div className="w-14 h-14 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-4">
+                    <Clock size={28} className="text-amber-600" />
+                  </div>
+                  <h2 className="text-2xl font-serif font-bold mb-2 text-amber-700">Na listi čekanja</h2>
+                  <p className="text-brand/80 mb-8 font-light">Tvoja prijava je uspješno zaprimljena i trenutačno se nalazi na listi čekanja. Ako se oslobodi mjesto ili se stvori mogućnost za sudjelovanje, obavijestit ćemo te putem emaila!</p>
                 </>
               )}
               {existingRegistration.status === 'rejected' && (

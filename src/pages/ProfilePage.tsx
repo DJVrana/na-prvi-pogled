@@ -45,7 +45,7 @@ interface UserRegistration {
   godine: number;
   email: string;
   napomena?: string;
-  status?: 'pending' | 'accepted' | 'rejected' | 'cancelled';
+  status?: 'pending' | 'accepted' | 'rejected' | 'cancelled' | 'waiting_list';
   createdAt?: any;
   eventDetails?: {
     title: string;
@@ -281,7 +281,7 @@ export default function ProfilePage() {
       });
 
       // 2. Decrement event registrationCount if the registration was previously active
-      if (cancellingRegistration.eventId && cancellingRegistration.status !== 'rejected') {
+      if (cancellingRegistration.eventId && cancellingRegistration.status !== 'rejected' && cancellingRegistration.status !== 'cancelled' && cancellingRegistration.status !== 'waiting_list') {
         try {
           await updateDoc(doc(db, 'events', cancellingRegistration.eventId), {
             registrationCount: increment(-1)
@@ -593,8 +593,13 @@ export default function ProfilePage() {
                             </span>
                           )}
                           {status === 'pending' && (
-                            <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-800 text-[11px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                            <span className="inline-flex items-center gap-1 bg-yellow-100 text-yellow-800 text-[11px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
                               <Clock3 size={13} /> Na čekanju pregleda
+                            </span>
+                          )}
+                          {status === 'waiting_list' && (
+                            <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-800 text-[11px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                              <Clock3 size={13} /> Na listi čekanja
                             </span>
                           )}
                           {status === 'rejected' && (
@@ -634,6 +639,15 @@ export default function ProfilePage() {
                             )}
                           </div>
                         )}
+
+                        {status === 'waiting_list' && (
+                          <div className="mt-2 text-xs text-amber-800 bg-amber-50/80 border border-amber-200/80 rounded-xl p-3 max-w-xl flex items-start gap-2">
+                            <Clock3 size={14} className="text-amber-600 mt-0.5 flex-shrink-0" />
+                            <span>
+                              Trenutačno se nalaziš na <strong>listi čekanja</strong> za ovaj događaj. Ako se oslobodi mjesto ili se stvori mogućnost za sudjelovanje, organizator će te obavijestiti putem emaila.
+                            </span>
+                          </div>
+                        )}
                       </div>
 
                       {/* Action buttons */}
@@ -650,7 +664,7 @@ export default function ProfilePage() {
                         )}
 
                         {/* Cancel Registration Button (only for active registrations) */}
-                        {(status === 'pending' || status === 'accepted') && (
+                        {(status === 'pending' || status === 'accepted' || status === 'waiting_list') && (
                           <button
                             type="button"
                             onClick={() => setCancellingRegistration(reg)}
