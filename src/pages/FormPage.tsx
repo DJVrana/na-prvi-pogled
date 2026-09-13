@@ -6,7 +6,6 @@ import type { User } from 'firebase/auth';
 import { ArrowLeft, CheckCircle2, Heart, LogOut, Loader2, Sparkles, Calendar, Users, UserRound, Clock } from 'lucide-react';
 import { FaGoogle } from 'react-icons/fa';
 import { Link, useSearchParams } from 'react-router';
-import emailjs from '@emailjs/browser';
 
 export interface CustomField {
   id: string;
@@ -283,37 +282,6 @@ export default function FormPage() {
         registrationCount: increment(1)
       });
 
-      try {
-        const adminHtmlMessage = `
-          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
-            <h2 style="color: #E85D75; text-align: center; text-transform: uppercase; margin-bottom: 5px;">Na prvi pogled</h2>
-            <p style="text-align: center; color: #888; font-size: 14px; margin-top: 0; margin-bottom: 25px;">Nova prijava</p>
-            <p>Zaprimljena je nova prijava za događaj <strong>${activeEvent.title}</strong>.</p>
-            <div style="background-color: #f9f9f9; border-left: 4px solid #E85D75; padding: 15px; margin: 25px 0;">
-              <p style="margin: 0 0 10px 0;"><strong>Ime i prezime:</strong> ${formData.imePrezime}</p>
-              <p style="margin: 0 0 10px 0;"><strong>Email:</strong> ${formData.email}</p>
-              <p style="margin: 0 0 10px 0;"><strong>Spol:</strong> ${formData.spol}</p>
-              <p style="margin: 0 0 10px 0;"><strong>Godine:</strong> ${formData.godine}</p>
-              <p style="margin: 0 0 10px 0;"><strong>Napomena:</strong> ${formData.napomena}</p>
-            </div>
-            <p>Detalje i odgovore na dodatna pitanja možete provjeriti u Admin panelu.</p>
-          </div>
-        `;
-
-        await emailjs.send(
-          'default_service',
-          'template_uuvkcp3',
-          {
-            name: "Admin",
-            email: "naprvipogled.events@gmail.com",
-            subject: "Pristigla je nova prijava za događaj! 📢",
-            html_message: adminHtmlMessage
-          },
-          import.meta.env.VITE_EMAILJS_PUBLIC_KEY
-        );
-      } catch (emailErr) {
-        console.error("Greška pri slanju obavijesti adminu: ", emailErr);
-      }
 
       // Postavljamo u state kako bi korisnik odmah vidio ekran "Na čekanju"
       setExistingRegistration({
@@ -508,7 +476,7 @@ export default function FormPage() {
                     <Clock size={28} className="text-amber-600" />
                   </div>
                   <h2 className="text-2xl font-serif font-bold mb-2 text-amber-700">Na listi čekanja</h2>
-                  <p className="text-brand/80 mb-8 font-light">Tvoja prijava je uspješno zaprimljena i trenutačno se nalazi na listi čekanja. Ako se oslobodi mjesto ili se stvori mogućnost za sudjelovanje, obavijestit ćemo te putem emaila!</p>
+                  <p className="text-brand/80 mb-8 font-light">Tvoja prijava se trenutačno nalazi na listi čekanja. Kontaktirat ćemo te putem emaila isključivo ako se oslobodi mjesto i tvoja prijava bude potvrđena.</p>
                 </>
               )}
               {existingRegistration.status === 'rejected' && (

@@ -55,6 +55,7 @@ interface UserRegistration {
     price: string;
     ageGroup: string;
     isMatchingActive?: boolean;
+    matchingPhase?: 'live' | 'post_event' | 'closed';
     isActive?: boolean;
   };
 }
@@ -164,6 +165,7 @@ export default function ProfilePage() {
                 price: evt.price || '',
                 ageGroup: evt.ageGroup || '',
                 isMatchingActive: !!evt.isMatchingActive,
+                matchingPhase: evt.matchingPhase,
                 isActive: !!evt.isActive
               };
             }
@@ -644,7 +646,7 @@ export default function ProfilePage() {
                           <div className="mt-2 text-xs text-amber-800 bg-amber-50/80 border border-amber-200/80 rounded-xl p-3 max-w-xl flex items-start gap-2">
                             <Clock3 size={14} className="text-amber-600 mt-0.5 flex-shrink-0" />
                             <span>
-                              Trenutačno se nalaziš na <strong>listi čekanja</strong> za ovaj događaj. Ako se oslobodi mjesto ili se stvori mogućnost za sudjelovanje, organizator će te obavijestiti putem emaila.
+                              Trenutačno se nalaziš na <strong>listi čekanja</strong> za ovaj događaj. Organizator će te obavijestiti putem emaila isključivo ako se oslobodi mjesto i tvoja prijava bude potvrđena.
                             </span>
                           </div>
                         )}
@@ -656,10 +658,14 @@ export default function ProfilePage() {
                         {isMatchingActive && status === 'accepted' && (
                           <Link
                             to={`/matching?eventId=${reg.eventId}`}
-                            className="inline-flex items-center gap-1.5 bg-gradient-to-r from-rose-500 to-brand text-white px-4 py-2.5 rounded-2xl text-xs font-bold shadow-md hover:shadow-rose-500/20 hover:scale-[1.03] transition-all"
+                            className={`inline-flex items-center gap-1.5 text-white px-4 py-2.5 rounded-2xl text-xs font-bold shadow-md hover:scale-[1.03] transition-all ${
+                              eventInfo?.matchingPhase === 'live'
+                                ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-500/20'
+                                : 'bg-gradient-to-r from-rose-500 to-brand hover:shadow-rose-500/20'
+                            }`}
                           >
-                            <Flame size={15} className="animate-pulse" />
-                            Speed Dating Matching
+                            <Flame size={15} className={eventInfo?.matchingPhase === 'live' ? 'animate-pulse' : ''} />
+                            <span>{eventInfo?.matchingPhase === 'live' ? 'Matching Uživo 🔴' : 'Speed Dating Matching 💖'}</span>
                           </Link>
                         )}
 

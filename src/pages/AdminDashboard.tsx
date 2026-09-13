@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { collection, getDocs, query, orderBy, addDoc, serverTimestamp, doc, where, updateDoc, deleteDoc, increment } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, addDoc, serverTimestamp, doc, where, updateDoc, deleteDoc, increment, setDoc } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import type { User } from 'firebase/auth';
 import { Link, Navigate } from 'react-router';
-import { ArrowLeft, Users, UserRound, ArrowDown01, Loader2, Plus, Calendar as CalendarIcon, CheckCircle2, List, PlayCircle, StopCircle, Trash2, X, ChevronDown, Pencil, Clock, XCircle, Flame, Heart, UserX } from 'lucide-react';
+import { ArrowLeft, Users, UserRound, ArrowDown01, Loader2, Plus, Calendar as CalendarIcon, CheckCircle2, List, PlayCircle, StopCircle, Trash2, X, ChevronDown, Pencil, Clock, XCircle, Flame, Heart, UserX, Send, Sparkles, AlertCircle } from 'lucide-react';
 import emailjs from '@emailjs/browser';
+import { sendMatchEmail } from '../utils/matchingEmails';
 
 const ADMIN_UIDS = ['iKe7lzl7Msf7hd3kWyHC1ysyS3C3', 'Izt37mNGtpY82AKZTbyYsnctoxJ2', 'JRms1cPi2Bc513TOW0WBEFZMzrC3'];
 
@@ -28,6 +29,7 @@ interface EventData {
   price: string;
   isActive: boolean;
   isMatchingActive?: boolean;
+  matchingPhase?: 'live' | 'post_event' | 'closed';
   createdAt: any;
   customFields?: CustomField[];
   maxRegistrations?: number | string;
@@ -119,6 +121,21 @@ export default function AdminDashboard() {
   const [loadingMatchesModal, setLoadingMatchesModal] = useState(false);
   const [rejectReason, setRejectReason] = useState('Nažalost, zbog ograničenog broja mjesta i velikog interesa, ovaj put ti nismo u mogućnosti potvrditi sudjelovanje. Mjesta su se popunila vrlo brzo ili pokušavamo balansirati omjer sudionika.');
   const [rejectDropdownOpen, setRejectDropdownOpen] = useState(false);
+
+  // Live Matching completion modal state
+  const [finishLiveModalOpen, setFinishLiveModalOpen] = useState(false);
+  const [liveStatsData, setLiveStatsData] = useState<{
+    totalVotes: number;
+    likesCount: number;
+    passesCount: number;
+    mutualMatches: any[];
+    maleCount: number;
+    femaleCount: number;
+    votedUsersCount: number;
+  } | null>(null);
+  const [loadingLiveStats, setLoadingLiveStats] = useState(false);
+  const [publishingMatches, setPublishingMatches] = useState(false);
+  const [publishSuccessMsg, setPublishSuccessMsg] = useState('');
 
   const REJECT_REASONS = [
     { id: 'full', label: 'Popunjena mjesta', text: 'Nažalost, zbog ograničenog broja mjesta i velikog interesa, ovaj put ti nismo u mogućnosti potvrditi sudjelovanje. Mjesta su se popunila vrlo brzo ili pokušavamo balansirati omjer sudionika.' },
@@ -305,6 +322,7 @@ export default function AdminDashboard() {
       setSelectedPrijava(null);
       setDeleteModalOpen(false);
       fetchPrijave(selectedEventId);
+      fetchEvents();
     } catch (err) {
       console.error("Greška pri brisanju prijave:", err);
       alert("Dogodila se greška prilikom brisanja prijave.");
@@ -404,6 +422,7 @@ export default function AdminDashboard() {
 
       setSelectedPrijava({ ...prijava, status: 'accepted' });
       fetchPrijave(selectedEventId);
+      fetchEvents();
     } catch (err) {
       console.error("Greška pri prihvaćanju:", err);
       alert("Dogodila se greška prilikom prihvaćanja prijave.");
@@ -415,6 +434,8 @@ export default function AdminDashboard() {
   const confirmRejectPrijava = async () => {
     if (!selectedPrijava) return;
 
+    const wasOnWaitingList = selectedPrijava.status === 'waiting_list';
+
     setActionLoading(true);
     try {
       await updateDoc(doc(db, 'prijave', selectedPrijava.id), { status: 'rejected' });
@@ -424,7 +445,10 @@ export default function AdminDashboard() {
         });
       }
 
-      const htmlMessage = `
+      // Ako je kandidat bio na listi čekanja, NE šaljemo email odbijenice radi uštede limita
+      // (kandidat je u zadanom mailu za listu čekanja već obaviješten da se javljamo isključivo u slučaju potvrde).
+      if (!wasOnWaitingList) {
+        const htmlMessage = `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
           <h2 style="color: #E85D75; text-align: center; text-transform: uppercase; margin-bottom: 5px;">Na prvi pogled</h2>
           <p style="text-align: center; color: #888; font-size: 14px; margin-top: 0; margin-bottom: 25px;">Obavijest o prijavi</p>
@@ -438,28 +462,30 @@ export default function AdminDashboard() {
             <p style="color: #555; font-size: 14px; margin: 0; line-height: 1.5;">Srdačan pozdrav,<br/><strong style="color: #333;">Ivan</strong><br/>Na prvi pogled<br/>Upoznaj nekoga, kao nekad.</p>
           </div>
         </div>
-      `;
+        `;
 
-      try {
-        await emailjs.send(
-          'default_service',
-          'template_uuvkcp3',
-          {
-            name: selectedPrijava.imePrezime.split(' ')[0],
-            email: selectedPrijava.email,
-            subject: "Tvoja prijava je odbijena!",
-            html_message: htmlMessage
-          },
-          import.meta.env.VITE_EMAILJS_PUBLIC_KEY
-        );
-      } catch (emailErr) {
-        console.error("Greška pri slanju emaila o odbijanju: ", emailErr);
-        alert("Status je ažuriran, ali slanje emaila nije uspjelo.");
+        try {
+          await emailjs.send(
+            'default_service',
+            'template_uuvkcp3',
+            {
+              name: selectedPrijava.imePrezime.split(' ')[0],
+              email: selectedPrijava.email,
+              subject: "Tvoja prijava je odbijena!",
+              html_message: htmlMessage
+            },
+            import.meta.env.VITE_EMAILJS_PUBLIC_KEY
+          );
+        } catch (emailErr) {
+          console.error("Greška pri slanju emaila o odbijanju: ", emailErr);
+          alert("Status je ažuriran, ali slanje emaila nije uspjelo.");
+        }
       }
 
       setSelectedPrijava({ ...selectedPrijava, status: 'rejected' });
       setRejectModalOpen(false);
       fetchPrijave(selectedEventId);
+      fetchEvents();
     } catch (err) {
       console.error("Greška pri odbijanju:", err);
       alert("Dogodila se greška prilikom odbijanja prijave.");
@@ -509,8 +535,11 @@ export default function AdminDashboard() {
     <p style="margin: 0; font-size: 15px; color: #444444; white-space: pre-wrap;">${waitlistReason}</p>
   </div>
   
-  <p style="font-size: 15px; color: #555555;">
-    Tvoje mjesto još nije definitivno potvrđeno niti otkazano. Pratimo stanje prijava te ćemo te kontaktirati čim se stvori mogućnost za sudjelovanje. Ako u međuvremenu znaš da nećeš moći doći, molimo te da se odjaviš putem svog profila.
+  <p style="font-size: 15px; color: #555555; line-height: 1.6;">
+    Tvoje mjesto još nije potvrđeno. Pratimo stanje prijava te ćemo te kontaktirati <strong>isključivo ako se oslobodi mjesto i tvoja prijava bude prihvaćena</strong>. Ako ti se povratno ne javimo s potvrdom, to znači da ovaj put nažalost nismo u mogućnosti osigurati tvoje sudjelovanje na događaju.
+  </p>
+  <p style="font-size: 14px; color: #777777; line-height: 1.5;">
+    Ako u međuvremenu znaš da nećeš moći doći, molimo te da se odjaviš putem svog korisničkog profila.
   </p>
 
   ${activeEvent ? `
@@ -555,6 +584,7 @@ export default function AdminDashboard() {
       setSelectedPrijava({ ...selectedPrijava, status: 'waiting_list' });
       setWaitlistModalOpen(false);
       fetchPrijave(selectedEventId);
+      fetchEvents();
     } catch (err) {
       console.error("Greška pri postavljanju na listu čekanja:", err);
       alert("Dogodila se greška prilikom postavljanja prijave na listu čekanja.");
@@ -574,14 +604,252 @@ export default function AdminDashboard() {
     }
   };
 
-  const toggleEventMatching = async (eventToToggle: EventData) => {
+  const setEventMatchingPhase = async (eventToUpdate: EventData, phase: 'live' | 'post_event' | 'closed') => {
     try {
-      const targetRef = doc(db, 'events', eventToToggle.id);
-      await updateDoc(targetRef, { isMatchingActive: !eventToToggle.isMatchingActive });
+      const targetRef = doc(db, 'events', eventToUpdate.id);
+      if (phase === 'closed') {
+        await updateDoc(targetRef, {
+          isMatchingActive: false,
+          matchingPhase: 'closed'
+        });
+      } else {
+        await updateDoc(targetRef, {
+          isMatchingActive: true,
+          matchingPhase: phase
+        });
+      }
       fetchEvents();
     } catch (err) {
-      console.error("Error toggling matching:", err);
+      console.error("Error setting matching phase:", err);
       setError("Greška pri promjeni statusa matchinga.");
+    }
+  };
+
+  const openFinishLiveMatchingModal = async (eventItem: EventData) => {
+    setSelectedEventForMatches(eventItem);
+    setFinishLiveModalOpen(true);
+    setLoadingLiveStats(true);
+    setPublishSuccessMsg('');
+    setError('');
+
+    try {
+      // 1. Fetch all accepted registrations for this event
+      const qPrijave = query(
+        collection(db, 'prijave'),
+        where('eventId', '==', eventItem.id),
+        where('status', '==', 'accepted')
+      );
+      const prijaveSnap = await getDocs(qPrijave);
+      const prijavaMap = new Map<string, any>();
+      let maleCount = 0;
+      let femaleCount = 0;
+
+      prijaveSnap.forEach(docSnap => {
+        const data = docSnap.data();
+        if (data.uid) {
+          prijavaMap.set(data.uid, { id: docSnap.id, ...data });
+          const g = (data.spol || '').trim().toUpperCase();
+          if (g === 'M' || g === 'MUŠKO' || g === 'MUSKO') {
+            maleCount++;
+          } else {
+            femaleCount++;
+          }
+        }
+      });
+
+      // 2. Fetch all event_likes for this event
+      const qLikes = query(
+        collection(db, 'event_likes'),
+        where('eventId', '==', eventItem.id)
+      );
+      const likesSnap = await getDocs(qLikes);
+      let totalVotes = 0;
+      let likesCount = 0;
+      let passesCount = 0;
+      const votedUsersSet = new Set<string>();
+      const positiveLikesSet = new Set<string>(); // "fromUid->toUid"
+
+      likesSnap.forEach(docSnap => {
+        const data = docSnap.data();
+        totalVotes++;
+        if (data.fromUid) votedUsersSet.add(data.fromUid);
+        if (data.liked === true) {
+          likesCount++;
+          if (data.fromUid && data.toUid) {
+            positiveLikesSet.add(`${data.fromUid}->${data.toUid}`);
+          }
+        } else {
+          passesCount++;
+        }
+      });
+
+      // 3. Detect mutual matches
+      const mutualPairs: any[] = [];
+      const processedPairs = new Set<string>();
+
+      positiveLikesSet.forEach(key => {
+        const [u1, u2] = key.split('->');
+        const reciprocalKey = `${u2}->${u1}`;
+        const pairId = [u1, u2].sort().join('_');
+
+        if (positiveLikesSet.has(reciprocalKey) && !processedPairs.has(pairId)) {
+          processedPairs.add(pairId);
+
+          const p1 = prijavaMap.get(u1);
+          const p2 = prijavaMap.get(u2);
+
+          if (p1 && p2) {
+            const g1 = (p1.spol || '').trim().toUpperCase();
+            const p1IsMale = g1 === 'M' || g1 === 'MUŠKO' || g1 === 'MUSKO';
+
+            const male = p1IsMale ? p1 : p2;
+            const female = p1IsMale ? p2 : p1;
+
+            const maleName = male.imePrezime || 'Sudionik';
+            const femaleName = female.imePrezime || 'Sudionica';
+            const maleEmail = male.email || '';
+            const femaleEmail = female.email || '';
+
+            const maleIg = male.contactInstagram || (male.contactHandle?.startsWith('@') ? male.contactHandle : '');
+            const malePhone = male.contactPhone || (!male.contactHandle?.startsWith('@') && !isNaN(Number(male.contactHandle?.replace(/[\s+-]/g, ''))) ? male.contactHandle : '');
+
+            const femaleIg = female.contactInstagram || (female.contactHandle?.startsWith('@') ? female.contactHandle : '');
+            const femalePhone = female.contactPhone || (!female.contactHandle?.startsWith('@') && !isNaN(Number(female.contactHandle?.replace(/[\s+-]/g, ''))) ? female.contactHandle : '');
+
+            const maleContact = [maleIg, malePhone].filter(Boolean).join(' • ');
+            const femaleContact = [femaleIg, femalePhone].filter(Boolean).join(' • ');
+
+            mutualPairs.push({
+              pairId,
+              maleUid: male.uid,
+              femaleUid: female.uid,
+              maleName,
+              femaleName,
+              maleEmail,
+              femaleEmail,
+              maleInstagram: maleIg,
+              malePhone,
+              maleContact,
+              femaleInstagram: femaleIg,
+              femalePhone,
+              femaleContact,
+              eventId: eventItem.id,
+              eventTitle: eventItem.title,
+              eventDate: eventItem.dateStr || ''
+            });
+          }
+        }
+      });
+
+      setLiveStatsData({
+        totalVotes,
+        likesCount,
+        passesCount,
+        mutualMatches: mutualPairs,
+        maleCount,
+        femaleCount,
+        votedUsersCount: votedUsersSet.size
+      });
+    } catch (err) {
+      console.error("Greška pri dohvatu live statistike:", err);
+      setError("Greška pri dohvatu statistike za live matching.");
+    } finally {
+      setLoadingLiveStats(false);
+    }
+  };
+
+  const executePublishLiveMatches = async () => {
+    if (!selectedEventForMatches || !liveStatsData) return;
+    setPublishingMatches(true);
+    setError('');
+
+    try {
+      const matches = liveStatsData.mutualMatches;
+      let emailSuccessCount = 0;
+      let emailFailCount = 0;
+
+      for (const m of matches) {
+        const matchDocId = `${selectedEventForMatches.id}_${m.pairId}`;
+
+        // Save to event_matches
+        await setDoc(doc(db, 'event_matches', matchDocId), {
+          eventId: selectedEventForMatches.id,
+          eventTitle: selectedEventForMatches.title || 'Speed Dating',
+          eventDate: selectedEventForMatches.dateStr || '',
+          maleUid: m.maleUid,
+          femaleUid: m.femaleUid,
+          maleName: m.maleName,
+          femaleName: m.femaleName,
+          maleEmail: m.maleEmail,
+          femaleEmail: m.femaleEmail,
+          maleInstagram: m.maleInstagram,
+          malePhone: m.malePhone,
+          maleContact: m.maleContact,
+          femaleInstagram: m.femaleInstagram,
+          femalePhone: m.femalePhone,
+          femaleContact: m.femaleContact,
+          createdAt: serverTimestamp(),
+          publishedDuringLiveConclusion: true
+        }, { merge: true });
+
+        // Send EmailJS to male participant
+        if (m.maleEmail) {
+          try {
+            await sendMatchEmail({
+              eventTitle: selectedEventForMatches.title || 'Speed Dating',
+              maleName: m.maleName,
+              femaleName: m.femaleName,
+              maleEmail: m.maleEmail,
+              femaleEmail: m.femaleEmail,
+              femaleInstagram: m.femaleInstagram,
+              femalePhone: m.femalePhone
+            });
+            emailSuccessCount++;
+          } catch (emailErr) {
+            console.error(`Greška pri slanju maila za ${m.maleEmail}:`, emailErr);
+            emailFailCount++;
+          }
+        }
+      }
+
+      // Update event to post_event phase
+      await updateDoc(doc(db, 'events', selectedEventForMatches.id), {
+        isMatchingActive: true,
+        matchingPhase: 'post_event'
+      });
+
+      await fetchEvents();
+
+      setPublishSuccessMsg(
+        `Uspješno objavljeno ${matches.length} obostranih matcheva! Poslano ${emailSuccessCount} emailova.${emailFailCount > 0 ? ` (${emailFailCount} nije uspjelo poslati)` : ''} Post-event matching je sada otvoren!`
+      );
+    } catch (err) {
+      console.error("Greška pri objavi matcheva:", err);
+      setError("Došlo je do greške prilikom objave matcheva.");
+    } finally {
+      setPublishingMatches(false);
+    }
+  };
+
+  const handleResendMatchEmail = async (m: any) => {
+    if (!m.maleEmail) {
+      alert("Nema zabilježene email adrese za muškog sudionika.");
+      return;
+    }
+    try {
+      await sendMatchEmail({
+        eventTitle: m.eventTitle || selectedEventForMatches?.title || 'Speed Dating',
+        maleName: m.maleName,
+        femaleName: m.femaleName,
+        maleEmail: m.maleEmail,
+        femaleEmail: m.femaleEmail,
+        femaleInstagram: m.femaleInstagram,
+        femalePhone: m.femalePhone
+      });
+      alert(`Email o matchu uspješno poslan na ${m.maleEmail}!`);
+    } catch (err) {
+      console.error("Greška pri ponovnom slanju emaila:", err);
+      alert("Došlo je do greške prilikom slanja emaila.");
     }
   };
 
@@ -613,12 +881,30 @@ export default function AdminDashboard() {
     return <Navigate to="/" replace />;
   }
 
-  // Calculate statistics for currently displayed prijave
-  const validPrijave = prijave.filter(p => p.status !== 'rejected' && p.status !== 'cancelled' && p.status !== 'waiting_list');
+  // Calculate statistics for currently displayed prijave (isključivo prihvaćene/potvrđene prijave)
+  const validPrijave = prijave.filter(p => p.status === 'accepted');
   const total = validPrijave.length;
   const femaleCount = validPrijave.filter(p => p.spol === 'Ž' || p.spol === 'Z' || p.spol.toLowerCase() === 'žensko').length;
   const maleCount = validPrijave.filter(p => p.spol === 'M' || p.spol.toLowerCase() === 'muško').length;
   const avgAge = total > 0 ? (validPrijave.reduce((sum, p) => sum + (Number(p.godine) || 0), 0) / total).toFixed(1) : 0;
+
+  // Zauzeta mjesta u bazi pod događajem: broje se sve prijave dokle god nisu odbijene, otkazane ili na listi čekanja
+  const selectedEvent = events.find(e => e.id === selectedEventId);
+  const dbOccupiedCount = prijave.filter(p => p.status !== 'rejected' && p.status !== 'cancelled' && p.status !== 'waiting_list').length;
+
+  const handleSyncRegistrationCount = async () => {
+    if (!selectedEventId || !selectedEvent) return;
+    try {
+      await updateDoc(doc(db, 'events', selectedEventId), {
+        registrationCount: dbOccupiedCount
+      });
+      await fetchEvents();
+      alert(`Brojač zauzetih mjesta u bazi za događaj "${selectedEvent.title}" uspješno je usklađen na: ${dbOccupiedCount}`);
+    } catch (err) {
+      console.error("Greška pri sinkronizaciji brojača:", err);
+      alert("Došlo je do greške prilikom sinkronizacije brojača.");
+    }
+  };
 
   const totalAll = prijave.length;
   const approvedCount = prijave.filter(p => p.status === 'accepted').length;
@@ -954,32 +1240,83 @@ export default function AdminDashboard() {
                         <div className="flex flex-wrap items-center gap-2 mb-1">
                           <h3 className="font-bold text-gray-900">{event.title}</h3>
                           {event.isActive && <span className="bg-brand text-white text-[10px] uppercase font-bold px-2 py-0.5 rounded-full flex items-center gap-1"><CheckCircle2 size={12} /> Prijave Aktivne</span>}
-                          {event.isMatchingActive && <span className="bg-rose-600 text-white text-[10px] uppercase font-bold px-2 py-0.5 rounded-full flex items-center gap-1 animate-pulse"><Flame size={12} /> Matching Aktivan</span>}
+                          {event.matchingPhase === 'live' && (
+                            <span className="bg-amber-600 text-white text-[10px] uppercase font-bold px-2 py-0.5 rounded-full flex items-center gap-1 animate-pulse shadow-xs">
+                              <Flame size={12} /> Matching Uživo (Tijekom eventa)
+                            </span>
+                          )}
+                          {event.matchingPhase === 'post_event' && (
+                            <span className="bg-rose-600 text-white text-[10px] uppercase font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow-xs">
+                              <Heart size={12} /> Post-Event Matching Aktivan
+                            </span>
+                          )}
+                          {event.isMatchingActive && !event.matchingPhase && (
+                            <span className="bg-rose-600 text-white text-[10px] uppercase font-bold px-2 py-0.5 rounded-full flex items-center gap-1 animate-pulse shadow-xs">
+                              <Flame size={12} /> Matching Aktivan
+                            </span>
+                          )}
                         </div>
                         <p className="text-sm text-gray-600">{event.dateStr} u {event.timeStr} • {event.location}</p>
-                        <p className="text-xs text-gray-500 mt-1">Dob: {event.ageGroup} | Cijena: {event.price} {event.maxRegistrations ? `| Max prijava: ${event.maxRegistrations}` : ''}</p>
+                        <p className="text-xs text-gray-500 mt-1">Dob: {event.ageGroup} | Cijena: {event.price} | Zauzeta mjesta u bazi: <strong className="text-gray-700">{event.registrationCount || 0}</strong>{event.maxRegistrations ? ` / ${event.maxRegistrations}` : ''}</p>
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
                         <button
                           onClick={() => openMatchesModal(event)}
-                          className="px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-1.5 transition-colors bg-white hover:bg-rose-50 border border-rose-200 text-rose-700"
+                          className="px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-1.5 transition-colors bg-white hover:bg-rose-50 border border-rose-200 text-rose-700 cursor-pointer"
                           title="Pregledaj obostrane matcheve za ovaj događaj"
                         >
                           <Heart size={16} className="text-rose-600" />
                           <span className="hidden sm:inline">Matchevi</span>
                         </button>
-                        <button
-                          onClick={() => toggleEventMatching(event)}
-                          className={`px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-1.5 transition-colors ${
-                            event.isMatchingActive
-                              ? 'bg-rose-100 text-rose-800 hover:bg-rose-200 border border-rose-300'
-                              : 'bg-white hover:bg-gray-50 text-gray-700 border border-gray-200'
-                          }`}
-                          title={event.isMatchingActive ? "Zaustavi matching" : "Pokreni matching"}
-                        >
-                          <Flame size={16} className={event.isMatchingActive ? "text-rose-600" : "text-gray-400"} />
-                          <span>{event.isMatchingActive ? 'Zaustavi Matching' : 'Pokreni Matching'}</span>
-                        </button>
+
+                        {/* Matching Phase Controls */}
+                        {event.matchingPhase === 'live' ? (
+                          <>
+                            <button
+                              onClick={() => openFinishLiveMatchingModal(event)}
+                              className="px-3.5 py-2 rounded-lg text-sm font-bold flex items-center gap-1.5 transition-all bg-gradient-to-r from-rose-500 to-brand hover:from-rose-600 hover:to-brand-light text-white shadow-md hover:shadow-lg cursor-pointer animate-pulse"
+                              title="Završi noćni matching, pošalji mailove i otvori post-event matching"
+                            >
+                              <Sparkles size={16} />
+                              <span>Završi noć & Objavi matcheve</span>
+                            </button>
+                            <button
+                              onClick={() => setEventMatchingPhase(event, 'closed')}
+                              className="px-3 py-2 rounded-lg text-xs font-medium text-gray-500 hover:bg-gray-100 border border-gray-200 cursor-pointer"
+                              title="Zaustavi matching bez objave"
+                            >
+                              Zaustavi
+                            </button>
+                          </>
+                        ) : event.matchingPhase === 'post_event' ? (
+                          <button
+                            onClick={() => setEventMatchingPhase(event, 'closed')}
+                            className="px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-1.5 transition-colors bg-rose-100 text-rose-800 hover:bg-rose-200 border border-rose-300 cursor-pointer"
+                            title="Zatvori post-event matching"
+                          >
+                            <Flame size={16} className="text-rose-600" />
+                            <span>Zatvori Matching</span>
+                          </button>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => setEventMatchingPhase(event, 'live')}
+                              className="px-3 py-2 rounded-lg text-sm font-semibold flex items-center gap-1.5 transition-colors bg-amber-500 hover:bg-amber-600 text-white shadow-xs cursor-pointer"
+                              title="Pokreni matching za sudionike tijekom večeri (tajno glasanje bez ometanja)"
+                            >
+                              <Flame size={16} />
+                              <span>Pokreni Matching Uživo</span>
+                            </button>
+                            <button
+                              onClick={() => setEventMatchingPhase(event, 'post_event')}
+                              className="px-2.5 py-2 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-100 border border-gray-200 cursor-pointer"
+                              title="Pokreni direktno post-event matching (ako je susret već završio)"
+                            >
+                              Otvori Post-Event
+                            </button>
+                          </>
+                        )}
+
                         <button
                           onClick={() => openEditEvent(event)}
                           className="px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-1.5 transition-colors bg-white hover:bg-gray-100 border border-gray-200 text-gray-700"
@@ -1056,12 +1393,33 @@ export default function AdminDashboard() {
                 )}
               </div>
 
-              <button
-                onClick={() => fetchPrijave(selectedEventId)}
-                className="ml-auto bg-brand/10 text-brand px-5 py-3 rounded-xl text-sm font-semibold hover:bg-brand/20 transition-colors flex items-center gap-2"
-              >
-                Osvježi
-              </button>
+              <div className="ml-auto flex items-center gap-3 flex-wrap">
+                {selectedEvent && (
+                  <div className="hidden sm:flex items-center gap-2 bg-gray-50 border border-gray-200 px-3.5 py-2.5 rounded-xl text-xs text-gray-600">
+                    <span>Zauzeta mjesta u bazi:</span>
+                    <strong className="text-brand font-bold text-sm">{selectedEvent.registrationCount ?? 0}</strong>
+                    {selectedEvent.maxRegistrations ? <span className="text-gray-400">/ {selectedEvent.maxRegistrations}</span> : ''}
+                  </div>
+                )}
+                {selectedEvent && (selectedEvent.registrationCount ?? 0) !== dbOccupiedCount && (
+                  <button
+                    onClick={handleSyncRegistrationCount}
+                    className="bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 px-3 py-2.5 rounded-xl text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer"
+                    title="Uskladi brojač u bazi s prijavama koje nisu odbijene ili na listi čekanja"
+                  >
+                    Uskladi bazu ({dbOccupiedCount})
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    fetchPrijave(selectedEventId);
+                    fetchEvents();
+                  }}
+                  className="bg-brand/10 text-brand px-5 py-3 rounded-xl text-sm font-semibold hover:bg-brand/20 transition-colors flex items-center gap-2 cursor-pointer"
+                >
+                  Osvježi
+                </button>
+              </div>
             </div>
 
             {/* Statistics Widgets */}
@@ -1124,12 +1482,13 @@ export default function AdminDashboard() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
               <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4">
-                <div className="bg-brand/10 p-3 rounded-full text-brand">
+                <div className="bg-green-100 p-3 rounded-full text-green-600">
                   <Users size={24} />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500 font-medium">Zauzeta mjesta (potvrđeno / u obradi)</p>
-                  <p className="text-2xl font-bold">{total}</p>
+                  <p className="text-sm text-gray-500 font-medium">Važeće prijave (Potvrđeno)</p>
+                  <p className="text-2xl font-bold text-green-700">{total}</p>
+                  <p className="text-[11px] text-gray-400 mt-0.5">Samo odobreni sudionici</p>
                 </div>
               </div>
               <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4">
@@ -1473,71 +1832,79 @@ export default function AdminDashboard() {
             </div>
 
             <div className="p-6">
-              <p className="text-sm text-gray-600 mb-4">
-                Odaberi razlog odbijanja za korisnika <strong>{selectedPrijava.imePrezime}</strong>. Ovaj tekst bit će uključen u email poruku.
-              </p>
+              {selectedPrijava.status === 'waiting_list' ? (
+                <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 leading-relaxed">
+                  ⏳ <strong>Korisnik je na listi čekanja:</strong> Prema postavkama sustava, kandidat je u inicijalnom emailu za listu čekanja već obaviješten da ćemo se javiti isključivo ako bude prihvaćen. Radi uštede limita, <strong>email odbijenice se neće slati</strong>. Status će se promijeniti u <em>Odbijeno</em>.
+                </div>
+              ) : (
+                <>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Odaberi razlog odbijanja za korisnika <strong>{selectedPrijava.imePrezime}</strong>. Ovaj tekst bit će uključen u email poruku.
+                  </p>
 
-              <div className="relative mb-6">
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Razlog odbijanja</label>
-                <button
-                  type="button"
-                  onClick={() => setRejectDropdownOpen(!rejectDropdownOpen)}
-                  className="w-full flex items-center justify-between bg-white hover:bg-gray-50 border border-gray-300 text-gray-800 text-sm rounded-lg px-4 py-3 transition-colors focus:outline-none focus:ring-2 focus:ring-brand/20"
-                >
-                  <span className="truncate pr-2 font-medium">
-                    {REJECT_REASONS.find(r => r.text === rejectReason)?.label || 'Prilagođeni razlog'}
-                  </span>
-                  <ChevronDown size={16} className={`text-gray-500 transition-transform duration-200 flex-shrink-0 ${rejectDropdownOpen ? 'rotate-180' : ''}`} />
-                </button>
+                  <div className="relative mb-6">
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">Razlog odbijanja</label>
+                    <button
+                      type="button"
+                      onClick={() => setRejectDropdownOpen(!rejectDropdownOpen)}
+                      className="w-full flex items-center justify-between bg-white hover:bg-gray-50 border border-gray-300 text-gray-800 text-sm rounded-lg px-4 py-3 transition-colors focus:outline-none focus:ring-2 focus:ring-brand/20"
+                    >
+                      <span className="truncate pr-2 font-medium">
+                        {REJECT_REASONS.find(r => r.text === rejectReason)?.label || 'Prilagođeni razlog'}
+                      </span>
+                      <ChevronDown size={16} className={`text-gray-500 transition-transform duration-200 flex-shrink-0 ${rejectDropdownOpen ? 'rotate-180' : ''}`} />
+                    </button>
 
-                {rejectDropdownOpen && (
-                  <>
-                    <div className="fixed inset-0 z-10" onClick={() => setRejectDropdownOpen(false)}></div>
-                    <div className="absolute z-20 mt-2 w-full bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden py-1">
-                      {REJECT_REASONS.map(option => (
-                        <button
-                          key={option.id}
-                          type="button"
-                          onClick={() => {
-                            setRejectReason(option.text);
-                            setRejectDropdownOpen(false);
-                          }}
-                          className={`w-full text-left px-4 py-3 text-sm transition-colors ${rejectReason === option.text ? 'bg-brand/5 text-brand font-semibold' : 'text-gray-700 hover:bg-gray-50'}`}
-                        >
-                          {option.label}
-                        </button>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </div>
+                    {rejectDropdownOpen && (
+                      <>
+                        <div className="fixed inset-0 z-10" onClick={() => setRejectDropdownOpen(false)}></div>
+                        <div className="absolute z-20 mt-2 w-full bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden py-1">
+                          {REJECT_REASONS.map(option => (
+                            <button
+                              key={option.id}
+                              type="button"
+                              onClick={() => {
+                                setRejectReason(option.text);
+                                setRejectDropdownOpen(false);
+                              }}
+                              className={`w-full text-left px-4 py-3 text-sm transition-colors ${rejectReason === option.text ? 'bg-brand/5 text-brand font-semibold' : 'text-gray-700 hover:bg-gray-50'}`}
+                            >
+                              {option.label}
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Tekst u emailu</label>
-                <textarea
-                  value={rejectReason}
-                  onChange={(e) => setRejectReason(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-brand focus:border-brand text-sm bg-gray-50 min-h-[100px]"
-                  placeholder="Unesite razlog odbijanja..."
-                />
-                <p className="text-xs text-gray-500 mt-1">Možeš urediti tekst prije slanja.</p>
-              </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">Tekst u emailu</label>
+                    <textarea
+                      value={rejectReason}
+                      onChange={(e) => setRejectReason(e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-brand focus:border-brand text-sm bg-gray-50 min-h-[100px]"
+                      placeholder="Unesite razlog odbijanja..."
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Možeš urediti tekst prije slanja.</p>
+                  </div>
+                </>
+              )}
             </div>
 
             <div className="p-6 border-t border-gray-100 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
               <button
                 onClick={() => setRejectModalOpen(false)}
-                className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-200 rounded-lg transition-colors"
+                className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-200 rounded-lg transition-colors cursor-pointer"
               >
                 Odustani
               </button>
               <button
                 onClick={confirmRejectPrijava}
-                disabled={actionLoading || !rejectReason.trim()}
+                disabled={actionLoading || (selectedPrijava.status !== 'waiting_list' && !rejectReason.trim())}
                 className="px-6 py-2 bg-red-600 text-white hover:bg-red-700 rounded-lg font-medium transition-colors flex items-center gap-2 text-sm disabled:opacity-50 cursor-pointer"
               >
                 {actionLoading ? <Loader2 size={16} className="animate-spin" /> : <X size={16} />}
-                Potvrdi i pošalji email
+                {selectedPrijava.status === 'waiting_list' ? 'Potvrdi odbijanje (bez emaila)' : 'Potvrdi i pošalji email'}
               </button>
             </div>
           </div>
@@ -1740,6 +2107,17 @@ export default function AdminDashboard() {
                         </div>
                       </div>
                     </div>
+                    <div className="flex items-center gap-2 self-end sm:self-center">
+                      <button
+                        type="button"
+                        onClick={() => handleResendMatchEmail(m)}
+                        className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white hover:bg-rose-50 border border-rose-200 text-rose-700 flex items-center gap-1 cursor-pointer transition-colors"
+                        title="Pošalji obavijest muškom sudioniku na email"
+                      >
+                        <Send size={13} />
+                        <span>Pošalji mail</span>
+                      </button>
+                    </div>
                   </div>
                 ))
               )}
@@ -1748,11 +2126,196 @@ export default function AdminDashboard() {
             <div className="p-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl flex justify-end">
               <button
                 onClick={() => setMatchesModalOpen(false)}
-                className="px-5 py-2 text-sm bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium rounded-lg transition-colors"
+                className="px-5 py-2 text-sm bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium rounded-lg transition-colors cursor-pointer"
               >
                 Zatvori
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* FINISH LIVE MATCHING & PUBLISH MODAL */}
+      {finishLiveModalOpen && selectedEventForMatches && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-gray-100 overflow-hidden">
+            
+            {/* Header */}
+            <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-rose-50 to-orange-50">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-rose-500 to-brand text-white flex items-center justify-center shadow-md">
+                  <Sparkles size={24} />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900">
+                    Završi event & Objavi matcheve
+                  </h3>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {selectedEventForMatches.title} ({selectedEventForMatches.dateStr})
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setFinishLiveModalOpen(false)}
+                disabled={publishingMatches}
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-white rounded-full transition-colors cursor-pointer"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 overflow-y-auto space-y-6 flex-1">
+              {loadingLiveStats ? (
+                <div className="py-16 text-center text-gray-400 flex flex-col items-center justify-center">
+                  <Loader2 size={36} className="animate-spin mb-3 text-brand" />
+                  <p className="text-sm font-medium">Analiziranje noćnih glasova i traženje matcheva...</p>
+                </div>
+              ) : publishSuccessMsg ? (
+                <div className="py-10 text-center space-y-4">
+                  <div className="w-16 h-16 rounded-full bg-green-100 text-green-600 flex items-center justify-center mx-auto shadow-inner">
+                    <CheckCircle2 size={36} />
+                  </div>
+                  <h4 className="text-xl font-bold text-gray-900">Matchevi su uspješno objavljeni! 🎉</h4>
+                  <p className="text-sm text-gray-600 max-w-md mx-auto leading-relaxed">
+                    {publishSuccessMsg}
+                  </p>
+                  <button
+                    onClick={() => {
+                      setFinishLiveModalOpen(false);
+                      setPublishSuccessMsg('');
+                    }}
+                    className="px-6 py-2.5 bg-brand text-white font-semibold rounded-xl shadow-md hover:bg-brand-light transition-colors text-sm cursor-pointer"
+                  >
+                    U redu
+                  </button>
+                </div>
+              ) : liveStatsData ? (
+                <>
+                  {/* Stats Grid */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="p-3.5 rounded-2xl bg-gray-50 border border-gray-100 text-center">
+                      <span className="text-xs text-gray-500 block">Sudionika</span>
+                      <span className="text-lg font-bold text-gray-900">
+                        {liveStatsData.maleCount + liveStatsData.femaleCount}
+                      </span>
+                      <span className="text-[10px] text-gray-400 block">
+                        {liveStatsData.femaleCount} Ž / {liveStatsData.maleCount} M
+                      </span>
+                    </div>
+
+                    <div className="p-3.5 rounded-2xl bg-gray-50 border border-gray-100 text-center">
+                      <span className="text-xs text-gray-500 block">Glasovalo</span>
+                      <span className="text-lg font-bold text-gray-900">
+                        {liveStatsData.votedUsersCount}
+                      </span>
+                      <span className="text-[10px] text-gray-400 block">sudionika</span>
+                    </div>
+
+                    <div className="p-3.5 rounded-2xl bg-gray-50 border border-gray-100 text-center">
+                      <span className="text-xs text-gray-500 block">Ukupno glasova</span>
+                      <span className="text-lg font-bold text-gray-900">
+                        {liveStatsData.totalVotes}
+                      </span>
+                      <span className="text-[10px] text-rose-500 block">
+                        {liveStatsData.likesCount} lajkova
+                      </span>
+                    </div>
+
+                    <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-center">
+                      <span className="text-xs text-rose-700 font-semibold block">Obostranih simpatija</span>
+                      <span className="text-2xl font-bold text-rose-600">
+                        {liveStatsData.mutualMatches.length}
+                      </span>
+                      <span className="text-[10px] text-rose-600 block font-medium">
+                        spojeno parova 💖
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Explanation Banner */}
+                  <div className="p-4 rounded-2xl bg-blue-50/80 border border-blue-200/70 text-xs text-blue-900 leading-relaxed space-y-1.5">
+                    <div className="font-bold flex items-center gap-1.5 text-blue-800">
+                      <AlertCircle size={15} />
+                      Što se događa kada potvrdite objavu?
+                    </div>
+                    <ol className="list-decimal pl-4 space-y-1 text-blue-800/90">
+                      <li>Sustav sprema sve obostrane matcheve u bazu podataka.</li>
+                      <li>Muškim sudionicima šalje se EmailJS obavijest s kontakt podacima partnerice.</li>
+                      <li>Događaj prelazi u <strong>Post-Event Matching</strong> fazu – sudionici odmah vide svoje matcheve na profilu, a oni koji nisu stigli ocijeniti sve sudionike mogu dovršiti odabir za preostale osobe!</li>
+                    </ol>
+                  </div>
+
+                  {/* List of Detected Matches */}
+                  <div>
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700 mb-3 flex items-center justify-between">
+                      <span>Pronađeni matchevi iz noći ({liveStatsData.mutualMatches.length}):</span>
+                    </h4>
+
+                    {liveStatsData.mutualMatches.length === 0 ? (
+                      <div className="py-8 text-center bg-gray-50 rounded-2xl border border-dashed border-gray-200 text-gray-500 text-sm">
+                        Zasad nema zabilježenih obostranih matcheva iz noći.
+                      </div>
+                    ) : (
+                      <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1">
+                        {liveStatsData.mutualMatches.map((m, idx) => (
+                          <div key={idx} className="p-3 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-between text-xs">
+                            <div className="flex items-center gap-2">
+                              <span className="w-6 h-6 rounded-full bg-rose-100 text-rose-600 font-bold flex items-center justify-center text-[10px]">
+                                {idx + 1}
+                              </span>
+                              <div>
+                                <span className="font-bold text-gray-900">{m.maleName}</span>
+                                <span className="text-rose-500 font-bold mx-1.5">💞</span>
+                                <span className="font-bold text-gray-900">{m.femaleName}</span>
+                              </div>
+                            </div>
+                            <div className="text-right text-gray-500 text-[11px]">
+                              <div>Mail za: <span className="font-medium text-gray-700">{m.maleEmail}</span></div>
+                              {m.femaleContact && <div>Kontakt: <span className="text-rose-600">{m.femaleContact}</span></div>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </>
+              ) : null}
+            </div>
+
+            {/* Footer Buttons */}
+            {!publishSuccessMsg && (
+              <div className="p-5 border-t border-gray-100 bg-gray-50 flex items-center justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={() => setFinishLiveModalOpen(false)}
+                  disabled={publishingMatches}
+                  className="px-5 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-200 rounded-xl transition-colors cursor-pointer"
+                >
+                  Odustani
+                </button>
+
+                <button
+                  type="button"
+                  onClick={executePublishLiveMatches}
+                  disabled={publishingMatches || loadingLiveStats}
+                  className="px-6 py-2.5 rounded-xl font-bold text-sm bg-gradient-to-r from-rose-500 to-brand hover:from-rose-600 hover:to-brand-light text-white shadow-lg hover:shadow-rose-500/25 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-60"
+                >
+                  {publishingMatches ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      Objavljivanje i slanje mailova...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles size={16} />
+                      Potvrdi, pošalji mailove i otvori Post-Event
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+
           </div>
         </div>
       )}

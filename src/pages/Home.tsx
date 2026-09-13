@@ -40,6 +40,8 @@ interface ActiveEvent {
   price: string;
   maxRegistrations?: number | string;
   registrationCount?: number;
+  isMatchingActive?: boolean;
+  matchingPhase?: 'live' | 'post_event' | 'closed';
   createdAt?: any;
 }
 
@@ -310,10 +312,18 @@ export default function Home() {
         <div className="z-20 mt-14 sm:mt-10 mb-2 animate-fade-in-up">
           <Link
             to={`/matching?eventId=${matchingEvent.id}`}
-            className="inline-flex items-center gap-2 bg-gradient-to-r from-rose-500 to-brand text-white px-4 py-2 rounded-full text-xs font-bold shadow-lg hover:shadow-rose-500/25 transition-all transform hover:scale-105"
+            className={`inline-flex items-center gap-2 text-white px-4 py-2 rounded-full text-xs font-bold shadow-lg hover:shadow-xl transition-all transform hover:scale-105 ${
+              matchingEvent.matchingPhase === 'live'
+                ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-500/25'
+                : 'bg-gradient-to-r from-rose-500 to-brand hover:shadow-rose-500/25'
+            }`}
           >
-            <Flame size={15} className="animate-pulse" />
-            <span>Matching je otvoren za {matchingEvent.title}! Pronađi svoje simpatije ✨</span>
+            <Flame size={15} className={matchingEvent.matchingPhase === 'live' ? 'animate-pulse' : ''} />
+            <span>
+              {matchingEvent.matchingPhase === 'live'
+                ? `Matching uživo je u tijeku za ${matchingEvent.title}! Označi simpatije 🔒✨`
+                : `Matching je otvoren za ${matchingEvent.title}! Pronađi svoje simpatije ✨`}
+            </span>
             <ChevronRight size={14} />
           </Link>
         </div>
