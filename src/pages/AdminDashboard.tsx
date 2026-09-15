@@ -1,12 +1,21 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { collection, getDocs, query, orderBy, addDoc, serverTimestamp, doc, where, updateDoc, deleteDoc, increment, setDoc } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import type { User } from 'firebase/auth';
 import { Link, Navigate } from 'react-router';
-import { ArrowLeft, Users, UserRound, ArrowDown01, Loader2, Plus, Calendar as CalendarIcon, CheckCircle2, List, PlayCircle, StopCircle, Trash2, X, ChevronDown, Pencil, Clock, XCircle, Flame, Heart, UserX, Send, Sparkles, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Users, UserRound, ArrowDown01, Loader2, Plus, Calendar as CalendarIcon, CheckCircle2, List, PlayCircle, StopCircle, Trash2, X, ChevronDown, Pencil, Clock, XCircle, Flame, Heart, UserX, Send, Sparkles, AlertCircle, Mail, Eye, Check } from 'lucide-react';
 import emailjs from '@emailjs/browser';
 import { sendMatchEmail } from '../utils/matchingEmails';
+import {
+  REMINDER_TEMPLATES,
+  type ReminderTemplate,
+  type ReminderRecipient,
+  sendReminderBatch,
+  formatReminderText,
+  buildReminderHtml,
+  isMaleGender
+} from '../utils/reminderEmails';
 
 const ADMIN_UIDS = ['iKe7lzl7Msf7hd3kWyHC1ysyS3C3', 'Izt37mNGtpY82AKZTbyYsnctoxJ2', 'JRms1cPi2Bc513TOW0WBEFZMzrC3'];
 
@@ -49,6 +58,9 @@ interface EventData {
   timeNoteM?: string;
   timeNoteZ?: string;
   registrationCount?: number;
+  lastReminderSentAt?: any;
+  lastReminderSubject?: string;
+  lastReminderCount?: number;
 }
 
 interface Prijava {
@@ -65,6 +77,7 @@ interface Prijava {
   status?: 'pending' | 'accepted' | 'rejected' | 'cancelled' | 'waiting_list';
   cancelledAt?: any;
   contactHandle?: string;
+  reminderSentAt?: any;
 }
 
 export default function AdminDashboard() {
@@ -137,6 +150,31 @@ export default function AdminDashboard() {
   const [publishingMatches, setPublishingMatches] = useState(false);
   const [publishSuccessMsg, setPublishSuccessMsg] = useState('');
 
+  // Reminder modal state
+  const [reminderModalOpen, setReminderModalOpen] = useState(false);
+  const [reminderEvent, setReminderEvent] = useState<EventData | null>(null);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>(REMINDER_TEMPLATES[0].id);
+  const [reminderSubject, setReminderSubject] = useState<string>(REMINDER_TEMPLATES[0].subject);
+  const [reminderBody, setReminderBody] = useState<string>(REMINDER_TEMPLATES[0].body);
+  const [reminderRecipientsMode, setReminderRecipientsMode] = useState<'accepted' | 'all_active' | 'custom'>('accepted');
+  const [customSelectedRecipientIds, setCustomSelectedRecipientIds] = useState<string[]>([]);
+  const [reminderPreviewGender, setReminderPreviewGender] = useState<'M' | 'Ž'>('M');
+  const [reminderActiveTab, setReminderActiveTab] = useState<'edit' | 'preview'>('edit');
+  const [reminderSending, setReminderSending] = useState(false);
+  const [reminderProgress, setReminderProgress] = useState<{
+    current: number;
+    total: number;
+    success: number;
+    failed: number;
+    currentRecipientName?: string;
+  } | null>(null);
+  const [reminderResultNotice, setReminderResultNotice] = useState<{
+    success: number;
+    failed: number;
+    total: number;
+  } | null>(null);
+  const reminderTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+
   const REJECT_REASONS = [
     { id: 'full', label: 'Popunjena mjesta', text: 'Nažalost, zbog ograničenog broja mjesta i velikog interesa, ovaj put ti nismo u mogućnosti potvrditi sudjelovanje. Mjesta su se popunila vrlo brzo ili pokušavamo balansirati omjer sudionika.' },
     { id: 'age', label: 'Dobna skupina', text: 'Nažalost, za ovaj događaj prednost smo morali dati prijavama koje se točno uklapaju u predviđenu dobnu skupinu kako bismo osigurali najbolje iskustvo za sve sudionike.' },
@@ -167,6 +205,210 @@ export default function AdminDashboard() {
   // Dropdown state
   const [filterDropdownOpen, setFilterDropdownOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+
+  // Reminder helpers & target recipients (Placed before early returns to satisfy React Rules of Hooks)
+  const reminderTargetRecipients = useMemo(() => {
+    const relevantPrijave = reminderEvent ? prijave.filter(p => !p.eventId || p.eventId === reminderEvent.id) : prijave;
+    if (reminderRecipientsMode === 'accepted') {
+      return relevantPrijave.filter(p => p.status === 'accepted');
+    } else if (reminderRecipientsMode === 'all_active') {
+      return relevantPrijave.filter(p => p.status !== 'rejected' && p.status !== 'cancelled');
+    } else {
+      return relevantPrijave.filter(p => customSelectedRecipientIds.includes(p.id));
+    }
+  }, [prijave, reminderEvent, reminderRecipientsMode, customSelectedRecipientIds]);
+
+  const reminderMaleRecipientsCount = useMemo(() => {
+    return reminderTargetRecipients.filter(p => isMaleGender(p.spol)).length;
+  }, [reminderTargetRecipients]);
+
+  const reminderFemaleRecipientsCount = useMemo(() => {
+    return reminderTargetRecipients.filter(p => !isMaleGender(p.spol)).length;
+  }, [reminderTargetRecipients]);
+
+  // Sample recipient for live preview
+  const sampleRecipient = useMemo(() => {
+    if (reminderPreviewGender === 'M') {
+      const realM = reminderTargetRecipients.find(p => isMaleGender(p.spol));
+      return {
+        imePrezime: realM ? realM.imePrezime : 'Marko Horvat',
+        email: realM ? realM.email : 'marko@primjer.hr',
+        spol: 'M'
+      };
+    } else {
+      const realZ = reminderTargetRecipients.find(p => !isMaleGender(p.spol));
+      return {
+        imePrezime: realZ ? realZ.imePrezime : 'Ana Novak',
+        email: realZ ? realZ.email : 'ana@primjer.hr',
+        spol: 'Ž'
+      };
+    }
+  }, [reminderPreviewGender, reminderTargetRecipients]);
+
+  const previewSubject = useMemo(() => {
+    return formatReminderText(reminderSubject, sampleRecipient, reminderEvent || undefined);
+  }, [reminderSubject, sampleRecipient, reminderEvent]);
+
+  const previewBodyFormatted = useMemo(() => {
+    return formatReminderText(reminderBody, sampleRecipient, reminderEvent || undefined);
+  }, [reminderBody, sampleRecipient, reminderEvent]);
+
+  const previewHtml = useMemo(() => {
+    return buildReminderHtml(previewBodyFormatted, reminderEvent || undefined);
+  }, [previewBodyFormatted, reminderEvent]);
+
+  const openReminderModal = async (event: EventData, initialRecipientId?: string) => {
+    setReminderEvent(event);
+    setSelectedTemplateId(REMINDER_TEMPLATES[0].id);
+    setReminderSubject(REMINDER_TEMPLATES[0].subject);
+    setReminderBody(REMINDER_TEMPLATES[0].body);
+    setReminderActiveTab('edit');
+    setReminderProgress(null);
+    setReminderResultNotice(null);
+
+    if (initialRecipientId) {
+      setReminderRecipientsMode('custom');
+      setCustomSelectedRecipientIds([initialRecipientId]);
+    } else {
+      setReminderRecipientsMode('accepted');
+      setCustomSelectedRecipientIds([]);
+    }
+
+    if (selectedEventId !== event.id) {
+      setSelectedEventId(event.id);
+      await fetchPrijave(event.id);
+    }
+
+    setReminderModalOpen(true);
+  };
+
+  const handleSelectTemplate = (tpl: ReminderTemplate) => {
+    setSelectedTemplateId(tpl.id);
+    setReminderSubject(tpl.subject);
+    setReminderBody(tpl.body);
+  };
+
+  const handleInsertTag = (tag: string) => {
+    if (!reminderTextareaRef.current) {
+      setReminderBody(prev => prev + ' ' + tag);
+      return;
+    }
+    const textarea = reminderTextareaRef.current;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const currentText = reminderBody;
+    const newText = currentText.substring(0, start) + tag + currentText.substring(end);
+    setReminderBody(newText);
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start + tag.length, start + tag.length);
+    }, 0);
+  };
+
+  const handleToggleRecipient = (prijavaId: string) => {
+    setCustomSelectedRecipientIds(prev => 
+      prev.includes(prijavaId) ? prev.filter(id => id !== prijavaId) : [...prev, prijavaId]
+    );
+  };
+
+  const handleSelectAllCustom = () => {
+    const relevantPrijave = reminderEvent ? prijave.filter(p => !p.eventId || p.eventId === reminderEvent.id) : prijave;
+    setCustomSelectedRecipientIds(relevantPrijave.map(p => p.id));
+  };
+
+  const handleDeselectAllCustom = () => {
+    setCustomSelectedRecipientIds([]);
+  };
+
+  const handleExecuteSendReminders = async () => {
+    if (!reminderEvent || reminderTargetRecipients.length === 0) return;
+
+    const confirmed = window.confirm(
+      `Jeste li sigurni da želite poslati e-mail podsjetnik za ${reminderTargetRecipients.length} sudionika?\n\n` +
+      `• Događaj: ${reminderEvent.title}\n` +
+      `• Muških: ${reminderMaleRecipientsCount}\n` +
+      `• Ženskih: ${reminderFemaleRecipientsCount}\n` +
+      `• Predmet: ${reminderSubject}`
+    );
+    if (!confirmed) return;
+
+    setReminderSending(true);
+    setReminderProgress({
+      current: 0,
+      total: reminderTargetRecipients.length,
+      success: 0,
+      failed: 0
+    });
+
+    const recipientsList: ReminderRecipient[] = reminderTargetRecipients.map(p => ({
+      id: p.id,
+      imePrezime: p.imePrezime,
+      email: p.email,
+      spol: p.spol,
+      status: p.status
+    }));
+
+    const eventInfo = {
+      id: reminderEvent.id,
+      title: reminderEvent.title,
+      dateStr: reminderEvent.dateStr,
+      timeStr: reminderEvent.timeStr,
+      location: reminderEvent.location,
+      ageGroup: reminderEvent.ageGroup
+    };
+
+    try {
+      const result = await sendReminderBatch(
+        recipientsList,
+        reminderSubject,
+        reminderBody,
+        eventInfo,
+        (progress) => {
+          setReminderProgress({
+            current: progress.current,
+            total: progress.total,
+            success: progress.success,
+            failed: progress.failed,
+            currentRecipientName: progress.currentRecipientName
+          });
+        },
+        250
+      );
+
+      // Record in Firestore
+      try {
+        await updateDoc(doc(db, 'events', reminderEvent.id), {
+          lastReminderSentAt: serverTimestamp(),
+          lastReminderSubject: reminderSubject,
+          lastReminderCount: result.success
+        });
+
+        for (const rec of recipientsList) {
+          if (!result.errors.some(e => e.recipient.id === rec.id)) {
+            await updateDoc(doc(db, 'prijave', rec.id), {
+              reminderSentAt: serverTimestamp()
+            }).catch(console.error);
+          }
+        }
+      } catch (dbErr) {
+        console.error("Greška pri bilježenju podsjetnika u bazi:", dbErr);
+      }
+
+      setReminderResultNotice({
+        success: result.success,
+        failed: result.failed,
+        total: reminderTargetRecipients.length
+      });
+
+      fetchPrijave(selectedEventId);
+      fetchEvents();
+    } catch (sendErr) {
+      console.error("Kritična greška pri slanju podsjetnika:", sendErr);
+      alert("Dogodila se greška prilikom slanja podsjetnika.");
+    } finally {
+      setReminderSending(false);
+    }
+  };
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -1257,9 +1499,24 @@ export default function AdminDashboard() {
                           )}
                         </div>
                         <p className="text-sm text-gray-600">{event.dateStr} u {event.timeStr} • {event.location}</p>
-                        <p className="text-xs text-gray-500 mt-1">Dob: {event.ageGroup} | Cijena: {event.price} | Zauzeta mjesta u bazi: <strong className="text-gray-700">{event.registrationCount || 0}</strong>{event.maxRegistrations ? ` / ${event.maxRegistrations}` : ''}</p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Dob: {event.ageGroup} | Cijena: {event.price} | Zauzeta mjesta u bazi: <strong className="text-gray-700">{event.registrationCount || 0}</strong>{event.maxRegistrations ? ` / ${event.maxRegistrations}` : ''}
+                          {event.lastReminderSentAt && (
+                            <span className="ml-2 text-brand font-semibold inline-flex items-center gap-1 bg-brand/5 px-2 py-0.5 rounded border border-brand/20">
+                              <Mail size={11} /> Zadnji podsjetnik poslan ({event.lastReminderCount ?? '✓'})
+                            </span>
+                          )}
+                        </p>
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          onClick={() => openReminderModal(event)}
+                          className="px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-1.5 transition-colors bg-white hover:bg-brand/10 border border-brand/30 text-brand cursor-pointer"
+                          title="Pošalji e-mail podsjetnik prijavljenima za ovaj događaj"
+                        >
+                          <Mail size={16} />
+                          <span className="hidden sm:inline">Podsjetnik</span>
+                        </button>
                         <button
                           onClick={() => openMatchesModal(event)}
                           className="px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-1.5 transition-colors bg-white hover:bg-rose-50 border border-rose-200 text-rose-700 cursor-pointer"
@@ -1408,6 +1665,16 @@ export default function AdminDashboard() {
                     title="Uskladi brojač u bazi s prijavama koje nisu odbijene ili na listi čekanja"
                   >
                     Uskladi bazu ({dbOccupiedCount})
+                  </button>
+                )}
+                {selectedEvent && (
+                  <button
+                    onClick={() => openReminderModal(selectedEvent)}
+                    className="bg-brand text-white hover:bg-brand-light px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 shadow-sm hover:shadow cursor-pointer"
+                    title="Pošalji e-mail podsjetnik prijavljenim sudionicima"
+                  >
+                    <Mail size={16} />
+                    <span>Pošalji podsjetnik ({approvedCount})</span>
                   </button>
                 )}
                 <button
@@ -1631,19 +1898,29 @@ export default function AdminDashboard() {
                             {prijava.napomena || '-'}
                           </td>
                           <td className="p-4">
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              prijava.status === 'pending' || !prijava.status ? 'bg-yellow-100 text-yellow-800' :
-                              prijava.status === 'waiting_list' ? 'bg-amber-100 text-amber-800 border border-amber-300' :
-                              prijava.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                              prijava.status === 'cancelled' ? 'bg-gray-200 text-gray-700 border border-gray-300' :
-                              'bg-green-100 text-green-800'
-                            }`}>
-                              {prijava.status === 'pending' || !prijava.status ? 'Na čekanju' :
-                               prijava.status === 'waiting_list' ? 'Lista čekanja' :
-                               prijava.status === 'rejected' ? 'Odbijeno' :
-                               prijava.status === 'cancelled' ? 'Otkazano' :
-                               'Prihvaćeno'}
-                            </span>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                prijava.status === 'pending' || !prijava.status ? 'bg-yellow-100 text-yellow-800' :
+                                prijava.status === 'waiting_list' ? 'bg-amber-100 text-amber-800 border border-amber-300' :
+                                prijava.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                                prijava.status === 'cancelled' ? 'bg-gray-200 text-gray-700 border border-gray-300' :
+                                'bg-green-100 text-green-800'
+                              }`}>
+                                {prijava.status === 'pending' || !prijava.status ? 'Na čekanju' :
+                                 prijava.status === 'waiting_list' ? 'Lista čekanja' :
+                                 prijava.status === 'rejected' ? 'Odbijeno' :
+                                 prijava.status === 'cancelled' ? 'Otkazano' :
+                                 'Prihvaćeno'}
+                              </span>
+                              {prijava.reminderSentAt && (
+                                <span
+                                  className="inline-flex items-center gap-1 text-[10px] text-brand bg-brand/5 px-2 py-0.5 rounded-full font-semibold border border-brand/20"
+                                  title={`Podsjetnik poslan: ${prijava.reminderSentAt?.toDate ? prijava.reminderSentAt.toDate().toLocaleString('hr-HR') : 'Nedavno'}`}
+                                >
+                                  <Mail size={10} /> Podsjetnik
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td className="p-4 text-gray-500 text-xs">
                             {prijava.createdAt?.toDate ? prijava.createdAt.toDate().toLocaleString('hr-HR') : 'Nedavno'}
@@ -1800,6 +2077,20 @@ export default function AdminDashboard() {
                     className="px-4 py-2 bg-red-600 text-white hover:bg-red-700 rounded-lg font-medium transition-colors flex items-center gap-2 text-sm disabled:opacity-50 cursor-pointer"
                   >
                     <X size={16} /> Odbij
+                  </button>
+                )}
+                {selectedPrijava.status === 'accepted' && (
+                  <button
+                    onClick={() => {
+                      const evt = events.find(e => e.id === (selectedPrijava.eventId || selectedEventId));
+                      if (evt) {
+                        openReminderModal(evt, selectedPrijava.id);
+                      }
+                    }}
+                    className="px-4 py-2 bg-brand/10 text-brand hover:bg-brand/20 border border-brand/30 rounded-lg font-medium transition-colors flex items-center gap-2 text-sm cursor-pointer"
+                    title="Pošalji e-mail podsjetnik samo ovom sudioniku"
+                  >
+                    <Mail size={16} /> Pošalji podsjetnik
                   </button>
                 )}
               </div>
@@ -2316,6 +2607,444 @@ export default function AdminDashboard() {
               </div>
             )}
 
+          </div>
+        </div>
+      )}
+
+      {/* MODAL ZA SLANJE PODSJETNIKA */}
+      {reminderModalOpen && reminderEvent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl flex flex-col my-auto max-h-[92vh] overflow-hidden border border-gray-100 animate-in fade-in zoom-in-95 duration-150">
+            
+            {/* Modal Header */}
+            <div className="p-5 sm:p-6 border-b border-gray-100 flex justify-between items-start bg-gradient-to-r from-brand/5 via-white to-pink-50/30">
+              <div className="flex items-start gap-3.5">
+                <div className="w-11 h-11 rounded-2xl bg-brand/10 text-brand flex items-center justify-center flex-shrink-0 shadow-inner">
+                  <Mail size={22} />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                    Slanje podsjetnika na mail
+                  </h3>
+                  <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
+                    Događaj: <strong className="text-gray-800">{reminderEvent.title}</strong> ({reminderEvent.dateStr} u {reminderEvent.timeStr})
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => !reminderSending && setReminderModalOpen(false)}
+                disabled={reminderSending}
+                className="text-gray-400 hover:text-gray-600 p-2 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer disabled:opacity-30"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Tab Navigation in Modal */}
+            <div className="flex border-b border-gray-100 bg-gray-50/80 px-6 pt-3 gap-2">
+              <button
+                onClick={() => setReminderActiveTab('edit')}
+                className={`pb-3 px-4 text-sm font-semibold flex items-center gap-2 transition-all border-b-2 cursor-pointer ${
+                  reminderActiveTab === 'edit'
+                    ? 'border-brand text-brand bg-white rounded-t-xl shadow-xs'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <Pencil size={15} /> Pisanje & Predlošci
+              </button>
+              <button
+                onClick={() => setReminderActiveTab('preview')}
+                className={`pb-3 px-4 text-sm font-semibold flex items-center gap-2 transition-all border-b-2 cursor-pointer ${
+                  reminderActiveTab === 'preview'
+                    ? 'border-brand text-brand bg-white rounded-t-xl shadow-xs'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <Eye size={15} /> Pregled uživo (Preview)
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-6">
+              {reminderActiveTab === 'edit' ? (
+                <>
+                  {/* Predlošci */}
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2.5">
+                      1. Odaberi predložak poruke:
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                      {REMINDER_TEMPLATES.map((tpl) => {
+                        const isSelected = selectedTemplateId === tpl.id;
+                        return (
+                          <button
+                            key={tpl.id}
+                            type="button"
+                            onClick={() => handleSelectTemplate(tpl)}
+                            className={`text-left p-3 rounded-xl border transition-all cursor-pointer relative flex flex-col justify-between ${
+                              isSelected
+                                ? 'border-brand bg-brand/5 shadow-xs ring-1 ring-brand/30'
+                                : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50/70'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between gap-2 mb-1.5">
+                              <span className="font-semibold text-xs text-gray-800">{tpl.title}</span>
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                                tpl.id === 'default_prekosutra' ? 'bg-brand text-white' : 'bg-gray-100 text-gray-600'
+                              }`}>
+                                {tpl.badge}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-gray-500 line-clamp-2 leading-relaxed">
+                              {tpl.body.replace(/\n+/g, ' ')}
+                            </p>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Primatelji */}
+                  <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+                      <label className="text-xs font-bold uppercase tracking-wider text-gray-700">
+                        2. Kome poslati podsjetnik:
+                      </label>
+                      <div className="flex items-center gap-3 text-xs">
+                        <span className="font-semibold text-gray-800">
+                          Odabrano: <span className="text-brand font-bold text-sm">{reminderTargetRecipients.length}</span> sudionika
+                        </span>
+                        <span className="text-gray-400">|</span>
+                        <span className="text-blue-600 font-medium">👨 {reminderMaleRecipientsCount} muških</span>
+                        <span className="text-pink-600 font-medium">👩 {reminderFemaleRecipientsCount} ženskih</span>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3">
+                      <button
+                        type="button"
+                        onClick={() => setReminderRecipientsMode('accepted')}
+                        className={`p-2.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer text-left ${
+                          reminderRecipientsMode === 'accepted'
+                            ? 'bg-white border-brand text-brand shadow-xs ring-1 ring-brand'
+                            : 'bg-gray-100 border-transparent text-gray-600 hover:bg-white'
+                        }`}
+                      >
+                        ✓ Samo odobreni sudionici ({prijave.filter(p => p.status === 'accepted').length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setReminderRecipientsMode('all_active')}
+                        className={`p-2.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer text-left ${
+                          reminderRecipientsMode === 'all_active'
+                            ? 'bg-white border-brand text-brand shadow-xs ring-1 ring-brand'
+                            : 'bg-gray-100 border-transparent text-gray-600 hover:bg-white'
+                        }`}
+                      >
+                        Svi aktivni ({prijave.filter(p => p.status !== 'rejected' && p.status !== 'cancelled').length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setReminderRecipientsMode('custom')}
+                        className={`p-2.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer text-left ${
+                          reminderRecipientsMode === 'custom'
+                            ? 'bg-white border-brand text-brand shadow-xs ring-1 ring-brand'
+                            : 'bg-gray-100 border-transparent text-gray-600 hover:bg-white'
+                        }`}
+                      >
+                        Prilagođeni odabir ({customSelectedRecipientIds.length})
+                      </button>
+                    </div>
+
+                    {reminderRecipientsMode === 'custom' && (
+                      <div className="mt-3 pt-3 border-t border-gray-200">
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-[11px] text-gray-500 font-medium">Označi primatelje s popisa:</span>
+                          <div className="flex gap-2 text-xs">
+                            <button
+                              type="button"
+                              onClick={handleSelectAllCustom}
+                              className="text-brand hover:underline font-semibold"
+                            >
+                              Označi sve
+                            </button>
+                            <span className="text-gray-300">|</span>
+                            <button
+                              type="button"
+                              onClick={handleDeselectAllCustom}
+                              className="text-gray-500 hover:underline"
+                            >
+                              Odznači sve
+                            </button>
+                          </div>
+                        </div>
+                        <div className="max-h-40 overflow-y-auto divide-y divide-gray-100 bg-white rounded-lg border border-gray-200 p-2">
+                          {prijave.map(p => {
+                            const isChecked = customSelectedRecipientIds.includes(p.id);
+                            return (
+                              <label
+                                key={p.id}
+                                className="flex items-center justify-between p-1.5 hover:bg-gray-50 rounded cursor-pointer text-xs"
+                              >
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={() => handleToggleRecipient(p.id)}
+                                    className="rounded border-gray-300 text-brand focus:ring-brand"
+                                  />
+                                  <span className="font-medium text-gray-800">{p.imePrezime}</span>
+                                  <span className="text-gray-400 text-[11px]">{p.email}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                                    p.spol === 'Ž' ? 'bg-pink-100 text-pink-700' : 'bg-blue-100 text-blue-700'
+                                  }`}>
+                                    {p.spol}
+                                  </span>
+                                  <span className="text-[10px] text-gray-400 uppercase font-semibold">
+                                    {p.status || 'pending'}
+                                  </span>
+                                </div>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Predmet e-maila */}
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1.5">
+                      3. Predmet (Naslov) poruke:
+                    </label>
+                    <input
+                      type="text"
+                      value={reminderSubject}
+                      onChange={(e) => setReminderSubject(e.target.value)}
+                      placeholder="Upišite naslov maila..."
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-sm font-medium focus:ring-2 focus:ring-brand/20 focus:border-brand"
+                    />
+                  </div>
+
+                  {/* Sadržaj e-maila */}
+                  <div>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-1.5">
+                      <label className="text-xs font-bold uppercase tracking-wider text-gray-700">
+                        4. Sadržaj poruke:
+                      </label>
+                      {/* Pomoćni tagovi */}
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-[11px] text-gray-400 mr-1">Klikni za umetanje:</span>
+                        {[
+                          { label: '[ime]', tag: '[ime]', title: 'Ime sudionika' },
+                          { label: 'Dragi/a', tag: 'Dragi/a', title: 'Dragi za M, Draga za Ž' },
+                          { label: 'prijavljen/a', tag: 'prijavljen/a', title: 'prijavljen / prijavljena' },
+                          { label: 'javio/la', tag: 'javio/la', title: 'javio / javila' },
+                          { label: '[vrijeme]', tag: '[vrijeme]', title: 'Vrijeme eventa' },
+                          { label: '[datum]', tag: '[datum]', title: 'Datum eventa' },
+                          { label: '[lokacija]', tag: '[lokacija]', title: 'Lokacija' }
+                        ].map((item) => (
+                          <button
+                            key={item.label}
+                            type="button"
+                            onClick={() => handleInsertTag(item.tag)}
+                            title={item.title}
+                            className="bg-gray-100 hover:bg-brand/10 hover:text-brand text-gray-700 px-2 py-0.5 rounded text-[11px] font-mono font-medium transition-colors cursor-pointer"
+                          >
+                            +{item.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <textarea
+                      ref={reminderTextareaRef}
+                      value={reminderBody}
+                      onChange={(e) => setReminderBody(e.target.value)}
+                      rows={9}
+                      className="w-full p-4 rounded-xl border border-gray-300 font-sans text-sm leading-relaxed focus:ring-2 focus:ring-brand/20 focus:border-brand"
+                      placeholder="Upišite sadržaj poruke..."
+                    />
+
+                    {/* Info o rodnoj zamjeni */}
+                    <div className="mt-2.5 p-3 rounded-xl bg-pink-50/60 border border-pink-100 flex items-start gap-2.5 text-xs text-gray-600">
+                      <Sparkles size={16} className="text-brand flex-shrink-0 mt-0.5" />
+                      <div>
+                        <strong className="text-brand font-semibold">Pametna zamjena gramatičkog roda: </strong>
+                        Tekst automatski zamjenjuje <code className="bg-white px-1.5 py-0.5 rounded border text-gray-700">Dragi/a [ime]</code> u <em>Dragi Marko</em> ili <em>Draga Ana</em>, <code className="bg-white px-1.5 py-0.5 rounded border text-gray-700">prijavljen/a</code> u <em>prijavljen</em> / <em>prijavljena</em>, te <code className="bg-white px-1.5 py-0.5 rounded border text-gray-700">javio/la</code> u <em>javio</em> / <em>javila</em> ovisno o spolu osobe.
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                /* LIVE PREVIEW TAB */
+                <div className="space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gray-50 p-4 rounded-xl border border-gray-200">
+                    <span className="text-xs font-bold uppercase tracking-wider text-gray-600">
+                      Isprobaj prikaz za različiti spol:
+                    </span>
+                    <div className="inline-flex rounded-xl bg-gray-200/80 p-1">
+                      <button
+                        type="button"
+                        onClick={() => setReminderPreviewGender('M')}
+                        className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                          reminderPreviewGender === 'M'
+                            ? 'bg-blue-600 text-white shadow-xs'
+                            : 'text-gray-600 hover:text-gray-900'
+                        }`}
+                      >
+                        👨 Muški sudionik ({sampleRecipient.imePrezime})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setReminderPreviewGender('Ž')}
+                        className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                          reminderPreviewGender === 'Ž'
+                            ? 'bg-pink-600 text-white shadow-xs'
+                            : 'text-gray-600 hover:text-gray-900'
+                        }`}
+                      >
+                        👩 Ženski sudionik ({sampleRecipient.imePrezime})
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Mail metadata mockup */}
+                  <div className="border border-gray-200 rounded-xl p-3.5 bg-white text-xs space-y-1.5 shadow-xs">
+                    <div className="flex items-center text-gray-500">
+                      <span className="w-16 font-semibold text-gray-700">Šalje:</span>
+                      <span>Na prvi pogled &lt;info@naprvipogled.hr&gt;</span>
+                    </div>
+                    <div className="flex items-center text-gray-500">
+                      <span className="w-16 font-semibold text-gray-700">Prima:</span>
+                      <span className="font-medium text-gray-900">{sampleRecipient.imePrezime} &lt;{sampleRecipient.email}&gt;</span>
+                    </div>
+                    <div className="flex items-center text-gray-500 border-t border-gray-100 pt-1.5">
+                      <span className="w-16 font-semibold text-gray-700">Predmet:</span>
+                      <span className="font-bold text-gray-900">{previewSubject}</span>
+                    </div>
+                  </div>
+
+                  {/* Rendered HTML Email Preview */}
+                  <div className="border border-gray-200 rounded-2xl p-4 sm:p-6 bg-gray-50 shadow-inner flex justify-center">
+                    <div
+                      className="w-full max-w-[600px] shadow-lg rounded-2xl overflow-hidden bg-white"
+                      dangerouslySetInnerHTML={{ __html: previewHtml }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Progress bar when sending */}
+            {reminderProgress && (
+              <div className="px-6 py-4 bg-brand/5 border-t border-brand/15">
+                <div className="flex justify-between items-center text-xs font-semibold mb-2">
+                  <span className="text-brand flex items-center gap-2">
+                    <Loader2 size={14} className="animate-spin" />
+                    Šaljem podsjetnike: {reminderProgress.current} od {reminderProgress.total}...
+                    {reminderProgress.currentRecipientName && (
+                      <span className="text-gray-600 font-normal">({reminderProgress.currentRecipientName})</span>
+                    )}
+                  </span>
+                  <div className="flex gap-3">
+                    <span className="text-green-600">Uspješno: {reminderProgress.success}</span>
+                    {reminderProgress.failed > 0 && (
+                      <span className="text-red-600 font-bold">Greške: {reminderProgress.failed}</span>
+                    )}
+                  </div>
+                </div>
+                <div className="w-full h-2.5 bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-brand to-rose-500 transition-all duration-200"
+                    style={{ width: `${Math.round((reminderProgress.current / reminderProgress.total) * 100)}%` }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Modal Footer */}
+            <div className="p-5 border-t border-gray-100 bg-gray-50 flex items-center justify-between gap-3 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setReminderModalOpen(false)}
+                disabled={reminderSending}
+                className="px-5 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-200 rounded-xl transition-colors cursor-pointer disabled:opacity-40"
+              >
+                Odustani
+              </button>
+
+              <div className="flex items-center gap-3">
+                {reminderActiveTab === 'edit' ? (
+                  <button
+                    type="button"
+                    onClick={() => setReminderActiveTab('preview')}
+                    className="px-4 py-2.5 text-sm font-semibold text-gray-700 bg-white hover:bg-gray-100 border border-gray-200 rounded-xl transition-colors flex items-center gap-2 cursor-pointer shadow-xs"
+                  >
+                    <Eye size={16} /> Pregledaj prije slanja
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setReminderActiveTab('edit')}
+                    className="px-4 py-2.5 text-sm font-semibold text-gray-700 bg-white hover:bg-gray-100 border border-gray-200 rounded-xl transition-colors flex items-center gap-2 cursor-pointer shadow-xs"
+                  >
+                    <Pencil size={16} /> Uredi poruku
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={handleExecuteSendReminders}
+                  disabled={reminderSending || reminderTargetRecipients.length === 0}
+                  className="px-6 py-2.5 rounded-xl font-bold text-sm bg-gradient-to-r from-brand to-rose-600 hover:from-brand-light hover:to-rose-500 text-white shadow-lg hover:shadow-brand/25 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {reminderSending ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      Šaljem podsjetnike...
+                    </>
+                  ) : (
+                    <>
+                      <Send size={16} />
+                      Pošalji podsjetnik ({reminderTargetRecipients.length})
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* REZULTAT SLANJA PODSJETNIKA MODAL */}
+      {reminderResultNotice && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 text-center border border-gray-100 animate-in fade-in zoom-in-95 duration-150">
+            <div className="w-14 h-14 rounded-full bg-green-100 text-green-600 flex items-center justify-center mx-auto mb-4">
+              <CheckCircle2 size={32} />
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Podsjetnici su poslani!</h3>
+            <p className="text-sm text-gray-600 mb-6">
+              Uspješno je poslano <strong>{reminderResultNotice.success}</strong> od <strong>{reminderResultNotice.total}</strong> e-mail podsjetnika.
+              {reminderResultNotice.failed > 0 && (
+                <span className="block text-red-600 mt-2 font-medium">
+                  Neuspješno: {reminderResultNotice.failed} mailova nije uspjelo proći.
+                </span>
+              )}
+            </p>
+            <button
+              onClick={() => {
+                setReminderResultNotice(null);
+                setReminderModalOpen(false);
+              }}
+              className="w-full py-3 bg-brand text-white font-bold rounded-xl hover:bg-brand-light transition-all shadow-md cursor-pointer"
+            >
+              U redu
+            </button>
           </div>
         </div>
       )}
