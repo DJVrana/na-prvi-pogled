@@ -29,6 +29,7 @@ interface EventCheckInModalProps {
   event: EventData;
   prijave: Prijava[];
   onToggleAttendance: (prijavaId: string, attended: boolean, attendedAt?: any) => Promise<void>;
+  onTogglePaid?: (prijavaId: string, paid: boolean) => Promise<void>;
   onOpenPdfModal?: () => void;
 }
 
@@ -38,12 +39,14 @@ export const EventCheckInModal: React.FC<EventCheckInModalProps> = ({
   event,
   prijave,
   onToggleAttendance,
+  onTogglePaid,
   onOpenPdfModal
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilter, setActiveFilter] = useState<'all' | 'unattended' | 'attended' | 'female' | 'male'>('all');
   const [groupByGender, setGroupByGender] = useState(true);
   const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [paidLoadingId, setPaidLoadingId] = useState<string | null>(null);
 
   // Filter only accepted participants for this event
   const acceptedList = useMemo(() => {
@@ -82,6 +85,7 @@ export const EventCheckInModal: React.FC<EventCheckInModalProps> = ({
   const femaleAttended = femaleList.filter(p => p.attended).length;
   const maleAttended = maleList.filter(p => p.attended).length;
   const attendancePercentage = totalAccepted > 0 ? Math.round((attendedCount / totalAccepted) * 100) : 0;
+  const paidCount = acceptedList.filter(p => p.paid).length;
 
   // Filtered and searched list
   const filterList = useCallback((list: Prijava[]) => {
@@ -128,14 +132,20 @@ export const EventCheckInModal: React.FC<EventCheckInModalProps> = ({
   const handleTogglePaid = async (prijava: Prijava, e: React.MouseEvent) => {
     e.stopPropagation();
     const newPaid = !prijava.paid;
+    setPaidLoadingId(prijava.id);
     try {
-      await updateDoc(doc(db, 'prijave', prijava.id), {
-        paid: newPaid
-      });
-      // Update local state
-      prijava.paid = newPaid;
+      if (onTogglePaid) {
+        await onTogglePaid(prijava.id, newPaid);
+      } else {
+        await updateDoc(doc(db, 'prijave', prijava.id), {
+          paid: newPaid
+        });
+        prijava.paid = newPaid;
+      }
     } catch (err) {
       console.error("Greška pri promjeni statusa kotizacije:", err);
+    } finally {
+      setPaidLoadingId(null);
     }
   };
 
@@ -417,6 +427,7 @@ export const EventCheckInModal: React.FC<EventCheckInModalProps> = ({
                         onToggle={() => handleToggle(prijava)}
                         onTogglePaid={e => handleTogglePaid(prijava, e)}
                         isLoading={loadingId === prijava.id}
+                        isPaidLoading={paidLoadingId === prijava.id}
                         eventPrice={event.price}
                         formatTime={formatTime}
                       />
@@ -445,6 +456,7 @@ export const EventCheckInModal: React.FC<EventCheckInModalProps> = ({
                         onToggle={() => handleToggle(prijava)}
                         onTogglePaid={e => handleTogglePaid(prijava, e)}
                         isLoading={loadingId === prijava.id}
+                        isPaidLoading={paidLoadingId === prijava.id}
                         eventPrice={event.price}
                         formatTime={formatTime}
                       />
@@ -459,11 +471,12 @@ export const EventCheckInModal: React.FC<EventCheckInModalProps> = ({
               {filteredAccepted.map(prijava => (
                 <AttendeeCheckInCard
                   key={prijava.id}
-                  prijava={prijava}
                   badge={badgeMap.get(prijava.id) || (prijava.spol === 'Ž' ? 'Ž' : 'M')}
+                  prijava={prijava}
                   onToggle={() => handleToggle(prijava)}
                   onTogglePaid={e => handleTogglePaid(prijava, e)}
                   isLoading={loadingId === prijava.id}
+                  isPaidLoading={paidLoadingId === prijava.id}
                   eventPrice={event.price}
                   formatTime={formatTime}
                 />
@@ -473,14 +486,21 @@ export const EventCheckInModal: React.FC<EventCheckInModalProps> = ({
         </div>
 
         {/* Bottom Status Footer */}
-        <div className="px-5 py-3 bg-white border-t border-gray-200 flex items-center justify-between text-xs text-gray-500 flex-shrink-0">
+        <div className="px-5 py-3 bg-white border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-gray-500 flex-shrink-0">
           <div className="flex items-center gap-2">
             <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
             <span>Promjene se automatski i trajno spremaju u bazu podataka.</span>
           </div>
 
-          <div className="font-semibold text-gray-700">
-            Ukupno evidentirano: <strong className="text-emerald-700 text-sm">{attendedCount}</strong> / {totalAccepted} ({attendancePercentage}%)
+          <div className="flex items-center gap-4">
+            {event.price && (
+              <span className="text-gray-600">
+                Plaćeno: <strong className="text-emerald-700 font-bold">{paidCount}</strong> / {totalAccepted}
+              </span>
+            )}
+            <div className="font-semibold text-gray-700">
+              Ukupno evidentirano: <strong className="text-emerald-700 text-sm">{attendedCount}</strong> / {totalAccepted} ({attendancePercentage}%)
+            </div>
           </div>
         </div>
 
@@ -496,6 +516,7 @@ interface AttendeeCardProps {
   onToggle: () => void;
   onTogglePaid: (e: React.MouseEvent) => void;
   isLoading: boolean;
+  isPaidLoading?: boolean;
   eventPrice?: string;
   formatTime: (ts: any) => string | null;
 }
@@ -506,6 +527,7 @@ const AttendeeCheckInCard: React.FC<AttendeeCardProps> = ({
   onToggle,
   onTogglePaid,
   isLoading,
+  isPaidLoading,
   eventPrice,
   formatTime
 }) => {
@@ -564,14 +586,15 @@ const AttendeeCheckInCard: React.FC<AttendeeCardProps> = ({
           <button
             type="button"
             onClick={onTogglePaid}
-            className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-colors flex items-center gap-1 cursor-pointer ${
+            disabled={isPaidLoading}
+            className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-all flex items-center gap-1 cursor-pointer ${
               prijava.paid
-                ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
-                : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100'
-            }`}
-            title="Klikni za evidenciju plaćanja kotizacije"
+                ? 'bg-emerald-100 hover:bg-emerald-200 text-emerald-800 border-emerald-300 shadow-2xs'
+                : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100 hover:border-gray-300'
+            } ${isPaidLoading ? 'opacity-60 cursor-wait' : ''}`}
+            title={prijava.paid ? 'Kotizacija plaćena. Klikni za poništavanje.' : 'Klikni za evidenciju plaćanja kotizacije'}
           >
-            <CreditCard size={12} />
+            <CreditCard size={12} className={prijava.paid ? 'text-emerald-700' : 'text-gray-400'} />
             <span>{prijava.paid ? 'Plaćeno' : eventPrice.split(' ')[0]}</span>
           </button>
         )}

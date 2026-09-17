@@ -4,7 +4,7 @@ import { db, auth } from '../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import type { User } from 'firebase/auth';
 import { Link, Navigate } from 'react-router';
-import { ArrowLeft, Users, UserRound, ArrowDown01, Loader2, Plus, Calendar as CalendarIcon, CheckCircle2, List, PlayCircle, StopCircle, Trash2, X, ChevronDown, Pencil, Clock, XCircle, Flame, Heart, UserX, Send, Sparkles, AlertCircle, Mail, Eye, FileText, UserCheck, Circle } from 'lucide-react';
+import { ArrowLeft, Users, UserRound, ArrowDown01, Loader2, Plus, Calendar as CalendarIcon, CheckCircle2, List, PlayCircle, StopCircle, Trash2, X, ChevronDown, Pencil, Clock, XCircle, Flame, Heart, UserX, Send, Sparkles, AlertCircle, Mail, Eye, FileText, UserCheck, Circle, CreditCard } from 'lucide-react';
 import emailjs from '@emailjs/browser';
 import { EventAttendancePdfModal } from '../components/EventAttendancePdfModal';
 import { EventCheckInModal } from '../components/EventCheckInModal';
@@ -887,31 +887,87 @@ export default function AdminDashboard() {
   };
 
   const handleToggleAttendance = async (prijavaId: string, attended: boolean) => {
+    const attendedAtDate = attended ? new Date() : null;
+
+    // Optimistically update local prijave state
+    setPrijave(prev => prev.map(p => {
+      if (p.id === prijavaId) {
+        return { ...p, attended, attendedAt: attendedAtDate };
+      }
+      return p;
+    }));
+
+    // If details modal for this prijava is open, update it as well
+    setSelectedPrijava(prev => {
+      if (prev && prev.id === prijavaId) {
+        return { ...prev, attended, attendedAt: attendedAtDate };
+      }
+      return prev;
+    });
+
     try {
       const attendedAt = attended ? serverTimestamp() : null;
       await updateDoc(doc(db, 'prijave', prijavaId), {
         attended,
         attendedAt
       });
-
-      // Optimistically update local prijave state
+    } catch (err) {
+      console.error("Greška pri promjeni statusa dolaska:", err);
+      // Rollback on error
       setPrijave(prev => prev.map(p => {
         if (p.id === prijavaId) {
-          return { ...p, attended, attendedAt: attended ? new Date() : null };
+          return { ...p, attended: !attended, attendedAt: !attended ? new Date() : null };
         }
         return p;
       }));
-
-      // If details modal for this prijava is open, update it as well
       setSelectedPrijava(prev => {
         if (prev && prev.id === prijavaId) {
-          return { ...prev, attended, attendedAt: attended ? new Date() : null };
+          return { ...prev, attended: !attended, attendedAt: !attended ? new Date() : null };
         }
         return prev;
       });
-    } catch (err) {
-      console.error("Greška pri promjeni statusa dolaska:", err);
       alert("Dogodila se greška prilikom ažuriranja evidencije dolaska.");
+      throw err;
+    }
+  };
+
+  const handleTogglePaid = async (prijavaId: string, paid: boolean) => {
+    // Optimistically update local prijave state
+    setPrijave(prev => prev.map(p => {
+      if (p.id === prijavaId) {
+        return { ...p, paid };
+      }
+      return p;
+    }));
+
+    // If details modal for this prijava is open, update it as well
+    setSelectedPrijava(prev => {
+      if (prev && prev.id === prijavaId) {
+        return { ...prev, paid };
+      }
+      return prev;
+    });
+
+    try {
+      await updateDoc(doc(db, 'prijave', prijavaId), {
+        paid
+      });
+    } catch (err) {
+      console.error("Greška pri promjeni statusa kotizacije:", err);
+      // Rollback on error
+      setPrijave(prev => prev.map(p => {
+        if (p.id === prijavaId) {
+          return { ...p, paid: !paid };
+        }
+        return p;
+      }));
+      setSelectedPrijava(prev => {
+        if (prev && prev.id === prijavaId) {
+          return { ...prev, paid: !paid };
+        }
+        return prev;
+      });
+      alert("Dogodila se greška prilikom ažuriranja statusa kotizacije.");
       throw err;
     }
   };
@@ -2043,6 +2099,14 @@ export default function AdminDashboard() {
                                   </span>
                                 )
                               )}
+                              {prijava.status === 'accepted' && prijava.paid && (
+                                <span
+                                  className="inline-flex items-center gap-1 text-[10px] text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full font-semibold border border-emerald-200"
+                                  title="Kotizacija plaćena"
+                                >
+                                  <CreditCard size={10} /> Plaćeno
+                                </span>
+                              )}
                               {prijava.reminderSentAt && (
                                 <span
                                   className="inline-flex items-center gap-1 text-[10px] text-brand bg-brand/5 px-2 py-0.5 rounded-full font-semibold border border-brand/20"
@@ -2099,49 +2163,89 @@ export default function AdminDashboard() {
               </div>
 
               {selectedPrijava.status === 'accepted' && (
-                <div className={`p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
-                  selectedPrijava.attended
-                    ? 'bg-emerald-50 border-emerald-200'
-                    : 'bg-gray-50 border-gray-200'
-                }`}>
-                  <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                      selectedPrijava.attended ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-200 text-gray-500'
-                    }`}>
-                      <UserCheck size={20} />
+                <div className="space-y-3">
+                  {/* Evidencija dolaska */}
+                  <div className={`p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                    selectedPrijava.attended
+                      ? 'bg-emerald-50 border-emerald-200'
+                      : 'bg-gray-50 border-gray-200'
+                  }`}>
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                        selectedPrijava.attended ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-200 text-gray-500'
+                      }`}>
+                        <UserCheck size={20} />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-bold text-gray-900">
+                          {selectedPrijava.attended ? 'Sudionik je evidentiran na ulazu' : 'Sudionik još nije evidentiran na ulazu'}
+                        </h4>
+                        <p className="text-xs text-gray-500">
+                          {selectedPrijava.attended
+                            ? `Dolazak evidentiran u sustavu (${selectedPrijava.attendedAt?.toDate ? selectedPrijava.attendedAt.toDate().toLocaleTimeString('hr-HR', { hour: '2-digit', minute: '2-digit' }) : 'Danas'}).`
+                            : 'Prijavljen je i odobren. Možete evidentirati njegov dolazak na ulazu.'}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <h4 className="text-sm font-bold text-gray-900">
-                        {selectedPrijava.attended ? 'Sudionik je evidentiran na ulazu' : 'Sudionik još nije evidentiran na ulazu'}
-                      </h4>
-                      <p className="text-xs text-gray-500">
-                        {selectedPrijava.attended
-                          ? `Dolazak evidentiran u sustavu (${selectedPrijava.attendedAt?.toDate ? selectedPrijava.attendedAt.toDate().toLocaleTimeString('hr-HR', { hour: '2-digit', minute: '2-digit' }) : 'Danas'}).`
-                          : 'Prijavljen je i odobren. Možete evidentirati njegov dolazak na ulazu.'}
-                      </p>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleToggleAttendance(selectedPrijava.id, !selectedPrijava.attended)}
+                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs whitespace-nowrap ${
+                        selectedPrijava.attended
+                          ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                          : 'bg-white hover:bg-emerald-50 text-gray-700 border border-gray-300 hover:border-emerald-500'
+                      }`}
+                    >
+                      {selectedPrijava.attended ? (
+                        <>
+                          <CheckCircle2 size={16} />
+                          <span>Prisutan/na (Poništi)</span>
+                        </>
+                      ) : (
+                        <>
+                          <Circle size={16} className="text-gray-400" />
+                          <span>Označi dolazak</span>
+                        </>
+                      )}
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => handleToggleAttendance(selectedPrijava.id, !selectedPrijava.attended)}
-                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs whitespace-nowrap ${
-                      selectedPrijava.attended
-                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                        : 'bg-white hover:bg-emerald-50 text-gray-700 border border-gray-300 hover:border-emerald-500'
-                    }`}
-                  >
-                    {selectedPrijava.attended ? (
-                      <>
-                        <CheckCircle2 size={16} />
-                        <span>Prisutan/na (Poništi)</span>
-                      </>
-                    ) : (
-                      <>
-                        <Circle size={16} className="text-gray-400" />
-                        <span>Označi dolazak</span>
-                      </>
-                    )}
-                  </button>
+
+                  {/* Evidencija kotizacije */}
+                  <div className={`p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                    selectedPrijava.paid
+                      ? 'bg-emerald-50 border-emerald-200'
+                      : 'bg-gray-50 border-gray-200'
+                  }`}>
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                        selectedPrijava.paid ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-200 text-gray-500'
+                      }`}>
+                        <CreditCard size={20} />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-bold text-gray-900">
+                          {selectedPrijava.paid ? 'Kotizacija je plaćena' : 'Kotizacija još nije evidentirana kao plaćena'}
+                        </h4>
+                        <p className="text-xs text-gray-500">
+                          {selectedPrijava.paid
+                            ? 'Uplata kotizacije evidentirana je u sustavu.'
+                            : 'Možete evidentirati uplatu kotizacije za ovog sudionika.'}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleTogglePaid(selectedPrijava.id, !selectedPrijava.paid)}
+                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs whitespace-nowrap ${
+                        selectedPrijava.paid
+                          ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                          : 'bg-white hover:bg-emerald-50 text-gray-700 border border-gray-300 hover:border-emerald-500'
+                      }`}
+                    >
+                      <CreditCard size={16} />
+                      <span>{selectedPrijava.paid ? 'Plaćeno (Poništi)' : 'Označi kao plaćeno'}</span>
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -3303,6 +3407,7 @@ export default function AdminDashboard() {
           event={selectedEvent}
           prijave={prijave}
           onToggleAttendance={handleToggleAttendance}
+          onTogglePaid={handleTogglePaid}
           onOpenPdfModal={() => {
             setCheckInModalOpen(false);
             setAttendanceModalOpen(true);
