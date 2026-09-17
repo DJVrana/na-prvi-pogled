@@ -8,6 +8,7 @@ import { ArrowLeft, Users, UserRound, ArrowDown01, Loader2, Plus, Calendar as Ca
 import emailjs from '@emailjs/browser';
 import { EventAttendancePdfModal } from '../components/EventAttendancePdfModal';
 import { EventCheckInModal } from '../components/EventCheckInModal';
+import { EventMatchesModal } from '../components/EventMatchesModal';
 import { sendMatchEmail } from '../utils/matchingEmails';
 import {
   REMINDER_TEMPLATES,
@@ -139,8 +140,6 @@ export default function AdminDashboard() {
   const [matchesModalOpen, setMatchesModalOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'all' | 'accepted' | 'pending' | 'waiting_list' | 'rejected' | 'cancelled'>('all');
   const [selectedEventForMatches, setSelectedEventForMatches] = useState<EventData | null>(null);
-  const [eventMatchesList, setEventMatchesList] = useState<any[]>([]);
-  const [loadingMatchesModal, setLoadingMatchesModal] = useState(false);
   const [rejectReason, setRejectReason] = useState('Nažalost, zbog ograničenog broja mjesta i velikog interesa, ovaj put ti nismo u mogućnosti potvrditi sudjelovanje. Mjesta su se popunila vrlo brzo ili pokušavamo balansirati omjer sudionika.');
   const [rejectDropdownOpen, setRejectDropdownOpen] = useState(false);
 
@@ -1232,20 +1231,9 @@ export default function AdminDashboard() {
     }
   };
 
-  const openMatchesModal = async (eventItem: EventData) => {
+  const openMatchesModal = (eventItem: EventData) => {
     setSelectedEventForMatches(eventItem);
     setMatchesModalOpen(true);
-    setLoadingMatchesModal(true);
-    try {
-      const q = query(collection(db, 'event_matches'), where('eventId', '==', eventItem.id));
-      const snap = await getDocs(q);
-      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      setEventMatchesList(list);
-    } catch (err) {
-      console.error("Greška pri dohvaćanju matcheva:", err);
-    } finally {
-      setLoadingMatchesModal(false);
-    }
   };
 
   if (authLoading) {
@@ -1845,6 +1833,16 @@ export default function AdminDashboard() {
                   >
                     <FileText size={16} className="text-brand" />
                     <span>Evidencija (PDF)</span>
+                  </button>
+                )}
+                {selectedEvent && (
+                  <button
+                    onClick={() => openMatchesModal(selectedEvent)}
+                    className="bg-white hover:bg-rose-50 text-rose-700 border border-rose-200 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 shadow-xs hover:shadow cursor-pointer"
+                    title="Pregledaj rezultate matchinga, glasove i statistiku"
+                  >
+                    <Heart size={16} className="text-rose-600" />
+                    <span>Matchevi</span>
                   </button>
                 )}
                 <button
@@ -2690,90 +2688,13 @@ export default function AdminDashboard() {
       )}
       {/* Matches Overview Modal */}
       {matchesModalOpen && selectedEventForMatches && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white w-full max-w-2xl rounded-2xl shadow-xl flex flex-col max-h-[85vh]">
-            <div className="flex items-center justify-between p-6 border-b border-gray-100">
-              <div>
-                <h3 className="text-xl font-serif font-bold text-gray-900 flex items-center gap-2">
-                  <Heart size={22} className="text-rose-600 fill-rose-600" />
-                  Ostvareni matchevi: {selectedEventForMatches.title}
-                </h3>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  Popis svih obostranih simpatija zabilježenih na ovom događaju ({eventMatchesList.length})
-                </p>
-              </div>
-              <button
-                onClick={() => setMatchesModalOpen(false)}
-                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-full transition-colors"
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            <div className="p-6 overflow-y-auto space-y-3 flex-1">
-              {loadingMatchesModal ? (
-                <div className="py-12 text-center text-gray-400 flex flex-col items-center justify-center">
-                  <Loader2 size={32} className="animate-spin mb-2" />
-                  <p className="text-sm">Učitavanje matcheva...</p>
-                </div>
-              ) : eventMatchesList.length === 0 ? (
-                <div className="py-12 text-center text-gray-500">
-                  <p className="font-semibold text-base mb-1">Nema zabilježenih matcheva</p>
-                  <p className="text-xs text-gray-400">
-                    {selectedEventForMatches.isMatchingActive 
-                      ? "Matching je aktivan. Čim dvoje sudionika označe jedno drugo, pojavit će se ovdje." 
-                      : "Matching za ovaj događaj trenutno nije aktivan. Pokrenite ga klikom na 'Pokreni Matching'."}
-                  </p>
-                </div>
-              ) : (
-                eventMatchesList.map((m, idx) => (
-                  <div key={m.id || idx} className="p-4 rounded-xl border border-gray-200 bg-gray-50/60 hover:bg-white transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center font-bold text-sm">
-                        #{idx + 1}
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-gray-900">{m.maleName}</span>
-                          <span className="text-rose-500 text-xs font-bold">💞</span>
-                          <span className="font-bold text-gray-900">{m.femaleName}</span>
-                        </div>
-                        <div className="text-xs text-gray-500 mt-0.5 space-y-0.5">
-                          <div>
-                            <span className="font-semibold text-gray-600">M:</span> {m.maleContact || m.maleEmail || 'Nema kontakta'}
-                          </div>
-                          <div>
-                            <span className="font-semibold text-gray-600">Ž:</span> {m.femaleContact || m.femaleEmail || 'Nema kontakta'}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 self-end sm:self-center">
-                      <button
-                        type="button"
-                        onClick={() => handleResendMatchEmail(m)}
-                        className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white hover:bg-rose-50 border border-rose-200 text-rose-700 flex items-center gap-1 cursor-pointer transition-colors"
-                        title="Pošalji obavijest muškom sudioniku na email"
-                      >
-                        <Send size={13} />
-                        <span>Pošalji mail</span>
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-
-            <div className="p-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl flex justify-end">
-              <button
-                onClick={() => setMatchesModalOpen(false)}
-                className="px-5 py-2 text-sm bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium rounded-lg transition-colors cursor-pointer"
-              >
-                Zatvori
-              </button>
-            </div>
-          </div>
-        </div>
+        <EventMatchesModal
+          isOpen={matchesModalOpen}
+          onClose={() => setMatchesModalOpen(false)}
+          event={selectedEventForMatches}
+          prijave={prijave}
+          onResendEmail={handleResendMatchEmail}
+        />
       )}
 
       {/* FINISH LIVE MATCHING & PUBLISH MODAL */}
