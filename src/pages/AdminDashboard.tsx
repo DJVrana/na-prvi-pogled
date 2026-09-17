@@ -4,8 +4,10 @@ import { db, auth } from '../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import type { User } from 'firebase/auth';
 import { Link, Navigate } from 'react-router';
-import { ArrowLeft, Users, UserRound, ArrowDown01, Loader2, Plus, Calendar as CalendarIcon, CheckCircle2, List, PlayCircle, StopCircle, Trash2, X, ChevronDown, Pencil, Clock, XCircle, Flame, Heart, UserX, Send, Sparkles, AlertCircle, Mail, Eye, Check } from 'lucide-react';
+import { ArrowLeft, Users, UserRound, ArrowDown01, Loader2, Plus, Calendar as CalendarIcon, CheckCircle2, List, PlayCircle, StopCircle, Trash2, X, ChevronDown, Pencil, Clock, XCircle, Flame, Heart, UserX, Send, Sparkles, AlertCircle, Mail, Eye, FileText, UserCheck, Circle } from 'lucide-react';
 import emailjs from '@emailjs/browser';
+import { EventAttendancePdfModal } from '../components/EventAttendancePdfModal';
+import { EventCheckInModal } from '../components/EventCheckInModal';
 import { sendMatchEmail } from '../utils/matchingEmails';
 import {
   REMINDER_TEMPLATES,
@@ -28,7 +30,7 @@ export interface CustomField {
   required: boolean;
 }
 
-interface EventData {
+export interface EventData {
   id: string;
   title: string;
   ageGroup: string;
@@ -63,7 +65,7 @@ interface EventData {
   lastReminderCount?: number;
 }
 
-interface Prijava {
+export interface Prijava {
   id: string;
   imePrezime: string;
   email: string;
@@ -76,8 +78,12 @@ interface Prijava {
   customAnswers?: { label: string; value: any }[];
   status?: 'pending' | 'accepted' | 'rejected' | 'cancelled' | 'waiting_list';
   cancelledAt?: any;
+  cancelledBy?: string;
   contactHandle?: string;
   reminderSentAt?: any;
+  attended?: boolean;
+  attendedAt?: any;
+  paid?: boolean;
 }
 
 export default function AdminDashboard() {
@@ -127,6 +133,9 @@ export default function AdminDashboard() {
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [waitlistModalOpen, setWaitlistModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [attendanceModalOpen, setAttendanceModalOpen] = useState(false);
+  const [checkInModalOpen, setCheckInModalOpen] = useState(false);
   const [matchesModalOpen, setMatchesModalOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'all' | 'accepted' | 'pending' | 'waiting_list' | 'rejected' | 'cancelled'>('all');
   const [selectedEventForMatches, setSelectedEventForMatches] = useState<EventData | null>(null);
@@ -573,6 +582,48 @@ export default function AdminDashboard() {
     }
   };
 
+  const confirmCancelPrijava = async () => {
+    if (!selectedPrijava) return;
+    setActionLoading(true);
+    try {
+      const targetEvtId = selectedPrijava.eventId || selectedEventId;
+
+      // 1. Ažuriraj status na 'cancelled' i postavi cancelledBy: 'admin'
+      await updateDoc(doc(db, 'prijave', selectedPrijava.id), {
+        status: 'cancelled',
+        cancelledAt: serverTimestamp(),
+        cancelledBy: 'admin'
+      });
+
+      // 2. Ako je prijava zauzimala mjesto (nije bila rejected, cancelled ili waiting_list), oslobodi mjesto
+      if (selectedPrijava.status !== 'rejected' && selectedPrijava.status !== 'cancelled' && selectedPrijava.status !== 'waiting_list') {
+        if (targetEvtId) {
+          await updateDoc(doc(db, 'events', targetEvtId), {
+            registrationCount: increment(-1)
+          });
+        }
+      }
+
+      // 3. Ažuriraj lokalno stanje (bez slanja ikakvog emaila korisniku)
+      setSelectedPrijava({
+        ...selectedPrijava,
+        status: 'cancelled',
+        cancelledBy: 'admin',
+        cancelledAt: new Date()
+      });
+      setCancelModalOpen(false);
+      if (selectedEventId) {
+        fetchPrijave(selectedEventId);
+      }
+      fetchEvents();
+    } catch (err) {
+      console.error("Greška pri otkazivanju prijave od strane admina:", err);
+      alert("Dogodila se greška prilikom otkazivanja prijave.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const handleAcceptPrijava = async (prijava: Prijava) => {
     setActionLoading(true);
     try {
@@ -832,6 +883,36 @@ export default function AdminDashboard() {
       alert("Dogodila se greška prilikom postavljanja prijave na listu čekanja.");
     } finally {
       setActionLoading(false);
+    }
+  };
+
+  const handleToggleAttendance = async (prijavaId: string, attended: boolean) => {
+    try {
+      const attendedAt = attended ? serverTimestamp() : null;
+      await updateDoc(doc(db, 'prijave', prijavaId), {
+        attended,
+        attendedAt
+      });
+
+      // Optimistically update local prijave state
+      setPrijave(prev => prev.map(p => {
+        if (p.id === prijavaId) {
+          return { ...p, attended, attendedAt: attended ? new Date() : null };
+        }
+        return p;
+      }));
+
+      // If details modal for this prijava is open, update it as well
+      setSelectedPrijava(prev => {
+        if (prev && prev.id === prijavaId) {
+          return { ...prev, attended, attendedAt: attended ? new Date() : null };
+        }
+        return prev;
+      });
+    } catch (err) {
+      console.error("Greška pri promjeni statusa dolaska:", err);
+      alert("Dogodila se greška prilikom ažuriranja evidencije dolaska.");
+      throw err;
     }
   };
 
@@ -1154,6 +1235,7 @@ export default function AdminDashboard() {
   const pendingCount = prijave.filter(p => p.status === 'pending' || !p.status).length;
   const waitingListCount = prijave.filter(p => p.status === 'waiting_list').length;
   const cancelledCount = prijave.filter(p => p.status === 'cancelled').length;
+  const checkedInCount = prijave.filter(p => p.status === 'accepted' && p.attended).length;
 
   const displayedPrijave = prijave.filter(p => {
     if (statusFilter === 'all') return true;
@@ -1525,6 +1607,18 @@ export default function AdminDashboard() {
                           <Heart size={16} className="text-rose-600" />
                           <span className="hidden sm:inline">Matchevi</span>
                         </button>
+                        <button
+                          onClick={() => {
+                            setSelectedEventId(event.id);
+                            fetchPrijave(event.id);
+                            setCheckInModalOpen(true);
+                          }}
+                          className="px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-1.5 transition-colors bg-white hover:bg-emerald-50 border border-emerald-300 text-emerald-700 cursor-pointer"
+                          title="Evidentiraj dolazak sudionika na ulazu za ovaj događaj"
+                        >
+                          <UserCheck size={16} className="text-emerald-600" />
+                          <span className="hidden sm:inline">Check-in</span>
+                        </button>
 
                         {/* Matching Phase Controls */}
                         {event.matchingPhase === 'live' ? (
@@ -1675,6 +1769,26 @@ export default function AdminDashboard() {
                   >
                     <Mail size={16} />
                     <span>Pošalji podsjetnik ({approvedCount})</span>
+                  </button>
+                )}
+                {selectedEvent && (
+                  <button
+                    onClick={() => setCheckInModalOpen(true)}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 shadow-sm hover:shadow cursor-pointer"
+                    title="Evidentiraj dolazak prihvaćenih sudionika na ulazu (Check-in uživo)"
+                  >
+                    <UserCheck size={16} />
+                    <span>Check-in ({checkedInCount}/{approvedCount})</span>
+                  </button>
+                )}
+                {selectedEvent && (
+                  <button
+                    onClick={() => setAttendanceModalOpen(true)}
+                    className="bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 shadow-xs hover:shadow cursor-pointer"
+                    title="Otvori evidencijski list sudionika za ispis i preuzimanje u PDF-u"
+                  >
+                    <FileText size={16} className="text-brand" />
+                    <span>Evidencija (PDF)</span>
                   </button>
                 )}
                 <button
@@ -1912,6 +2026,23 @@ export default function AdminDashboard() {
                                  prijava.status === 'cancelled' ? 'Otkazano' :
                                  'Prihvaćeno'}
                               </span>
+                              {prijava.status === 'accepted' && (
+                                prijava.attended ? (
+                                  <span
+                                    className="inline-flex items-center gap-1 text-[10px] text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full font-bold border border-emerald-300"
+                                    title={`Evidentiran dolazak: ${prijava.attendedAt?.toDate ? prijava.attendedAt.toDate().toLocaleTimeString('hr-HR', { hour: '2-digit', minute: '2-digit' }) : 'U sustavu'}`}
+                                  >
+                                    <CheckCircle2 size={10} /> Prisutan/na
+                                  </span>
+                                ) : (
+                                  <span
+                                    className="inline-flex items-center gap-1 text-[10px] text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full font-medium border border-gray-200"
+                                    title="Sudionik još nije evidentiran na ulazu"
+                                  >
+                                    Nije stigao/la
+                                  </span>
+                                )
+                              )}
                               {prijava.reminderSentAt && (
                                 <span
                                   className="inline-flex items-center gap-1 text-[10px] text-brand bg-brand/5 px-2 py-0.5 rounded-full font-semibold border border-brand/20"
@@ -1967,6 +2098,53 @@ export default function AdminDashboard() {
                 </span>
               </div>
 
+              {selectedPrijava.status === 'accepted' && (
+                <div className={`p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                  selectedPrijava.attended
+                    ? 'bg-emerald-50 border-emerald-200'
+                    : 'bg-gray-50 border-gray-200'
+                }`}>
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                      selectedPrijava.attended ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-200 text-gray-500'
+                    }`}>
+                      <UserCheck size={20} />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-gray-900">
+                        {selectedPrijava.attended ? 'Sudionik je evidentiran na ulazu' : 'Sudionik još nije evidentiran na ulazu'}
+                      </h4>
+                      <p className="text-xs text-gray-500">
+                        {selectedPrijava.attended
+                          ? `Dolazak evidentiran u sustavu (${selectedPrijava.attendedAt?.toDate ? selectedPrijava.attendedAt.toDate().toLocaleTimeString('hr-HR', { hour: '2-digit', minute: '2-digit' }) : 'Danas'}).`
+                          : 'Prijavljen je i odobren. Možete evidentirati njegov dolazak na ulazu.'}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleToggleAttendance(selectedPrijava.id, !selectedPrijava.attended)}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs whitespace-nowrap ${
+                      selectedPrijava.attended
+                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                        : 'bg-white hover:bg-emerald-50 text-gray-700 border border-gray-300 hover:border-emerald-500'
+                    }`}
+                  >
+                    {selectedPrijava.attended ? (
+                      <>
+                        <CheckCircle2 size={16} />
+                        <span>Prisutan/na (Poništi)</span>
+                      </>
+                    ) : (
+                      <>
+                        <Circle size={16} className="text-gray-400" />
+                        <span>Označi dolazak</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+
               {selectedPrijava.status === 'waiting_list' && (
                 <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 flex items-start gap-3">
                   <Clock size={18} className="text-amber-600 mt-0.5 flex-shrink-0" />
@@ -1983,13 +2161,17 @@ export default function AdminDashboard() {
                 <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-600 flex items-start gap-3">
                   <UserX size={18} className="text-gray-500 mt-0.5 flex-shrink-0" />
                   <div>
-                    <span className="font-bold text-gray-800 block text-sm">Korisnik je samostalno otkazao prijavu</span>
+                    <span className="font-bold text-gray-800 block text-sm">
+                      {selectedPrijava.cancelledBy === 'admin' ? 'Prijava je otkazana od strane administratora' : 'Korisnik je samostalno otkazao prijavu'}
+                    </span>
                     <span className="text-gray-500">
-                      Mjesto na događaju je automatski oslobođeno kada se korisnik odjavio sa svog profila.
+                      {selectedPrijava.cancelledBy === 'admin'
+                        ? 'Mjesto na događaju je oslobođeno za druge posjetitelje. Korisniku nije slana e-mail obavijest.'
+                        : 'Mjesto na događaju je automatski oslobođeno kada se korisnik odjavio sa svog profila.'}
                     </span>
                     {selectedPrijava.cancelledAt && (
                       <div className="mt-1 font-medium text-gray-700">
-                        Datum i vrijeme odjave: {selectedPrijava.cancelledAt?.toDate ? selectedPrijava.cancelledAt.toDate().toLocaleString('hr-HR') : 'Nedavno'}
+                        Datum i vrijeme odjave: {selectedPrijava.cancelledAt?.toDate ? selectedPrijava.cancelledAt.toDate().toLocaleString('hr-HR') : (selectedPrijava.cancelledAt instanceof Date ? selectedPrijava.cancelledAt.toLocaleString('hr-HR') : 'Nedavno')}
                       </div>
                     )}
                   </div>
@@ -2077,6 +2259,16 @@ export default function AdminDashboard() {
                     className="px-4 py-2 bg-red-600 text-white hover:bg-red-700 rounded-lg font-medium transition-colors flex items-center gap-2 text-sm disabled:opacity-50 cursor-pointer"
                   >
                     <X size={16} /> Odbij
+                  </button>
+                )}
+                {selectedPrijava.status !== 'cancelled' && (
+                  <button
+                    onClick={() => setCancelModalOpen(true)}
+                    disabled={actionLoading}
+                    className="px-4 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300 rounded-lg font-medium transition-colors flex items-center gap-2 text-sm disabled:opacity-50 cursor-pointer"
+                    title="Otkaži ovu prijavu (oslobađa mjesto na događaju, bez slanja e-maila korisniku)"
+                  >
+                    <UserX size={16} /> Otkaži prijavu
                   </button>
                 )}
                 {selectedPrijava.status === 'accepted' && (
@@ -2333,6 +2525,60 @@ export default function AdminDashboard() {
               >
                 {actionLoading ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
                 Obriši prijavu
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Admin Cancel Confirmation Modal */}
+      {cancelModalOpen && selectedPrijava && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-xl flex flex-col">
+            <div className="flex items-center justify-between p-6 border-b border-gray-100">
+              <h3 className="text-xl font-serif font-bold text-gray-900 flex items-center gap-2">
+                <UserX size={20} className="text-gray-600" />
+                Otkazivanje prijave
+              </h3>
+              <button
+                onClick={() => setCancelModalOpen(false)}
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors cursor-pointer"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-3">
+              <p className="text-gray-700">
+                Jeste li sigurni da želite otkazati prijavu za sudionika <strong className="text-gray-900">{selectedPrijava.imePrezime}</strong>?
+              </p>
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 text-xs text-amber-900 space-y-1.5">
+                <p className="font-semibold flex items-center gap-1.5">
+                  <AlertCircle size={14} className="text-amber-700 flex-shrink-0" />
+                  Važne napomene:
+                </p>
+                <ul className="list-disc list-inside space-y-1 text-amber-800">
+                  <li>Mjesto na događaju bit će <strong>automatski oslobođeno</strong> za nove prijave.</li>
+                  <li>Korisniku se <strong>neće slati e-mail obavijest</strong>.</li>
+                  <li>Prijavu kasnije po potrebi možete ponovno reaktivirati.</li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-gray-100 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
+              <button
+                onClick={() => setCancelModalOpen(false)}
+                className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-200 rounded-lg transition-colors cursor-pointer"
+              >
+                Odustani
+              </button>
+              <button
+                onClick={confirmCancelPrijava}
+                disabled={actionLoading}
+                className="px-6 py-2 bg-gray-800 text-white hover:bg-gray-900 rounded-lg font-medium transition-colors flex items-center gap-2 text-sm disabled:opacity-50 cursor-pointer shadow-xs"
+              >
+                {actionLoading ? <Loader2 size={16} className="animate-spin" /> : <UserX size={16} />}
+                Potvrdi otkazivanje
               </button>
             </div>
           </div>
@@ -3047,6 +3293,31 @@ export default function AdminDashboard() {
             </button>
           </div>
         </div>
+      )}
+
+      {/* MODAL ZA DIGITALNI CHECK-IN SUDIONIKA NA ULAZU */}
+      {selectedEvent && (
+        <EventCheckInModal
+          isOpen={checkInModalOpen}
+          onClose={() => setCheckInModalOpen(false)}
+          event={selectedEvent}
+          prijave={prijave}
+          onToggleAttendance={handleToggleAttendance}
+          onOpenPdfModal={() => {
+            setCheckInModalOpen(false);
+            setAttendanceModalOpen(true);
+          }}
+        />
+      )}
+
+      {/* MODAL ZA PDF EVIDENCIJU POSJETITELJA */}
+      {selectedEvent && (
+        <EventAttendancePdfModal
+          isOpen={attendanceModalOpen}
+          onClose={() => setAttendanceModalOpen(false)}
+          event={selectedEvent}
+          prijave={prijave}
+        />
       )}
     </div>
   );
