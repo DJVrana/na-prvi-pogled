@@ -7,6 +7,7 @@ import {
   doc, 
   getDoc, 
   setDoc, 
+  updateDoc,
   serverTimestamp 
 } from 'firebase/firestore';
 import { db, auth, provider } from '../firebase';
@@ -407,30 +408,65 @@ export default function MatchingPage() {
 
       // 2. CRITICAL LOGIC:
       // During LIVE event phase: Absolutely NO match detection or notification is shown or emailed!
-      // In POST-EVENT phase: Check reciprocal like and celebrate / notify male participant immediately!
-      if (liked && event.matchingPhase === 'post_event') {
-        const reciprocalLikeDocId = `${event.id}_${candidate.uid}_${user.uid}`;
-        const reciprocalSnap = await getDoc(doc(db, 'event_likes', reciprocalLikeDocId));
+      // In POST-EVENT phase (or any active matching after live phase): Check reciprocal like and celebrate / notify male participant immediately!
+      const isPostMatchingPhase = liked && (
+        event.matchingPhase === 'post_event' || 
+        (event.isMatchingActive && event.matchingPhase !== 'live')
+      );
 
-        if (reciprocalSnap.exists() && reciprocalSnap.data()?.liked === true) {
+      if (isPostMatchingPhase) {
+        let hasReciprocalMatch = false;
+
+        // Try direct doc read first
+        if (candidate.uid && user.uid) {
+          try {
+            const reciprocalLikeDocId = `${event.id}_${candidate.uid}_${user.uid}`;
+            const reciprocalSnap = await getDoc(doc(db, 'event_likes', reciprocalLikeDocId));
+            if (reciprocalSnap.exists() && reciprocalSnap.data()?.liked === true) {
+              hasReciprocalMatch = true;
+            }
+          } catch (recipErr) {
+            console.warn("Provjera uzajamnog lajka (direct getDoc):", recipErr);
+          }
+        }
+
+        // Fallback query if direct read didn't confirm yet
+        if (!hasReciprocalMatch && candidate.uid && user.uid) {
+          try {
+            const qRecip = query(
+              collection(db, 'event_likes'),
+              where('eventId', '==', event.id),
+              where('fromUid', '==', candidate.uid),
+              where('toUid', '==', user.uid)
+            );
+            const recipSnap = await getDocs(qRecip);
+            if (!recipSnap.empty && recipSnap.docs[0].data()?.liked === true) {
+              hasReciprocalMatch = true;
+            }
+          } catch (queryErr) {
+            console.warn("Provjera uzajamnog lajka (query fallback):", queryErr);
+          }
+        }
+
+        if (hasReciprocalMatch) {
           // IT'S A POST-EVENT MATCH! 🎉
           const myGender = (myRegistration.spol || '').trim().toUpperCase();
           const amIMale = myGender === 'M' || myGender === 'MUŠKO' || myGender === 'MUSKO';
 
-          const maleUid = amIMale ? user.uid : candidate.uid;
-          const femaleUid = amIMale ? candidate.uid : user.uid;
+          const maleUid = amIMale ? user.uid : (candidate.uid || '');
+          const femaleUid = amIMale ? (candidate.uid || '') : user.uid;
 
-          const maleName = amIMale ? myRegistration.imePrezime : candidate.imePrezime;
-          const femaleName = amIMale ? candidate.imePrezime : myRegistration.imePrezime;
+          const maleName = (amIMale ? myRegistration.imePrezime : candidate.imePrezime) || 'Sudionik';
+          const femaleName = (amIMale ? candidate.imePrezime : myRegistration.imePrezime) || 'Sudionica';
 
-          const maleEmail = amIMale ? (user.email || myRegistration.email) : candidate.email;
-          const femaleEmail = amIMale ? candidate.email : (user.email || myRegistration.email);
+          const maleEmail = ((amIMale ? (user.email || myRegistration.email) : candidate.email) || '').trim();
+          const femaleEmail = ((amIMale ? candidate.email : (user.email || myRegistration.email)) || '').trim();
 
           const myIg = instagram.trim() ? (instagram.trim().startsWith('@') ? instagram.trim() : `@${instagram.trim()}`) : '';
           const myPh = phone.trim();
 
-          const candIg = candidate.contactInstagram || (candidate.contactHandle?.startsWith('@') ? candidate.contactHandle : '');
-          const candPh = candidate.contactPhone || (!candidate.contactHandle?.startsWith('@') && !isNaN(Number(candidate.contactHandle?.replace(/[\s+-]/g, ''))) ? candidate.contactHandle : '');
+          const candIg = candidate.contactInstagram || (candidate.contactHandle?.startsWith('@') ? candidate.contactHandle : '') || '';
+          const candPh = candidate.contactPhone || (!candidate.contactHandle?.startsWith('@') && !isNaN(Number(candidate.contactHandle?.replace(/[\s+-]/g, ''))) ? candidate.contactHandle : '') || '';
 
           const maleInstagram = amIMale ? myIg : candIg;
           const malePhone = amIMale ? myPh : candPh;
@@ -438,12 +474,15 @@ export default function MatchingPage() {
           const femaleInstagram = amIMale ? candIg : myIg;
           const femalePhone = amIMale ? candPh : myPh;
 
-          const maleContact = [maleInstagram, malePhone].filter(Boolean).join(' • ');
-          const femaleContact = [femaleInstagram, femalePhone].filter(Boolean).join(' • ');
+          const maleContact = [maleInstagram, malePhone].filter(Boolean).join(' • ') || maleEmail;
+          const femaleContact = [femaleInstagram, femalePhone].filter(Boolean).join(' • ') || femaleEmail;
 
-          const matchDocId = `${event.id}_${[maleUid, femaleUid].sort().join('_')}`;
+          // Safe pair key using UIDs or prijava IDs as fallback
+          const keyU1 = maleUid || candidate.id;
+          const keyU2 = femaleUid || myRegistration.id;
+          const matchDocId = `${event.id}_${[keyU1, keyU2].sort().join('_')}`;
 
-          // Save match
+          // Save match (safeguarded against undefined values)
           await setDoc(doc(db, 'event_matches', matchDocId), {
             eventId: event.id,
             eventTitle: event.title || 'Speed Dating',
@@ -460,34 +499,42 @@ export default function MatchingPage() {
             femaleInstagram,
             femalePhone,
             femaleContact,
+            emailSent: false,
             createdAt: serverTimestamp()
           }, { merge: true });
 
           const matchResult: MatchResult = {
-            partnerName: candidate.imePrezime,
+            partnerName: candidate.imePrezime || 'Partner',
             partnerInstagram: candIg,
             partnerPhone: candPh,
-            partnerContact: [candIg, candPh].filter(Boolean).join(' • '),
-            partnerEmail: candidate.email,
+            partnerContact: [candIg, candPh].filter(Boolean).join(' • ') || candidate.email || '',
+            partnerEmail: candidate.email || '',
             partnerGender: amIMale ? 'Ž' : 'M'
           };
 
           setNewMatch(matchResult);
           setSessionMatches(prev => [...prev, matchResult]);
 
-          // Send email notification to male participant
-          try {
-            await sendMatchEmail({
-              eventTitle: event.title || 'Speed Dating',
-              maleName,
-              femaleName,
-              maleEmail,
-              femaleEmail,
-              femaleInstagram,
-              femalePhone
-            });
-          } catch (emailErr) {
-            console.error("Greška pri slanju emaila o matchu:", emailErr);
+          // Send email notification to male participant immediately
+          if (maleEmail) {
+            try {
+              await sendMatchEmail({
+                eventTitle: event.title || 'Speed Dating',
+                maleName,
+                femaleName,
+                maleEmail,
+                femaleEmail,
+                femaleInstagram,
+                femalePhone
+              });
+              // Mark emailSent: true on match doc
+              await updateDoc(doc(db, 'event_matches', matchDocId), {
+                emailSent: true,
+                emailSentAt: serverTimestamp()
+              });
+            } catch (emailErr) {
+              console.error("Greška pri slanju emaila o matchu:", emailErr);
+            }
           }
         }
       }

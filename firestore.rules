@@ -55,6 +55,7 @@ service cloud.firestore {
       // Korisnik može pročitati lajk koji je on poslao ili koji je poslan njemu (za provjeru uzajamnog matcha)
       allow read: if isAdmin() || (
         request.auth != null && (
+          resource == null ||
           resource.data.fromUid == request.auth.uid || 
           resource.data.toUid == request.auth.uid
         )
@@ -76,14 +77,14 @@ service cloud.firestore {
           resource.data.femaleUid == request.auth.uid
         )
       );
-      // Kreiranje matcha dopušteno je sudioniku kada se detektira obostrana simpatija
-      allow create: if isAdmin() || (
+      // Kreiranje i ažuriranje matcha dopušteno je sudioniku kada se detektira obostrana simpatija
+      allow create, update: if isAdmin() || (
         request.auth != null && (
           request.resource.data.maleUid == request.auth.uid || 
           request.resource.data.femaleUid == request.auth.uid
         )
       );
-      allow update, delete: if isAdmin();
+      allow delete: if isAdmin();
     }
 
     // Sve ostalo je zaključano

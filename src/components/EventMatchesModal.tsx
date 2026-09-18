@@ -10,11 +10,39 @@ import {
   ArrowRight,
   ThumbsUp,
   ThumbsDown,
-  Clock
+  Clock,
+  CheckCircle2,
+  AlertCircle,
+  Sparkles,
+  Database,
+  Check,
+  Info
 } from 'lucide-react';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { collection, getDocs, query, where, doc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
+import { sendMatchEmail } from '../utils/matchingEmails';
 import type { EventData, Prijava } from '../pages/AdminDashboard';
+
+function parseContactHandle(p?: Prijava | null) {
+  if (!p) return { instagram: '', phone: '' };
+  let ig = p.contactInstagram || '';
+  let ph = p.contactPhone || '';
+
+  if (!ig && !ph && p.contactHandle) {
+    const raw = p.contactHandle.trim();
+    if (raw.startsWith('@')) {
+      ig = raw;
+    } else {
+      const digitsOnly = raw.replace(/[\s+\-()\/]/g, '');
+      if (digitsOnly.length >= 6 && !isNaN(Number(digitsOnly))) {
+        ph = raw;
+      } else {
+        ig = `@${raw}`;
+      }
+    }
+  }
+  return { instagram: ig, phone: ph };
+}
 
 interface EventMatchesModalProps {
   isOpen: boolean;
@@ -50,6 +78,13 @@ export const EventMatchesModal: React.FC<EventMatchesModalProps> = ({
   const [personVotesDirection, setPersonVotesDirection] = useState<'outgoing' | 'incoming'>('outgoing');
   const [allVotesFilter, setAllVotesFilter] = useState<'all' | 'likes' | 'dislikes' | 'mutual'>('all');
   const [allVotesSearchTerm, setAllVotesSearchTerm] = useState('');
+
+  // Actions state: saving matches & sending emails
+  const [batchSaving, setBatchSaving] = useState(false);
+  const [batchProgress, setBatchProgress] = useState<{ current: number; total: number } | null>(null);
+  const [savingMatchId, setSavingMatchId] = useState<string | null>(null);
+  const [resendingMatchId, setResendingMatchId] = useState<string | null>(null);
+  const [actionResultMsg, setActionResultMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // Fetch all matches, likes, and participants
   const fetchData = useCallback(async (isRefresh = false) => {
@@ -148,12 +183,18 @@ export const EventMatchesModal: React.FC<EventMatchesModalProps> = ({
   const positiveLikesSet = useMemo(() => {
     const set = new Set<string>();
     likesList.forEach(l => {
-      if (l.liked === true && l.fromUid && l.toUid) {
-        set.add(`${l.fromUid}->${l.toUid}`);
+      if (l.liked === true) {
+        let fromU = l.fromUid;
+        let toU = l.toUid;
+        if (!fromU && l.fromPrijavaId) fromU = participantLookup.get(undefined, l.fromPrijavaId)?.uid;
+        if (!toU && l.toPrijavaId) toU = participantLookup.get(undefined, l.toPrijavaId)?.uid;
+        if (fromU && toU) {
+          set.add(`${fromU}->${toU}`);
+        }
       }
     });
     return set;
-  }, [likesList]);
+  }, [likesList, participantLookup]);
 
   // Mutual likes check
   const isMutualLike = useCallback((fromUid?: string, toUid?: string) => {
@@ -161,15 +202,28 @@ export const EventMatchesModal: React.FC<EventMatchesModalProps> = ({
     return positiveLikesSet.has(`${fromUid}->${toUid}`) && positiveLikesSet.has(`${toUid}->${fromUid}`);
   }, [positiveLikesSet]);
 
-  // Derived or combined mutual matches (incorporates both published matches and live detected matches)
+  // Map of matches already saved in Firestore event_matches collection
+  const savedMatchesByPair = useMemo(() => {
+    const map = new Map<string, any>();
+    matchesList.forEach(m => {
+      if (m.maleUid && m.femaleUid) {
+        map.set([m.maleUid, m.femaleUid].sort().join('_'), m);
+      }
+      if (m.id) {
+        map.set(m.id, m);
+        const strippedId = m.id.replace(`${event.id}_`, '');
+        map.set(strippedId, m);
+      }
+    });
+    return map;
+  }, [matchesList, event.id]);
+
+  // Derived or combined mutual matches (incorporates both published/saved matches and live/post-event detected matches)
   const allMatches = useMemo(() => {
-    if (matchesList.length > 0) {
-      return matchesList;
-    }
-    // If event_matches is empty, detect mutual likes directly from event_likes!
     const pairs: any[] = [];
     const processedPairs = new Set<string>();
 
+    // 1. Process all mutual likes detected from event_likes
     positiveLikesSet.forEach(key => {
       const [u1, u2] = key.split('->');
       const reciprocalKey = `${u2}->${u1}`;
@@ -179,30 +233,252 @@ export const EventMatchesModal: React.FC<EventMatchesModalProps> = ({
         processedPairs.add(pairId);
         const p1 = participantLookup.get(u1);
         const p2 = participantLookup.get(u2);
-        if (p1 && p2) {
-          const g1 = (p1.spol || '').trim().toUpperCase();
-          const p1IsMale = g1 === 'M' || g1 === 'MUŠKO' || g1 === 'MUSKO';
-          const male = p1IsMale ? p1 : p2;
-          const female = p1IsMale ? p2 : p1;
 
-          pairs.push({
-            id: pairId,
-            eventId: event.id,
-            maleUid: male.uid || u1,
-            femaleUid: female.uid || u2,
-            maleName: male.imePrezime || 'Sudionik',
-            femaleName: female.imePrezime || 'Sudionica',
-            maleEmail: male.email,
-            femaleEmail: female.email,
-            maleContact: male.contactHandle,
-            femaleContact: female.contactHandle,
-            isLiveDetected: true
-          });
-        }
+        const g1 = (p1?.spol || '').trim().toUpperCase();
+        const p1IsMale = g1 === 'M' || g1 === 'MUŠKO' || g1 === 'MUSKO';
+        const male = p1IsMale ? p1 : p2;
+        const female = p1IsMale ? p2 : p1;
+
+        const maleUid = male?.uid || (p1IsMale ? u1 : u2);
+        const femaleUid = female?.uid || (p1IsMale ? u2 : u1);
+
+        const docKey = `${event.id}_${pairId}`;
+        const existingDbMatch = savedMatchesByPair.get(pairId) || 
+                               savedMatchesByPair.get(docKey) || 
+                               savedMatchesByPair.get([maleUid, femaleUid].sort().join('_'));
+
+        const isSavedInDb = !!existingDbMatch;
+
+        const mContacts = parseContactHandle(male);
+        const fContacts = parseContactHandle(female);
+
+        const maleInstagram = mContacts.instagram || existingDbMatch?.maleInstagram || '';
+        const malePhone = mContacts.phone || existingDbMatch?.malePhone || '';
+        const femaleInstagram = fContacts.instagram || existingDbMatch?.femaleInstagram || '';
+        const femalePhone = fContacts.phone || existingDbMatch?.femalePhone || '';
+
+        const maleContact = [maleInstagram, malePhone].filter(Boolean).join(' • ') || male?.email || existingDbMatch?.maleContact || '';
+        const femaleContact = [femaleInstagram, femalePhone].filter(Boolean).join(' • ') || female?.email || existingDbMatch?.femaleContact || '';
+
+        pairs.push({
+          id: existingDbMatch?.id || docKey,
+          dbDocId: existingDbMatch?.id,
+          pairId,
+          eventId: event.id,
+          eventTitle: event.title || 'Speed Dating',
+          eventDate: event.dateStr || '',
+          maleUid,
+          femaleUid,
+          malePrijavaId: male?.id,
+          femalePrijavaId: female?.id,
+          maleName: male?.imePrezime || existingDbMatch?.maleName || 'Sudionik',
+          femaleName: female?.imePrezime || existingDbMatch?.femaleName || 'Sudionica',
+          maleEmail: (male?.email || existingDbMatch?.maleEmail || '').trim(),
+          femaleEmail: (female?.email || existingDbMatch?.femaleEmail || '').trim(),
+          maleInstagram,
+          malePhone,
+          maleContact,
+          femaleInstagram,
+          femalePhone,
+          femaleContact,
+          isSavedInDb,
+          emailSent: existingDbMatch?.emailSent === true,
+          emailSentAt: existingDbMatch?.emailSentAt,
+          createdAt: existingDbMatch?.createdAt
+        });
       }
     });
+
+    // 2. Include any matches that were in matchesList from DB but pair wasn't yet in processedPairs
+    matchesList.forEach(m => {
+      const pairId = m.maleUid && m.femaleUid ? [m.maleUid, m.femaleUid].sort().join('_') : m.id.replace(`${event.id}_`, '');
+      if (!processedPairs.has(pairId)) {
+        processedPairs.add(pairId);
+        pairs.push({
+          ...m,
+          dbDocId: m.id,
+          pairId,
+          isSavedInDb: true,
+          emailSent: m.emailSent === true
+        });
+      }
+    });
+
     return pairs;
-  }, [matchesList, positiveLikesSet, event.id, participantLookup]);
+  }, [positiveLikesSet, savedMatchesByPair, matchesList, event.id, event.title, event.dateStr, participantLookup]);
+
+  // Unsaved and saved match counts
+  const unsavedMatches = useMemo(() => {
+    return allMatches.filter(m => !m.isSavedInDb);
+  }, [allMatches]);
+
+  const savedMatchesCount = useMemo(() => {
+    return allMatches.filter(m => m.isSavedInDb).length;
+  }, [allMatches]);
+
+  // Function to save a single match in event_matches and optionally send email
+  const saveSingleMatch = async (m: any, sendEmail = true) => {
+    const pairKey = m.pairId || [m.maleUid, m.femaleUid].sort().join('_');
+    const matchDocId = m.dbDocId || `${event.id}_${pairKey}`;
+
+    const matchData = {
+      eventId: event.id,
+      eventTitle: m.eventTitle || event.title || 'Speed Dating',
+      eventDate: m.eventDate || event.dateStr || '',
+      maleUid: m.maleUid || '',
+      femaleUid: m.femaleUid || '',
+      maleName: m.maleName || 'Sudionik',
+      femaleName: m.femaleName || 'Sudionica',
+      maleEmail: (m.maleEmail || '').trim(),
+      femaleEmail: (m.femaleEmail || '').trim(),
+      maleInstagram: m.maleInstagram || '',
+      malePhone: m.malePhone || '',
+      maleContact: m.maleContact || '',
+      femaleInstagram: m.femaleInstagram || '',
+      femalePhone: m.femalePhone || '',
+      femaleContact: m.femaleContact || '',
+      emailSent: m.emailSent === true,
+      createdAt: m.createdAt || serverTimestamp(),
+      recordedAt: serverTimestamp()
+    };
+
+    await setDoc(doc(db, 'event_matches', matchDocId), matchData, { merge: true });
+
+    let emailSent = false;
+    if (sendEmail && m.maleEmail) {
+      try {
+        await sendMatchEmail({
+          eventTitle: m.eventTitle || event.title || 'Speed Dating',
+          maleName: m.maleName,
+          femaleName: m.femaleName,
+          maleEmail: m.maleEmail,
+          femaleEmail: m.femaleEmail,
+          femaleInstagram: m.femaleInstagram,
+          femalePhone: m.femalePhone
+        });
+        emailSent = true;
+        await updateDoc(doc(db, 'event_matches', matchDocId), {
+          emailSent: true,
+          emailSentAt: serverTimestamp()
+        });
+      } catch (emailErr) {
+        console.error(`Greška pri slanju emaila na ${m.maleEmail}:`, emailErr);
+      }
+    }
+
+    return { success: true, emailSent };
+  };
+
+  // Mass save all unsaved matches and send emails to male participants
+  const handleSaveAllUnrecordedMatches = async () => {
+    if (unsavedMatches.length === 0) return;
+    setBatchSaving(true);
+    setBatchProgress({ current: 0, total: unsavedMatches.length });
+    setActionResultMsg(null);
+
+    let savedCount = 0;
+    let emailSuccessCount = 0;
+    let emailFailCount = 0;
+
+    try {
+      for (let i = 0; i < unsavedMatches.length; i++) {
+        const match = unsavedMatches[i];
+        setBatchProgress({ current: i + 1, total: unsavedMatches.length });
+        const res = await saveSingleMatch(match, true);
+        if (res.success) savedCount++;
+        if (res.emailSent) emailSuccessCount++;
+        else if (match.maleEmail) emailFailCount++;
+      }
+
+      await fetchData(true);
+      setActionResultMsg({
+        type: 'success',
+        text: `Uspješno zabilježeno ${savedCount} matcheva u bazu! Poslano ${emailSuccessCount} emailova.${emailFailCount > 0 ? ` (${emailFailCount} nije uspjelo poslati)` : ''}`
+      });
+    } catch (err) {
+      console.error("Greška pri masovnom bilježenju matcheva:", err);
+      setActionResultMsg({
+        type: 'error',
+        text: "Došlo je do greške prilikom spremanja matcheva u bazu podataka."
+      });
+    } finally {
+      setBatchSaving(false);
+      setBatchProgress(null);
+    }
+  };
+
+  // Record single match button handler
+  const handleRecordSingle = async (m: any) => {
+    setSavingMatchId(m.id);
+    setActionResultMsg(null);
+    try {
+      const res = await saveSingleMatch(m, true);
+      await fetchData(true);
+      setActionResultMsg({
+        type: 'success',
+        text: `Match za ${m.maleName} & ${m.femaleName} uspješno zabilježen u bazi! ${res.emailSent ? `Email poslan na ${m.maleEmail}.` : ''}`
+      });
+    } catch (err) {
+      console.error("Greška pri bilježenju pojedinačnog matcha:", err);
+      setActionResultMsg({
+        type: 'error',
+        text: "Greška pri bilježenju matcha u bazu."
+      });
+    } finally {
+      setSavingMatchId(null);
+    }
+  };
+
+  // Send or resend match email handler
+  const handleSendMail = async (m: any) => {
+    if (!m.maleEmail) {
+      alert("Nema zabilježene email adrese za muškog sudionika.");
+      return;
+    }
+    setResendingMatchId(m.id);
+    setActionResultMsg(null);
+    try {
+      if (onResendEmail) {
+        await onResendEmail(m);
+      } else {
+        await sendMatchEmail({
+          eventTitle: m.eventTitle || event.title || 'Speed Dating',
+          maleName: m.maleName,
+          femaleName: m.femaleName,
+          maleEmail: m.maleEmail,
+          femaleEmail: m.femaleEmail,
+          femaleInstagram: m.femaleInstagram,
+          femalePhone: m.femalePhone
+        });
+      }
+
+      // Mark emailSent: true on match doc
+      const pairKey = m.pairId || [m.maleUid, m.femaleUid].sort().join('_');
+      const matchDocId = m.dbDocId || m.id || `${event.id}_${pairKey}`;
+      try {
+        await updateDoc(doc(db, 'event_matches', matchDocId), {
+          emailSent: true,
+          emailSentAt: serverTimestamp()
+        });
+      } catch (upErr) {
+        console.warn("Ažuriranje emailSent polja:", upErr);
+      }
+
+      await fetchData(true);
+      setActionResultMsg({
+        type: 'success',
+        text: `Email o matchu uspješno poslan na ${m.maleEmail}!`
+      });
+    } catch (err) {
+      console.error("Greška pri slanju emaila:", err);
+      setActionResultMsg({
+        type: 'error',
+        text: "Došlo je do greške prilikom slanja emaila."
+      });
+    } finally {
+      setResendingMatchId(null);
+    }
+  };
 
   // Voters statistics
   const voterUids = useMemo(() => {
@@ -414,7 +690,12 @@ export const EventMatchesModal: React.FC<EventMatchesModalProps> = ({
                 <span className="text-xs text-rose-600 font-medium">parova</span>
               </div>
               <div className="text-[10px] text-rose-600 font-medium mt-1 truncate">
-                Obostrana simpatija
+                <span className="font-semibold text-emerald-700">{savedMatchesCount} u bazi</span>
+                {unsavedMatches.length > 0 && (
+                  <span className="text-amber-700 font-bold ml-1">
+                    • {unsavedMatches.length} čeka upis
+                  </span>
+                )}
               </div>
             </div>
 
@@ -485,6 +766,11 @@ export const EventMatchesModal: React.FC<EventMatchesModalProps> = ({
               <span className={`px-2 py-0.5 rounded-full text-xs font-black ${activeTab === 'matches' ? 'bg-rose-700 text-white' : 'bg-gray-200 text-gray-700'}`}>
                 {allMatches.length}
               </span>
+              {unsavedMatches.length > 0 && (
+                <span className="bg-amber-400 text-amber-950 px-1.5 py-0.5 rounded-full text-[10px] font-black animate-pulse shadow-2xs" title={`${unsavedMatches.length} nije zabilježeno u bazi`}>
+                  {unsavedMatches.length} novo
+                </span>
+              )}
             </button>
 
             <button
@@ -546,6 +832,73 @@ export const EventMatchesModal: React.FC<EventMatchesModalProps> = ({
             /* TAB 1: OBOSTRANI MATCHVI (DEFAULT)                                        */
             /* ========================================================================= */
             <div className="p-4 sm:p-6 space-y-4 max-w-5xl mx-auto w-full">
+              {/* Action Result Notification Toast */}
+              {actionResultMsg && (
+                <div className={`p-3.5 rounded-xl border flex items-center justify-between gap-3 text-xs sm:text-sm font-semibold transition-all animate-fade-in ${
+                  actionResultMsg.type === 'success'
+                    ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                    : 'bg-rose-50 text-rose-800 border-rose-200'
+                }`}>
+                  <div className="flex items-center gap-2">
+                    {actionResultMsg.type === 'success' ? (
+                      <CheckCircle2 size={18} className="text-emerald-600 flex-shrink-0" />
+                    ) : (
+                      <AlertCircle size={18} className="text-rose-600 flex-shrink-0" />
+                    )}
+                    <span>{actionResultMsg.text}</span>
+                  </div>
+                  <button
+                    onClick={() => setActionResultMsg(null)}
+                    className="p-1 hover:bg-black/5 rounded-lg cursor-pointer text-gray-500"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              )}
+
+              {/* Unsaved Matches Alert & Global Sync Button Banner */}
+              {unsavedMatches.length > 0 && (
+                <div className="bg-gradient-to-r from-amber-500/10 via-rose-500/10 to-orange-500/10 border-2 border-amber-300 p-4 sm:p-5 rounded-2xl shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="flex items-start gap-3.5">
+                    <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center flex-shrink-0 shadow-xs">
+                      <Sparkles size={20} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h4 className="font-extrabold text-gray-900 text-sm sm:text-base">
+                          Pronađeni su novi matchevi koji nisu zabilježeni u bazi!
+                        </h4>
+                        <span className="bg-amber-100 text-amber-900 text-[11px] font-black px-2.5 py-0.5 rounded-full border border-amber-300">
+                          {unsavedMatches.length} nezabilježeno
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-600 mt-1 max-w-xl">
+                        Detektirana su uzajamna sviđanja sudionika koja još nisu spremljena u bazu podataka (<code className="bg-white/80 px-1 rounded text-amber-900 font-mono text-[11px]">event_matches</code>) i muški sudionici još nisu primili obavijest. Klikom na gumb ispod, sustav će ih sve automatski zabilježiti u bazu i poslati e-mailove!
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={batchSaving}
+                    onClick={handleSaveAllUnrecordedMatches}
+                    className="w-full sm:w-auto px-4 py-2.5 bg-gradient-to-r from-rose-600 to-brand hover:from-rose-700 hover:to-brand-dark text-white rounded-xl font-bold text-xs sm:text-sm shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 flex-shrink-0"
+                  >
+                    {batchSaving ? (
+                      <>
+                        <Loader2 size={16} className="animate-spin" />
+                        <span>Spremanje ({batchProgress ? `${batchProgress.current}/${batchProgress.total}` : '...'})</span>
+                      </>
+                    ) : (
+                      <>
+                        <Database size={16} />
+                        <Send size={14} />
+                        <span>Zabilježi sve ({unsavedMatches.length}) & pošalji mailove</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+
               {/* Search Toolbar for Matches */}
               <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-3.5 rounded-xl border border-gray-200 shadow-2xs">
                 <div className="relative w-full sm:w-80">
@@ -568,7 +921,7 @@ export const EventMatchesModal: React.FC<EventMatchesModalProps> = ({
                 </div>
 
                 <div className="text-xs text-gray-500 font-medium">
-                  Prikazano: <strong className="text-gray-900">{filteredMatches.length}</strong> od {allMatches.length} matcheva
+                  Prikazano: <strong className="text-gray-900">{filteredMatches.length}</strong> od {allMatches.length} matcheva • <strong className="text-emerald-700">{savedMatchesCount}</strong> u bazi {unsavedMatches.length > 0 && <span className="text-amber-700 font-bold">({unsavedMatches.length} čeka upis)</span>}
                 </div>
               </div>
 
@@ -603,13 +956,21 @@ export const EventMatchesModal: React.FC<EventMatchesModalProps> = ({
                     return (
                       <div
                         key={m.id || idx}
-                        className="bg-white p-4 sm:p-5 rounded-2xl border border-rose-100 shadow-2xs hover:shadow-md transition-all flex flex-col md:flex-row md:items-center justify-between gap-4"
+                        className={`bg-white p-4 sm:p-5 rounded-2xl border transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 ${
+                          m.isSavedInDb
+                            ? 'border-rose-100 shadow-2xs hover:shadow-md'
+                            : 'border-amber-300 shadow-xs ring-2 ring-amber-400/20 bg-amber-50/20'
+                        }`}
                       >
                         {/* Pair Info Container */}
                         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 flex-1 min-w-0">
                           
                           {/* Number Badge */}
-                          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-rose-500 to-pink-500 text-white flex items-center justify-center font-black text-sm flex-shrink-0 shadow-xs">
+                          <div className={`w-10 h-10 rounded-xl text-white flex items-center justify-center font-black text-sm flex-shrink-0 shadow-xs ${
+                            m.isSavedInDb
+                              ? 'bg-gradient-to-tr from-rose-500 to-pink-500'
+                              : 'bg-gradient-to-tr from-amber-500 to-orange-500'
+                          }`}>
                             #{idx + 1}
                           </div>
 
@@ -653,21 +1014,72 @@ export const EventMatchesModal: React.FC<EventMatchesModalProps> = ({
                         </div>
 
                         {/* Actions / Status */}
-                        <div className="flex items-center gap-2 justify-end flex-shrink-0 border-t md:border-t-0 pt-2 md:pt-0 border-gray-100">
-                          {m.isLiveDetected && (
-                            <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-2.5 py-1 rounded-full border border-amber-200">
-                              Uživo detektirano
+                        <div className="flex items-center gap-2 justify-end flex-wrap flex-shrink-0 border-t md:border-t-0 pt-2 md:pt-0 border-gray-100">
+                          {/* Database Status Badge */}
+                          {m.isSavedInDb ? (
+                            <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold px-2.5 py-1 rounded-full shadow-2xs">
+                              <CheckCircle2 size={13} className="text-emerald-600" />
+                              <span>Zabilježeno u bazi</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-800 border border-amber-300 text-[11px] font-bold px-2.5 py-1 rounded-full shadow-2xs animate-pulse">
+                              <AlertCircle size={13} className="text-amber-600" />
+                              <span>Nije u bazi</span>
                             </span>
                           )}
-                          {onResendEmail && (
+
+                          {/* Email Sent Status Badge */}
+                          {m.emailSent ? (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-200">
+                              <Check size={11} className="text-emerald-600" /> Mail poslan
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-gray-500 bg-gray-100 px-2 py-1 rounded-lg border border-gray-200">
+                              Mail nije poslan
+                            </span>
+                          )}
+
+                          {/* Action Button */}
+                          {!m.isSavedInDb ? (
                             <button
                               type="button"
-                              onClick={() => onResendEmail(m)}
-                              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-white hover:bg-rose-50 border border-rose-200 text-rose-700 flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs"
+                              disabled={savingMatchId === m.id || batchSaving}
+                              onClick={() => handleRecordSingle(m)}
+                              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white flex items-center gap-1.5 cursor-pointer transition-all shadow-xs disabled:opacity-50"
+                              title="Spremi ovaj match u bazu podataka i pošalji email muškom sudioniku"
+                            >
+                              {savingMatchId === m.id ? (
+                                <>
+                                  <Loader2 size={13} className="animate-spin" />
+                                  <span>Spremanje...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Database size={13} />
+                                  <Send size={12} />
+                                  <span>Zabilježi & pošalji mail</span>
+                                </>
+                              )}
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              disabled={resendingMatchId === m.id || batchSaving}
+                              onClick={() => handleSendMail(m)}
+                              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-white hover:bg-rose-50 border border-rose-200 text-rose-700 flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs disabled:opacity-50"
                               title="Pošalji obavijest muškom sudioniku na email"
                             >
-                              <Send size={13} />
-                              <span>Pošalji mail</span>
+                              {resendingMatchId === m.id ? (
+                                <>
+                                  <Loader2 size={13} className="animate-spin" />
+                                  <span>Slanje...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Send size={13} />
+                                  <span>{m.emailSent ? 'Pošalji ponovno mail' : 'Pošalji mail'}</span>
+                                </>
+                              )}
                             </button>
                           )}
                         </div>
