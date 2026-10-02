@@ -35,7 +35,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { FaInstagram, FaGoogle } from 'react-icons/fa';
-import { sendMatchEmail } from '../utils/matchingEmails';
+import { sendMatchEmail, sendFemaleMatchEmail } from '../utils/matchingEmails';
 
 interface EventItem {
   id: string;
@@ -525,15 +525,47 @@ export default function MatchingPage() {
                 maleEmail,
                 femaleEmail,
                 femaleInstagram,
-                femalePhone
+                femalePhone,
+                maleInstagram,
+                malePhone,
+                recipient: 'male'
               });
-              // Mark emailSent: true on match doc
               await updateDoc(doc(db, 'event_matches', matchDocId), {
                 emailSent: true,
+                maleEmailSent: true,
+                maleEmailSentAt: serverTimestamp(),
                 emailSentAt: serverTimestamp()
               });
             } catch (emailErr) {
-              console.error("Greška pri slanju emaila o matchu:", emailErr);
+              console.error("Greška pri slanju emaila o matchu muškom sudioniku:", emailErr);
+            }
+          }
+
+          // Small delay before sending to female participant
+          if (maleEmail && femaleEmail) {
+            await new Promise(res => setTimeout(res, 250));
+          }
+
+          // Send email notification to female participant immediately
+          if (femaleEmail) {
+            try {
+              await sendFemaleMatchEmail({
+                eventTitle: event.title || 'Speed Dating',
+                maleName,
+                femaleName,
+                maleEmail,
+                femaleEmail,
+                femaleInstagram,
+                femalePhone,
+                maleInstagram,
+                malePhone
+              });
+              await updateDoc(doc(db, 'event_matches', matchDocId), {
+                femaleEmailSent: true,
+                femaleEmailSentAt: serverTimestamp()
+              });
+            } catch (emailErr) {
+              console.error("Greška pri slanju emaila o matchu ženskoj sudionici:", emailErr);
             }
           }
         }

@@ -16,11 +16,13 @@ import {
   Sparkles,
   Database,
   Check,
+  CheckCheck,
+  Mail,
   Info
 } from 'lucide-react';
 import { collection, getDocs, query, where, doc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
-import { sendMatchEmail } from '../utils/matchingEmails';
+import { sendMatchEmail, sendFemaleMatchEmail } from '../utils/matchingEmails';
 import type { EventData, Prijava } from '../pages/AdminDashboard';
 
 function parseContactHandle(p?: Prijava | null) {
@@ -49,7 +51,7 @@ interface EventMatchesModalProps {
   onClose: () => void;
   event: EventData;
   prijave?: Prijava[];
-  onResendEmail?: (match: any) => Promise<void>;
+  onResendEmail?: (match: any, target?: 'male' | 'female' | 'both') => Promise<void>;
 }
 
 export const EventMatchesModal: React.FC<EventMatchesModalProps> = ({
@@ -83,8 +85,15 @@ export const EventMatchesModal: React.FC<EventMatchesModalProps> = ({
   const [batchSaving, setBatchSaving] = useState(false);
   const [batchProgress, setBatchProgress] = useState<{ current: number; total: number } | null>(null);
   const [savingMatchId, setSavingMatchId] = useState<string | null>(null);
-  const [resendingMatchId, setResendingMatchId] = useState<string | null>(null);
+  const [resendingMatchKey, setResendingMatchKey] = useState<string | null>(null);
   const [actionResultMsg, setActionResultMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Option to send match email to female participants as well
+  const [sendEmailToWomen, setSendEmailToWomen] = useState(true);
+
+  // Batch sending remaining emails state
+  const [batchSendingRemaining, setBatchSendingRemaining] = useState(false);
+  const [remainingProgress, setRemainingProgress] = useState<{ current: number; total: number; success: number; failed: number } | null>(null);
 
   // Fetch all matches, likes, and participants
   const fetchData = useCallback(async (isRefresh = false) => {
@@ -284,6 +293,10 @@ export const EventMatchesModal: React.FC<EventMatchesModalProps> = ({
           isSavedInDb,
           emailSent: existingDbMatch?.emailSent === true,
           emailSentAt: existingDbMatch?.emailSentAt,
+          maleEmailSent: existingDbMatch?.maleEmailSent ?? (existingDbMatch?.emailSent === true),
+          maleEmailSentAt: existingDbMatch?.maleEmailSentAt || existingDbMatch?.emailSentAt,
+          femaleEmailSent: existingDbMatch?.femaleEmailSent === true,
+          femaleEmailSentAt: existingDbMatch?.femaleEmailSentAt,
           createdAt: existingDbMatch?.createdAt
         });
       }
@@ -294,12 +307,18 @@ export const EventMatchesModal: React.FC<EventMatchesModalProps> = ({
       const pairId = m.maleUid && m.femaleUid ? [m.maleUid, m.femaleUid].sort().join('_') : m.id.replace(`${event.id}_`, '');
       if (!processedPairs.has(pairId)) {
         processedPairs.add(pairId);
+        const maleEmailSent = m.maleEmailSent ?? (m.emailSent === true);
+        const femaleEmailSent = m.femaleEmailSent === true;
         pairs.push({
           ...m,
           dbDocId: m.id,
           pairId,
           isSavedInDb: true,
-          emailSent: m.emailSent === true
+          emailSent: m.emailSent === true,
+          maleEmailSent,
+          maleEmailSentAt: m.maleEmailSentAt || m.emailSentAt,
+          femaleEmailSent,
+          femaleEmailSentAt: m.femaleEmailSentAt
         });
       }
     });
@@ -316,12 +335,26 @@ export const EventMatchesModal: React.FC<EventMatchesModalProps> = ({
     return allMatches.filter(m => m.isSavedInDb).length;
   }, [allMatches]);
 
+  // Remaining unsent match emails calculation
+  const unsentFemaleMatches = useMemo(() => {
+    return allMatches.filter(m => m.femaleEmail && !m.femaleEmailSent);
+  }, [allMatches]);
+
+  const unsentMaleMatches = useMemo(() => {
+    return allMatches.filter(m => m.maleEmail && !m.maleEmailSent && !m.emailSent);
+  }, [allMatches]);
+
+  const totalRemainingUnsentCount = unsentFemaleMatches.length + unsentMaleMatches.length;
+
   // Function to save a single match in event_matches and optionally send email
-  const saveSingleMatch = async (m: any, sendEmail = true) => {
+  const saveSingleMatch = async (m: any, sendEmail = true, sendToFemale = sendEmailToWomen) => {
     const pairKey = m.pairId || [m.maleUid, m.femaleUid].sort().join('_');
     const matchDocId = m.dbDocId || `${event.id}_${pairKey}`;
 
-    const matchData = {
+    let maleEmailSent = m.maleEmailSent ?? (m.emailSent === true);
+    let femaleEmailSent = m.femaleEmailSent === true;
+
+    const matchData: any = {
       eventId: event.id,
       eventTitle: m.eventTitle || event.title || 'Speed Dating',
       eventDate: m.eventDate || event.dateStr || '',
@@ -337,15 +370,17 @@ export const EventMatchesModal: React.FC<EventMatchesModalProps> = ({
       femaleInstagram: m.femaleInstagram || '',
       femalePhone: m.femalePhone || '',
       femaleContact: m.femaleContact || '',
-      emailSent: m.emailSent === true,
       createdAt: m.createdAt || serverTimestamp(),
       recordedAt: serverTimestamp()
     };
 
     await setDoc(doc(db, 'event_matches', matchDocId), matchData, { merge: true });
 
-    let emailSent = false;
-    if (sendEmail && m.maleEmail) {
+    let sentMale = false;
+    let sentFemale = false;
+
+    // Send email to male if requested, address exists, and not already sent
+    if (sendEmail && m.maleEmail && !maleEmailSent) {
       try {
         await sendMatchEmail({
           eventTitle: m.eventTitle || event.title || 'Speed Dating',
@@ -354,22 +389,64 @@ export const EventMatchesModal: React.FC<EventMatchesModalProps> = ({
           maleEmail: m.maleEmail,
           femaleEmail: m.femaleEmail,
           femaleInstagram: m.femaleInstagram,
-          femalePhone: m.femalePhone
+          femalePhone: m.femalePhone,
+          maleInstagram: m.maleInstagram,
+          malePhone: m.malePhone,
+          recipient: 'male'
         });
-        emailSent = true;
-        await updateDoc(doc(db, 'event_matches', matchDocId), {
-          emailSent: true,
-          emailSentAt: serverTimestamp()
-        });
+        sentMale = true;
+        maleEmailSent = true;
       } catch (emailErr) {
         console.error(`Greška pri slanju emaila na ${m.maleEmail}:`, emailErr);
       }
     }
 
-    return { success: true, emailSent };
+    // Small delay between sends if sending to both
+    if (sentMale && sendToFemale && m.femaleEmail && !femaleEmailSent) {
+      await new Promise(res => setTimeout(res, 250));
+    }
+
+    // Send email to female if requested, address exists, and not already sent
+    if (sendToFemale && m.femaleEmail && !femaleEmailSent) {
+      try {
+        await sendFemaleMatchEmail({
+          eventTitle: m.eventTitle || event.title || 'Speed Dating',
+          maleName: m.maleName,
+          femaleName: m.femaleName,
+          maleEmail: m.maleEmail,
+          femaleEmail: m.femaleEmail,
+          femaleInstagram: m.femaleInstagram,
+          femalePhone: m.femalePhone,
+          maleInstagram: m.maleInstagram,
+          malePhone: m.malePhone
+        });
+        sentFemale = true;
+        femaleEmailSent = true;
+      } catch (emailErr) {
+        console.error(`Greška pri slanju emaila ženskoj sudionici na ${m.femaleEmail}:`, emailErr);
+      }
+    }
+
+    const updates: any = {};
+    if (sentMale) {
+      updates.maleEmailSent = true;
+      updates.maleEmailSentAt = serverTimestamp();
+      updates.emailSent = true;
+      updates.emailSentAt = serverTimestamp();
+    }
+    if (sentFemale) {
+      updates.femaleEmailSent = true;
+      updates.femaleEmailSentAt = serverTimestamp();
+    }
+
+    if (Object.keys(updates).length > 0) {
+      await updateDoc(doc(db, 'event_matches', matchDocId), updates);
+    }
+
+    return { success: true, sentMale, sentFemale };
   };
 
-  // Mass save all unsaved matches and send emails to male participants
+  // Mass save all unsaved matches and send emails to participants
   const handleSaveAllUnrecordedMatches = async () => {
     if (unsavedMatches.length === 0) return;
     setBatchSaving(true);
@@ -377,23 +454,27 @@ export const EventMatchesModal: React.FC<EventMatchesModalProps> = ({
     setActionResultMsg(null);
 
     let savedCount = 0;
-    let emailSuccessCount = 0;
-    let emailFailCount = 0;
+    let maleEmailCount = 0;
+    let femaleEmailCount = 0;
 
     try {
       for (let i = 0; i < unsavedMatches.length; i++) {
         const match = unsavedMatches[i];
         setBatchProgress({ current: i + 1, total: unsavedMatches.length });
-        const res = await saveSingleMatch(match, true);
+        const res = await saveSingleMatch(match, true, sendEmailToWomen);
         if (res.success) savedCount++;
-        if (res.emailSent) emailSuccessCount++;
-        else if (match.maleEmail) emailFailCount++;
+        if (res.sentMale) maleEmailCount++;
+        if (res.sentFemale) femaleEmailCount++;
+        if (i < unsavedMatches.length - 1) {
+          await new Promise(res => setTimeout(res, 250));
+        }
       }
 
       await fetchData(true);
+      const totalEmails = maleEmailCount + femaleEmailCount;
       setActionResultMsg({
         type: 'success',
-        text: `Uspješno zabilježeno ${savedCount} matcheva u bazu! Poslano ${emailSuccessCount} emailova.${emailFailCount > 0 ? ` (${emailFailCount} nije uspjelo poslati)` : ''}`
+        text: `Uspješno zabilježeno ${savedCount} matcheva u bazu! Poslano ${totalEmails} e-mailova (${maleEmailCount} muškarcima, ${femaleEmailCount} ženama).`
       });
     } catch (err) {
       console.error("Greška pri masovnom bilježenju matcheva:", err);
@@ -412,11 +493,16 @@ export const EventMatchesModal: React.FC<EventMatchesModalProps> = ({
     setSavingMatchId(m.id);
     setActionResultMsg(null);
     try {
-      const res = await saveSingleMatch(m, true);
+      const res = await saveSingleMatch(m, true, sendEmailToWomen);
       await fetchData(true);
+      const emailsSentDesc = [
+        res.sentMale ? `Email poslan na ${m.maleEmail}` : null,
+        res.sentFemale ? `Email poslan na ${m.femaleEmail}` : null
+      ].filter(Boolean).join(', ');
+
       setActionResultMsg({
         type: 'success',
-        text: `Match za ${m.maleName} & ${m.femaleName} uspješno zabilježen u bazi! ${res.emailSent ? `Email poslan na ${m.maleEmail}.` : ''}`
+        text: `Match za ${m.maleName} & ${m.femaleName} uspješno zabilježen u bazi! ${emailsSentDesc ? `(${emailsSentDesc})` : ''}`
       });
     } catch (err) {
       console.error("Greška pri bilježenju pojedinačnog matcha:", err);
@@ -429,55 +515,206 @@ export const EventMatchesModal: React.FC<EventMatchesModalProps> = ({
     }
   };
 
-  // Send or resend match email handler
-  const handleSendMail = async (m: any) => {
-    if (!m.maleEmail) {
-      alert("Nema zabilježene email adrese za muškog sudionika.");
+  // Mass send emails to remaining participants who haven't received them yet
+  const handleSendRemainingEmails = async (target: 'female' | 'all' = 'all') => {
+    const targetsToProcess: { match: any; recipient: 'male' | 'female' }[] = [];
+
+    if (target === 'all') {
+      unsentMaleMatches.forEach(m => targetsToProcess.push({ match: m, recipient: 'male' }));
+    }
+    if (target === 'all' || target === 'female') {
+      unsentFemaleMatches.forEach(m => targetsToProcess.push({ match: m, recipient: 'female' }));
+    }
+
+    if (targetsToProcess.length === 0) {
+      setActionResultMsg({
+        type: 'success',
+        text: 'Nema preostalih sudionika kojima treba poslati mail!'
+      });
       return;
     }
-    setResendingMatchId(m.id);
-    setActionResultMsg(null);
-    try {
-      if (onResendEmail) {
-        await onResendEmail(m);
-      } else {
-        await sendMatchEmail({
-          eventTitle: m.eventTitle || event.title || 'Speed Dating',
-          maleName: m.maleName,
-          femaleName: m.femaleName,
-          maleEmail: m.maleEmail,
-          femaleEmail: m.femaleEmail,
-          femaleInstagram: m.femaleInstagram,
-          femalePhone: m.femalePhone
-        });
-      }
 
-      // Mark emailSent: true on match doc
-      const pairKey = m.pairId || [m.maleUid, m.femaleUid].sort().join('_');
-      const matchDocId = m.dbDocId || m.id || `${event.id}_${pairKey}`;
-      try {
-        await updateDoc(doc(db, 'event_matches', matchDocId), {
-          emailSent: true,
-          emailSentAt: serverTimestamp()
+    setBatchSendingRemaining(true);
+    setRemainingProgress({ current: 0, total: targetsToProcess.length, success: 0, failed: 0 });
+    setActionResultMsg(null);
+
+    let successCount = 0;
+    let failedCount = 0;
+    let maleSuccess = 0;
+    let femaleSuccess = 0;
+
+    try {
+      for (let i = 0; i < targetsToProcess.length; i++) {
+        const item = targetsToProcess[i];
+        const m = item.match;
+        const pairKey = m.pairId || [m.maleUid, m.femaleUid].sort().join('_');
+        const matchDocId = m.dbDocId || `${event.id}_${pairKey}`;
+
+        // Ensure match is saved in DB first
+        if (!m.isSavedInDb) {
+          await saveSingleMatch(m, false, false);
+        }
+
+        try {
+          if (item.recipient === 'male') {
+            await sendMatchEmail({
+              eventTitle: m.eventTitle || event.title || 'Speed Dating',
+              maleName: m.maleName,
+              femaleName: m.femaleName,
+              maleEmail: m.maleEmail,
+              femaleEmail: m.femaleEmail,
+              femaleInstagram: m.femaleInstagram,
+              femalePhone: m.femalePhone,
+              maleInstagram: m.maleInstagram,
+              malePhone: m.malePhone,
+              recipient: 'male'
+            });
+            await updateDoc(doc(db, 'event_matches', matchDocId), {
+              maleEmailSent: true,
+              maleEmailSentAt: serverTimestamp(),
+              emailSent: true,
+              emailSentAt: serverTimestamp()
+            });
+            maleSuccess++;
+          } else {
+            await sendFemaleMatchEmail({
+              eventTitle: m.eventTitle || event.title || 'Speed Dating',
+              maleName: m.maleName,
+              femaleName: m.femaleName,
+              maleEmail: m.maleEmail,
+              femaleEmail: m.femaleEmail,
+              femaleInstagram: m.femaleInstagram,
+              femalePhone: m.femalePhone,
+              maleInstagram: m.maleInstagram,
+              malePhone: m.malePhone
+            });
+            await updateDoc(doc(db, 'event_matches', matchDocId), {
+              femaleEmailSent: true,
+              femaleEmailSentAt: serverTimestamp()
+            });
+            femaleSuccess++;
+          }
+          successCount++;
+        } catch (err) {
+          console.error(`Greška pri slanju maila za ${item.recipient} (${item.recipient === 'male' ? m.maleEmail : m.femaleEmail}):`, err);
+          failedCount++;
+        }
+
+        setRemainingProgress({
+          current: i + 1,
+          total: targetsToProcess.length,
+          success: successCount,
+          failed: failedCount
         });
-      } catch (upErr) {
-        console.warn("Ažuriranje emailSent polja:", upErr);
+
+        if (i < targetsToProcess.length - 1) {
+          await new Promise(res => setTimeout(res, 250));
+        }
       }
 
       await fetchData(true);
       setActionResultMsg({
         type: 'success',
-        text: `Email o matchu uspješno poslan na ${m.maleEmail}!`
+        text: `Uspješno poslano ${successCount} preostalih e-mailova! (${femaleSuccess} ženama${maleSuccess > 0 ? `, ${maleSuccess} muškarcima` : ''}).${failedCount > 0 ? ` (${failedCount} nije uspjelo)` : ''}`
       });
     } catch (err) {
-      console.error("Greška pri slanju emaila:", err);
+      console.error("Greška pri slanju preostalih mailova:", err);
       setActionResultMsg({
         type: 'error',
-        text: "Došlo je do greške prilikom slanja emaila."
+        text: "Došlo je do greške prilikom slanja e-mailova preostalim sudionicima."
       });
     } finally {
-      setResendingMatchId(null);
+      setBatchSendingRemaining(false);
+      setRemainingProgress(null);
     }
+  };
+
+  // Send or resend match email to a specific recipient (male or female or both)
+  const handleSendSingleTargetEmail = async (m: any, target: 'male' | 'female' | 'both') => {
+    const key = `${m.id}_${target}`;
+    setResendingMatchKey(key);
+    setActionResultMsg(null);
+
+    const pairKey = m.pairId || [m.maleUid, m.femaleUid].sort().join('_');
+    const matchDocId = m.dbDocId || m.id || `${event.id}_${pairKey}`;
+
+    try {
+      if (onResendEmail) {
+        await onResendEmail(m, target);
+      } else {
+        if (target === 'male' || target === 'both') {
+          if (!m.maleEmail) throw new Error("Nema unesene email adrese za muškarca.");
+          await sendMatchEmail({
+            eventTitle: m.eventTitle || event.title || 'Speed Dating',
+            maleName: m.maleName,
+            femaleName: m.femaleName,
+            maleEmail: m.maleEmail,
+            femaleEmail: m.femaleEmail,
+            femaleInstagram: m.femaleInstagram,
+            femalePhone: m.femalePhone,
+            maleInstagram: m.maleInstagram,
+            malePhone: m.malePhone,
+            recipient: 'male'
+          });
+        }
+        if (target === 'both') {
+          await new Promise(res => setTimeout(res, 250));
+        }
+        if (target === 'female' || target === 'both') {
+          if (!m.femaleEmail) throw new Error("Nema unesene email adrese za ženu.");
+          await sendFemaleMatchEmail({
+            eventTitle: m.eventTitle || event.title || 'Speed Dating',
+            maleName: m.maleName,
+            femaleName: m.femaleName,
+            maleEmail: m.maleEmail,
+            femaleEmail: m.femaleEmail,
+            femaleInstagram: m.femaleInstagram,
+            femalePhone: m.femalePhone,
+            maleInstagram: m.maleInstagram,
+            malePhone: m.malePhone
+          });
+        }
+      }
+
+      // Update Firestore flags
+      const updates: any = {};
+      if (target === 'male' || target === 'both') {
+        updates.maleEmailSent = true;
+        updates.maleEmailSentAt = serverTimestamp();
+        updates.emailSent = true;
+        updates.emailSentAt = serverTimestamp();
+      }
+      if (target === 'female' || target === 'both') {
+        updates.femaleEmailSent = true;
+        updates.femaleEmailSentAt = serverTimestamp();
+      }
+
+      try {
+        await updateDoc(doc(db, 'event_matches', matchDocId), updates);
+      } catch (upErr) {
+        console.warn("Ažuriranje email polja u event_matches:", upErr);
+      }
+
+      await fetchData(true);
+      const recipientText = target === 'both' ? 'oboma sudionicima' : target === 'female' ? `ženskoj sudionici (${m.femaleEmail})` : `muškom sudioniku (${m.maleEmail})`;
+      setActionResultMsg({
+        type: 'success',
+        text: `Email o matchu uspješno poslan ${recipientText}!`
+      });
+    } catch (err: any) {
+      console.error(`Greška pri slanju emaila (${target}):`, err);
+      setActionResultMsg({
+        type: 'error',
+        text: err?.message || "Došlo je do greške prilikom slanja emaila."
+      });
+    } finally {
+      setResendingMatchKey(null);
+    }
+  };
+
+  // Legacy single send wrapper for backward compatibility
+  const handleSendMail = async (m: any) => {
+    return handleSendSingleTargetEmail(m, 'male');
   };
 
   // Voters statistics
@@ -873,13 +1110,13 @@ export const EventMatchesModal: React.FC<EventMatchesModalProps> = ({
                         </span>
                       </div>
                       <p className="text-xs text-gray-600 mt-1 max-w-xl">
-                        Detektirana su uzajamna sviđanja sudionika koja još nisu spremljena u bazu podataka (<code className="bg-white/80 px-1 rounded text-amber-900 font-mono text-[11px]">event_matches</code>) i muški sudionici još nisu primili obavijest. Klikom na gumb ispod, sustav će ih sve automatski zabilježiti u bazu i poslati e-mailove!
+                        Detektirana su uzajamna sviđanja sudionika koja još nisu spremljena u bazu podataka (<code className="bg-white/80 px-1 rounded text-amber-900 font-mono text-[11px]">event_matches</code>). Klikom na gumb, sustav će ih sve automatski zabilježiti u bazu i poslati e-mailove {sendEmailToWomen ? 'i muškim i ženskim sudionicima' : 'muškim sudionicima'}!
                       </p>
                     </div>
                   </div>
                   <button
                     type="button"
-                    disabled={batchSaving}
+                    disabled={batchSaving || batchSendingRemaining}
                     onClick={handleSaveAllUnrecordedMatches}
                     className="w-full sm:w-auto px-4 py-2.5 bg-gradient-to-r from-rose-600 to-brand hover:from-rose-700 hover:to-brand-dark text-white rounded-xl font-bold text-xs sm:text-sm shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 flex-shrink-0"
                   >
@@ -899,29 +1136,113 @@ export const EventMatchesModal: React.FC<EventMatchesModalProps> = ({
                 </div>
               )}
 
-              {/* Search Toolbar for Matches */}
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-3.5 rounded-xl border border-gray-200 shadow-2xs">
-                <div className="relative w-full sm:w-80">
-                  <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Pretraži matcheve po imenu ili kontaktu..."
-                    value={matchesSearchTerm}
-                    onChange={e => setMatchesSearchTerm(e.target.value)}
-                    className="w-full pl-9 pr-8 py-2 text-sm bg-gray-50 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-all"
-                  />
-                  {matchesSearchTerm && (
+              {/* Remaining Unsent Emails Alert & Batch Send Banner */}
+              {totalRemainingUnsentCount > 0 && (
+                <div className="bg-gradient-to-r from-pink-500/10 via-rose-500/10 to-indigo-500/10 border-2 border-pink-300 p-4 sm:p-5 rounded-2xl shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="flex items-start gap-3.5">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-pink-500 to-rose-500 text-white flex items-center justify-center flex-shrink-0 shadow-xs">
+                      <Mail size={20} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h4 className="font-extrabold text-gray-900 text-sm sm:text-base">
+                          Preostali e-mailovi za slanje
+                        </h4>
+                        <span className="bg-pink-100 text-pink-900 text-[11px] font-black px-2.5 py-0.5 rounded-full border border-pink-300">
+                          {totalRemainingUnsentCount} preostalo
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-600 mt-1 max-w-xl leading-relaxed">
+                        Pronađeno je <strong className="text-pink-700">{unsentFemaleMatches.length} ženskih</strong>
+                        {unsentMaleMatches.length > 0 ? (
+                          <> i <strong className="text-blue-700">{unsentMaleMatches.length} muških</strong></>
+                        ) : null} sudionika kojima još nije poslana obavijest o ostvarenom matchu. Klikom na gumb možete poslati e-mail preostalima.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap justify-end">
+                    {unsentFemaleMatches.length > 0 && unsentMaleMatches.length > 0 && (
+                      <button
+                        type="button"
+                        disabled={batchSendingRemaining || batchSaving}
+                        onClick={() => handleSendRemainingEmails('female')}
+                        className="px-3.5 py-2.5 bg-white hover:bg-pink-50 text-pink-700 border border-pink-200 rounded-xl font-bold text-xs shadow-2xs transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-60"
+                        title="Pošalji e-mail samo preostalim ženama"
+                      >
+                        <Mail size={14} />
+                        <span>Samo ženama ({unsentFemaleMatches.length})</span>
+                      </button>
+                    )}
                     <button
-                      onClick={() => setMatchesSearchTerm('')}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-0.5"
+                      type="button"
+                      disabled={batchSendingRemaining || batchSaving}
+                      onClick={() => handleSendRemainingEmails('all')}
+                      className="w-full sm:w-auto px-4 py-2.5 bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-700 hover:to-rose-700 text-white rounded-xl font-bold text-xs sm:text-sm shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 flex-shrink-0"
                     >
-                      <X size={14} />
+                      {batchSendingRemaining ? (
+                        <>
+                          <Loader2 size={16} className="animate-spin" />
+                          <span>Slanje ({remainingProgress ? `${remainingProgress.current}/${remainingProgress.total}` : '...'})</span>
+                        </>
+                      ) : (
+                        <>
+                          <Send size={15} />
+                          <span>
+                            {unsentMaleMatches.length === 0
+                              ? `Pošalji preostale mailove ženama (${unsentFemaleMatches.length})`
+                              : `Pošalji mailove svim preostalima (${totalRemainingUnsentCount})`}
+                          </span>
+                        </>
+                      )}
                     </button>
-                  )}
+                  </div>
+                </div>
+              )}
+
+              {/* Search Toolbar for Matches */}
+              <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 bg-white p-3.5 rounded-xl border border-gray-200 shadow-2xs">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1">
+                  <div className="relative w-full sm:w-72">
+                    <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Pretraži matcheve po imenu ili kontaktu..."
+                      value={matchesSearchTerm}
+                      onChange={e => setMatchesSearchTerm(e.target.value)}
+                      className="w-full pl-9 pr-8 py-2 text-sm bg-gray-50 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-all"
+                    />
+                    {matchesSearchTerm && (
+                      <button
+                        onClick={() => setMatchesSearchTerm('')}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-0.5 cursor-pointer"
+                      >
+                        <X size={14} />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Option Toggle: Send email to women as well */}
+                  <label className="inline-flex items-center gap-2 bg-pink-50 hover:bg-pink-100/70 border border-pink-200/80 px-3 py-2 rounded-xl text-xs font-semibold text-pink-900 cursor-pointer transition-colors select-none shadow-2xs">
+                    <input
+                      type="checkbox"
+                      checked={sendEmailToWomen}
+                      onChange={(e) => setSendEmailToWomen(e.target.checked)}
+                      className="w-4 h-4 text-pink-600 rounded border-pink-300 focus:ring-pink-500 cursor-pointer accent-pink-600"
+                    />
+                    <span>Šalji mail i ženama kod novih matcheva</span>
+                  </label>
                 </div>
 
-                <div className="text-xs text-gray-500 font-medium">
-                  Prikazano: <strong className="text-gray-900">{filteredMatches.length}</strong> od {allMatches.length} matcheva • <strong className="text-emerald-700">{savedMatchesCount}</strong> u bazi {unsavedMatches.length > 0 && <span className="text-amber-700 font-bold">({unsavedMatches.length} čeka upis)</span>}
+                <div className="text-xs text-gray-500 font-medium flex items-center gap-1.5 flex-wrap justify-between lg:justify-end">
+                  <span>Prikazano: <strong className="text-gray-900">{filteredMatches.length}</strong> od {allMatches.length} matcheva</span>
+                  <span>•</span>
+                  <span><strong className="text-emerald-700">{savedMatchesCount}</strong> u bazi</span>
+                  {unsavedMatches.length > 0 && <span className="text-amber-700 font-bold">({unsavedMatches.length} čeka upis)</span>}
+                  {totalRemainingUnsentCount > 0 && (
+                    <span className="text-pink-700 font-bold bg-pink-50 px-2 py-0.5 rounded-full border border-pink-200">
+                      {totalRemainingUnsentCount} čeka mail
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -1028,25 +1349,36 @@ export const EventMatchesModal: React.FC<EventMatchesModalProps> = ({
                             </span>
                           )}
 
-                          {/* Email Sent Status Badge */}
-                          {m.emailSent ? (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-200">
-                              <Check size={11} className="text-emerald-600" /> Mail poslan
+                          {/* Male Email Status Badge */}
+                          {(m.maleEmailSent || m.emailSent) ? (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-blue-700 bg-blue-50 px-2 py-1 rounded-lg border border-blue-200" title={`Mail poslan muškom sudioniku (${m.maleEmail || 'bez emaila'})`}>
+                              <Check size={11} className="text-blue-600" /> M: Poslan
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-gray-500 bg-gray-100 px-2 py-1 rounded-lg border border-gray-200">
-                              Mail nije poslan
+                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-gray-500 bg-gray-100 px-2 py-1 rounded-lg border border-gray-200" title="Mail nije poslan muškom sudioniku">
+                              M: Nije poslan
                             </span>
                           )}
 
-                          {/* Action Button */}
+                          {/* Female Email Status Badge */}
+                          {m.femaleEmailSent ? (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-pink-700 bg-pink-50 px-2 py-1 rounded-lg border border-pink-200" title={`Mail poslan ženskoj sudionici (${m.femaleEmail || 'bez emaila'})`}>
+                              <Check size={11} className="text-pink-600" /> Ž: Poslan
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-gray-500 bg-gray-100 px-2 py-1 rounded-lg border border-gray-200" title="Mail nije poslan ženskoj sudionici">
+                              Ž: Nije poslan
+                            </span>
+                          )}
+
+                          {/* Action Buttons */}
                           {!m.isSavedInDb ? (
                             <button
                               type="button"
-                              disabled={savingMatchId === m.id || batchSaving}
+                              disabled={savingMatchId === m.id || batchSaving || batchSendingRemaining}
                               onClick={() => handleRecordSingle(m)}
                               className="px-3.5 py-2 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white flex items-center gap-1.5 cursor-pointer transition-all shadow-xs disabled:opacity-50"
-                              title="Spremi ovaj match u bazu podataka i pošalji email muškom sudioniku"
+                              title={`Spremi ovaj match u bazu podataka i pošalji e-mail ${sendEmailToWomen ? 'i muškom i ženskom sudioniku' : 'muškom sudioniku'}`}
                             >
                               {savingMatchId === m.id ? (
                                 <>
@@ -1057,30 +1389,84 @@ export const EventMatchesModal: React.FC<EventMatchesModalProps> = ({
                                 <>
                                   <Database size={13} />
                                   <Send size={12} />
-                                  <span>Zabilježi & pošalji mail</span>
+                                  <span>Zabilježi & pošalji</span>
                                 </>
                               )}
                             </button>
                           ) : (
-                            <button
-                              type="button"
-                              disabled={resendingMatchId === m.id || batchSaving}
-                              onClick={() => handleSendMail(m)}
-                              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-white hover:bg-rose-50 border border-rose-200 text-rose-700 flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs disabled:opacity-50"
-                              title="Pošalji obavijest muškom sudioniku na email"
-                            >
-                              {resendingMatchId === m.id ? (
-                                <>
-                                  <Loader2 size={13} className="animate-spin" />
-                                  <span>Slanje...</span>
-                                </>
-                              ) : (
-                                <>
-                                  <Send size={13} />
-                                  <span>{m.emailSent ? 'Pošalji ponovno mail' : 'Pošalji mail'}</span>
-                                </>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              {/* If female email was not sent yet, show primary button for her */}
+                              {!m.femaleEmailSent && (
+                                <button
+                                  type="button"
+                                  disabled={resendingMatchKey === `${m.id}_female` || batchSaving || batchSendingRemaining}
+                                  onClick={() => handleSendSingleTargetEmail(m, 'female')}
+                                  className="px-3 py-1.5 rounded-xl text-xs font-bold bg-pink-600 hover:bg-pink-700 text-white flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs disabled:opacity-50"
+                                  title={`Pošalji obavijest ženskoj sudionici (${m.femaleEmail})`}
+                                >
+                                  {resendingMatchKey === `${m.id}_female` ? (
+                                    <Loader2 size={12} className="animate-spin" />
+                                  ) : (
+                                    <Send size={12} />
+                                  )}
+                                  <span>Pošalji ženi</span>
+                                </button>
                               )}
-                            </button>
+
+                              {/* If male email was not sent yet, show primary button for him */}
+                              {!(m.maleEmailSent || m.emailSent) && (
+                                <button
+                                  type="button"
+                                  disabled={resendingMatchKey === `${m.id}_male` || batchSaving || batchSendingRemaining}
+                                  onClick={() => handleSendSingleTargetEmail(m, 'male')}
+                                  className="px-3 py-1.5 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs disabled:opacity-50"
+                                  title={`Pošalji obavijest muškom sudioniku (${m.maleEmail})`}
+                                >
+                                  {resendingMatchKey === `${m.id}_male` ? (
+                                    <Loader2 size={12} className="animate-spin" />
+                                  ) : (
+                                    <Send size={12} />
+                                  )}
+                                  <span>Pošalji muškarcu</span>
+                                </button>
+                              )}
+
+                              {/* Resend button for male if already sent */}
+                              {(m.maleEmailSent || m.emailSent) && (
+                                <button
+                                  type="button"
+                                  disabled={resendingMatchKey === `${m.id}_male` || batchSaving || batchSendingRemaining}
+                                  onClick={() => handleSendSingleTargetEmail(m, 'male')}
+                                  className="px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-white hover:bg-blue-50 border border-blue-200 text-blue-700 flex items-center gap-1 cursor-pointer transition-colors shadow-2xs disabled:opacity-50"
+                                  title={`Ponovno pošalji obavijest muškom sudioniku (${m.maleEmail})`}
+                                >
+                                  {resendingMatchKey === `${m.id}_male` ? (
+                                    <Loader2 size={12} className="animate-spin" />
+                                  ) : (
+                                    <Send size={11} />
+                                  )}
+                                  <span>Ponovi M</span>
+                                </button>
+                              )}
+
+                              {/* Resend button for female if already sent */}
+                              {m.femaleEmailSent && (
+                                <button
+                                  type="button"
+                                  disabled={resendingMatchKey === `${m.id}_female` || batchSaving || batchSendingRemaining}
+                                  onClick={() => handleSendSingleTargetEmail(m, 'female')}
+                                  className="px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-white hover:bg-pink-50 border border-pink-200 text-pink-700 flex items-center gap-1 cursor-pointer transition-colors shadow-2xs disabled:opacity-50"
+                                  title={`Ponovno pošalji obavijest ženskoj sudionici (${m.femaleEmail})`}
+                                >
+                                  {resendingMatchKey === `${m.id}_female` ? (
+                                    <Loader2 size={12} className="animate-spin" />
+                                  ) : (
+                                    <Send size={11} />
+                                  )}
+                                  <span>Ponovi Ž</span>
+                                </button>
+                              )}
+                            </div>
                           )}
                         </div>
                       </div>

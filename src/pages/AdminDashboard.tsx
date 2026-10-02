@@ -9,7 +9,7 @@ import emailjs from '@emailjs/browser';
 import { EventAttendancePdfModal } from '../components/EventAttendancePdfModal';
 import { EventCheckInModal } from '../components/EventCheckInModal';
 import { EventMatchesModal } from '../components/EventMatchesModal';
-import { sendMatchEmail } from '../utils/matchingEmails';
+import { sendMatchEmail, sendFemaleMatchEmail } from '../utils/matchingEmails';
 import {
   REMINDER_TEMPLATES,
   type ReminderTemplate,
@@ -157,6 +157,7 @@ export default function AdminDashboard() {
   const [loadingLiveStats, setLoadingLiveStats] = useState(false);
   const [publishingMatches, setPublishingMatches] = useState(false);
   const [publishSuccessMsg, setPublishSuccessMsg] = useState('');
+  const [sendMatchEmailToWomenInLive, setSendMatchEmailToWomenInLive] = useState(true);
 
   // Reminder modal state
   const [reminderModalOpen, setReminderModalOpen] = useState(false);
@@ -1171,6 +1172,9 @@ export default function AdminDashboard() {
         }, { merge: true });
 
         // Send EmailJS to male participant
+        let sentMale = false;
+        let sentFemale = false;
+
         if (m.maleEmail) {
           try {
             await sendMatchEmail({
@@ -1180,13 +1184,60 @@ export default function AdminDashboard() {
               maleEmail: m.maleEmail,
               femaleEmail: m.femaleEmail,
               femaleInstagram: m.femaleInstagram,
-              femalePhone: m.femalePhone
+              femalePhone: m.femalePhone,
+              maleInstagram: m.maleInstagram,
+              malePhone: m.malePhone,
+              recipient: 'male'
             });
             emailSuccessCount++;
+            sentMale = true;
           } catch (emailErr) {
             console.error(`Greška pri slanju maila za ${m.maleEmail}:`, emailErr);
             emailFailCount++;
           }
+        }
+
+        // Small delay if sending to both
+        if (sentMale && sendMatchEmailToWomenInLive && m.femaleEmail) {
+          await new Promise(res => setTimeout(res, 250));
+        }
+
+        // Send EmailJS to female participant if option enabled
+        if (sendMatchEmailToWomenInLive && m.femaleEmail) {
+          try {
+            await sendFemaleMatchEmail({
+              eventTitle: selectedEventForMatches.title || 'Speed Dating',
+              maleName: m.maleName,
+              femaleName: m.femaleName,
+              maleEmail: m.maleEmail,
+              femaleEmail: m.femaleEmail,
+              femaleInstagram: m.femaleInstagram,
+              femalePhone: m.femalePhone,
+              maleInstagram: m.maleInstagram,
+              malePhone: m.malePhone
+            });
+            emailSuccessCount++;
+            sentFemale = true;
+          } catch (emailErr) {
+            console.error(`Greška pri slanju maila ženskoj sudionici ${m.femaleEmail}:`, emailErr);
+            emailFailCount++;
+          }
+        }
+
+        // Update match doc with sent tracking
+        const matchUpdates: any = {};
+        if (sentMale) {
+          matchUpdates.emailSent = true;
+          matchUpdates.maleEmailSent = true;
+          matchUpdates.maleEmailSentAt = serverTimestamp();
+          matchUpdates.emailSentAt = serverTimestamp();
+        }
+        if (sentFemale) {
+          matchUpdates.femaleEmailSent = true;
+          matchUpdates.femaleEmailSentAt = serverTimestamp();
+        }
+        if (Object.keys(matchUpdates).length > 0) {
+          await updateDoc(doc(db, 'event_matches', matchDocId), matchUpdates);
         }
       }
 
@@ -1209,22 +1260,55 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleResendMatchEmail = async (m: any) => {
-    if (!m.maleEmail) {
-      alert("Nema zabilježene email adrese za muškog sudionika.");
-      return;
-    }
+  const handleResendMatchEmail = async (m: any, target: 'male' | 'female' | 'both' = 'male') => {
     try {
-      await sendMatchEmail({
-        eventTitle: m.eventTitle || selectedEventForMatches?.title || 'Speed Dating',
-        maleName: m.maleName,
-        femaleName: m.femaleName,
-        maleEmail: m.maleEmail,
-        femaleEmail: m.femaleEmail,
-        femaleInstagram: m.femaleInstagram,
-        femalePhone: m.femalePhone
-      });
-      alert(`Email o matchu uspješno poslan na ${m.maleEmail}!`);
+      if (target === 'male' || target === 'both') {
+        if (!m.maleEmail) {
+          alert("Nema zabilježene email adrese za muškog sudionika.");
+          return;
+        }
+        await sendMatchEmail({
+          eventTitle: m.eventTitle || selectedEventForMatches?.title || 'Speed Dating',
+          maleName: m.maleName,
+          femaleName: m.femaleName,
+          maleEmail: m.maleEmail,
+          femaleEmail: m.femaleEmail,
+          femaleInstagram: m.femaleInstagram,
+          femalePhone: m.femalePhone,
+          maleInstagram: m.maleInstagram,
+          malePhone: m.malePhone,
+          recipient: 'male'
+        });
+      }
+
+      if (target === 'both') {
+        await new Promise(res => setTimeout(res, 250));
+      }
+
+      if (target === 'female' || target === 'both') {
+        if (!m.femaleEmail) {
+          alert("Nema zabilježene email adrese za žensku sudionicu.");
+          return;
+        }
+        await sendFemaleMatchEmail({
+          eventTitle: m.eventTitle || selectedEventForMatches?.title || 'Speed Dating',
+          maleName: m.maleName,
+          femaleName: m.femaleName,
+          maleEmail: m.maleEmail,
+          femaleEmail: m.femaleEmail,
+          femaleInstagram: m.femaleInstagram,
+          femalePhone: m.femalePhone,
+          maleInstagram: m.maleInstagram,
+          malePhone: m.malePhone
+        });
+      }
+
+      const msg = target === 'both'
+        ? `Email o matchu uspješno poslan oboma sudionicima!`
+        : target === 'female'
+        ? `Email o matchu uspješno poslan na ${m.femaleEmail}!`
+        : `Email o matchu uspješno poslan na ${m.maleEmail}!`;
+      alert(msg);
     } catch (err) {
       console.error("Greška pri ponovnom slanju emaila:", err);
       alert("Došlo je do greške prilikom slanja emaila.");
@@ -2795,6 +2879,22 @@ export default function AdminDashboard() {
                     </div>
                   </div>
 
+                  {/* Option: send to women */}
+                  <div className="p-3.5 bg-pink-50 border border-pink-200 rounded-2xl flex items-center justify-between gap-3 shadow-2xs">
+                    <label className="flex items-center gap-2.5 cursor-pointer select-none text-xs font-semibold text-pink-900">
+                      <input
+                        type="checkbox"
+                        checked={sendMatchEmailToWomenInLive}
+                        onChange={(e) => setSendMatchEmailToWomenInLive(e.target.checked)}
+                        className="w-4 h-4 text-pink-600 rounded border-pink-300 focus:ring-pink-500 cursor-pointer accent-pink-600"
+                      />
+                      <span>Pošalji e-mail obavijest i ženskim sudionicama</span>
+                    </label>
+                    <span className="text-[11px] text-pink-700 bg-pink-100/70 px-2 py-0.5 rounded-full font-bold">
+                      {sendMatchEmailToWomenInLive ? 'Šalje se i ženama' : 'Samo muškarcima'}
+                    </span>
+                  </div>
+
                   {/* Explanation Banner */}
                   <div className="p-4 rounded-2xl bg-blue-50/80 border border-blue-200/70 text-xs text-blue-900 leading-relaxed space-y-1.5">
                     <div className="font-bold flex items-center gap-1.5 text-blue-800">
@@ -2803,7 +2903,7 @@ export default function AdminDashboard() {
                     </div>
                     <ol className="list-decimal pl-4 space-y-1 text-blue-800/90">
                       <li>Sustav sprema sve obostrane matcheve u bazu podataka.</li>
-                      <li>Muškim sudionicima šalje se EmailJS obavijest s kontakt podacima partnerice.</li>
+                      <li>{sendMatchEmailToWomenInLive ? 'Muškim i ženskim sudionicima' : 'Muškim sudionicima'} šalje se EmailJS obavijest s kontakt podacima partnera.</li>
                       <li>Događaj prelazi u <strong>Post-Event Matching</strong> fazu – sudionici odmah vide svoje matcheve na profilu, a oni koji nisu stigli ocijeniti sve sudionike mogu dovršiti odabir za preostale osobe!</li>
                     </ol>
                   </div>
