@@ -14,6 +14,15 @@ type Pages = {
   "/": {
     params: {};
   };
+  "/eventi": {
+    params: {};
+  };
+  "/blog": {
+    params: {};
+  };
+  "/kontakt": {
+    params: {};
+  };
   "/prijava": {
     params: {};
   };
@@ -31,11 +40,23 @@ type Pages = {
 type RouteFiles = {
   "root.tsx": {
     id: "root";
-    page: "/" | "/prijava" | "/admin" | "/profil" | "/matching";
+    page: "/" | "/eventi" | "/blog" | "/kontakt" | "/prijava" | "/admin" | "/profil" | "/matching";
   };
   "../pages/Home.tsx": {
     id: "../pages/Home";
     page: "/";
+  };
+  "../pages/EventsPage.tsx": {
+    id: "../pages/EventsPage";
+    page: "/eventi";
+  };
+  "../pages/BlogPage.tsx": {
+    id: "../pages/BlogPage";
+    page: "/blog";
+  };
+  "../pages/ContactPage.tsx": {
+    id: "../pages/ContactPage";
+    page: "/kontakt";
   };
   "../pages/FormPage.tsx": {
     id: "../pages/FormPage";
@@ -58,6 +79,9 @@ type RouteFiles = {
 type RouteModules = {
   "root": typeof import("./src/app/root.tsx");
   "../pages/Home": unknown;
+  "../pages/EventsPage": unknown;
+  "../pages/BlogPage": unknown;
+  "../pages/ContactPage": unknown;
   "../pages/FormPage": unknown;
   "../pages/AdminDashboard": unknown;
   "../pages/ProfilePage": unknown;

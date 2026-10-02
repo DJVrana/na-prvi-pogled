@@ -87,6 +87,12 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // KONTAKT PORUKE (Upiti posjetitelja s web stranice)
+    match /contact_messages/{messageId} {
+      allow create: if true;
+      allow read, update, delete: if isAdmin();
+    }
+
     // Sve ostalo je zaključano
     match /{document=**} {
       allow read, write: if false;
