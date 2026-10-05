@@ -1,0 +1,1 @@
+import{r as e}from"./heart-Dy6_V1Ek.js";var t=e(`chevron-down`,[[`path`,{d:`m6 9 6 6 6-6`,key:`qrunsl`}]]);export{t};
