@@ -3,7 +3,7 @@ import { collection, addDoc, serverTimestamp, query, where, getDocs, limit, getD
 import { db, auth, provider } from '../firebase';
 import { onAuthStateChanged, signInWithPopup } from 'firebase/auth';
 import type { User } from 'firebase/auth';
-import { ArrowLeft, CheckCircle2, Heart, LogOut, Loader2, Sparkles, Calendar, Users, UserRound, Clock } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Heart, LogOut, Loader2, Sparkles, Calendar, Users, UserRound, Clock, ChevronDown } from 'lucide-react';
 import { FaGoogle } from 'react-icons/fa';
 import { Link, useSearchParams } from 'react-router';
 
@@ -56,6 +56,9 @@ export default function FormPage() {
   });
 
   const [customAnswers, setCustomAnswers] = useState<Record<string, any>>({});
+  const [acceptedPrivacy, setAcceptedPrivacy] = useState(false);
+  const [acceptedMediaConsent, setAcceptedMediaConsent] = useState(false);
+  const [showMediaDetails, setShowMediaDetails] = useState(false);
 
   const [existingRegistration, setExistingRegistration] = useState<any | null>(null);
   const [checkRegistrationLoading, setCheckRegistrationLoading] = useState(false);
@@ -241,6 +244,16 @@ export default function FormPage() {
       return;
     }
 
+    if (!acceptedPrivacy) {
+      setError("Za slanje prijave potrebno je prihvatiti Pravila privatnosti.");
+      return;
+    }
+
+    if (!acceptedMediaConsent) {
+      setError("Za sudjelovanje na događaju potrebno je prihvatiti suglasnost za snimanje i fotografiranje.");
+      return;
+    }
+
     setLoading(true);
     setError('');
 
@@ -274,6 +287,9 @@ export default function FormPage() {
         eventId: activeEvent.id, // Link to the active event
         customAnswers: customAnswersArray,
         status: 'pending', // Postavljamo početni status
+        acceptedPrivacy: true,
+        acceptedMediaConsent: true,
+        consentedAt: serverTimestamp(),
         createdAt: serverTimestamp()
       });
 
@@ -708,6 +724,75 @@ export default function FormPage() {
                     ))}
                   </div>
                 )}
+
+                {/* Obavezna prihvaćanja: Pravila privatnosti i Suglasnost za snimanje */}
+                <div className="pt-5 border-t border-brand/10 space-y-4">
+                  {/* Checkbox 1: Pravila privatnosti */}
+                  <label className="flex items-start gap-3 cursor-pointer group select-none">
+                    <input
+                      type="checkbox"
+                      id="acceptedPrivacy"
+                      name="acceptedPrivacy"
+                      required
+                      checked={acceptedPrivacy}
+                      onChange={(e) => setAcceptedPrivacy(e.target.checked)}
+                      className="mt-0.5 w-5 h-5 text-brand bg-white/60 border-brand focus:ring-brand accent-brand cursor-pointer rounded shrink-0"
+                    />
+                    <span className="text-xs sm:text-sm text-brand/90 leading-snug group-hover:text-brand transition-colors">
+                      Pročitao/la sam i prihvaćam{' '}
+                      <Link
+                        to="/pravila-privatnosti"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-bold underline text-brand hover:text-brand-light transition-colors"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        Pravila privatnosti
+                      </Link>{' '}
+                      i uvjete prijave na događaj <span className="text-red-500">*</span>
+                    </span>
+                  </label>
+
+                  {/* Checkbox 2: Suglasnost za snimanje i fotografiranje */}
+                  <div>
+                    <label className="flex items-start gap-3 cursor-pointer group select-none">
+                      <input
+                        type="checkbox"
+                        id="acceptedMediaConsent"
+                        name="acceptedMediaConsent"
+                        required
+                        checked={acceptedMediaConsent}
+                        onChange={(e) => setAcceptedMediaConsent(e.target.checked)}
+                        className="mt-0.5 w-5 h-5 text-brand bg-white/60 border-brand focus:ring-brand accent-brand cursor-pointer rounded shrink-0"
+                      />
+                      <span className="text-xs sm:text-sm text-brand/90 leading-snug group-hover:text-brand transition-colors">
+                        Suglasan/na sam sa snimanjem i fotografiranjem na susretu <span className="text-red-500">*</span>
+                      </span>
+                    </label>
+
+                    <div className="pl-8 mt-1">
+                      <button
+                        type="button"
+                        onClick={() => setShowMediaDetails(!showMediaDetails)}
+                        className="text-[11px] sm:text-xs text-brand/70 hover:text-brand font-medium underline inline-flex items-center gap-1 transition-colors cursor-pointer"
+                      >
+                        <span>{showMediaDetails ? 'Sakrij detalje suglasnosti' : 'Pročitaj detalje suglasnosti'}</span>
+                        <ChevronDown size={12} className={`transition-transform duration-200 ${showMediaDetails ? 'rotate-180' : ''}`} />
+                      </button>
+
+                      {showMediaDetails && (
+                        <div className="text-[11px] sm:text-xs text-brand/85 leading-relaxed bg-brand/5 p-3 rounded-xl border border-brand/10 mt-2 max-h-48 overflow-y-auto">
+                          <p className="mb-2">
+                            Dolaskom na susret "Na prvi pogled" dajem suglasnost za sudjelovanje u snimanju/prikazivanja snimki/fotografija i dr. na društvenoj mreži Instagram pod nazivom "Na prvi pogled". Organizator će za potrebe promocije objaviti kratke audiovizualne isječke na društvenim mrežama (story i reel video). Potvrđujem da su sve snimke, fotografije i ostalo napravljene uz moje zanje, od strane organizatora Na prvi pogled., te ovime dajem svoju izričitu suglasnost i pristanak za korištenje mog lika te objavljivanje istih na svim poznatim medijima (poput Interneta, radija, telefonskih mobilnih aparata,itd.) kao i na medijima koji ce tek postati poznati.
+                          </p>
+                          <p>
+                            Suglasan/suglasna sam da ukupna autorska, vlasnička i bilo koja druga materijalna i nematerijalna prava na svim materijalima pripadaju neograničeno i isključivo organizatoru Na prvi pogled.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
 
                 <button
                   type="submit"

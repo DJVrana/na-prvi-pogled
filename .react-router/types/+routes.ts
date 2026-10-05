@@ -26,12 +26,15 @@ type Pages = {
   "/matching": {
     params: {};
   };
+  "/pravila-privatnosti": {
+    params: {};
+  };
 };
 
 type RouteFiles = {
   "root.tsx": {
     id: "root";
-    page: "/" | "/prijava" | "/admin" | "/profil" | "/matching";
+    page: "/" | "/prijava" | "/admin" | "/profil" | "/matching" | "/pravila-privatnosti";
   };
   "../pages/Home.tsx": {
     id: "../pages/Home";
@@ -53,6 +56,10 @@ type RouteFiles = {
     id: "../pages/MatchingPage";
     page: "/matching";
   };
+  "../pages/PrivacyPolicy.tsx": {
+    id: "../pages/PrivacyPolicy";
+    page: "/pravila-privatnosti";
+  };
 };
 
 type RouteModules = {
@@ -62,4 +69,5 @@ type RouteModules = {
   "../pages/AdminDashboard": unknown;
   "../pages/ProfilePage": unknown;
   "../pages/MatchingPage": unknown;
+  "../pages/PrivacyPolicy": unknown;
 };

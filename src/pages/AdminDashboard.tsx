@@ -81,6 +81,10 @@ export interface Prijava {
   cancelledAt?: any;
   cancelledBy?: string;
   contactHandle?: string;
+  contactInstagram?: string;
+  contactPhone?: string;
+  acceptedPrivacy?: boolean;
+  acceptedMediaConsent?: boolean;
   reminderSentAt?: any;
   attended?: boolean;
   attendedAt?: any;
@@ -1026,6 +1030,8 @@ export default function AdminDashboard() {
       prijaveSnap.forEach(docSnap => {
         const data = docSnap.data();
         if (data.uid) {
+          // Samo sudionici koji su bili na eventu (označeni na check-in listi da su došli)
+          if (!data.attended) return;
           prijavaMap.set(data.uid, { id: docSnap.id, ...data });
           const g = (data.spol || '').trim().toUpperCase();
           if (g === 'M' || g === 'MUŠKO' || g === 'MUSKO') {

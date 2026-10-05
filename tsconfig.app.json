@@ -16,11 +16,14 @@
     "noEmit": true,
     "jsx": "react-jsx",
 
+    /* TypeScript virtual roots for React Router 7 typegen */
+    "rootDirs": [".", "./.react-router/types"],
+
     /* Linting */
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src"]
+  "include": ["src", ".react-router/types/**/*"]
 }

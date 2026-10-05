@@ -16,9 +16,7 @@ import {
   Sparkles,
   Database,
   Check,
-  CheckCheck,
-  Mail,
-  Info
+  Mail
 } from 'lucide-react';
 import { collection, getDocs, query, where, doc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -712,10 +710,6 @@ export const EventMatchesModal: React.FC<EventMatchesModalProps> = ({
     }
   };
 
-  // Legacy single send wrapper for backward compatibility
-  const handleSendMail = async (m: any) => {
-    return handleSendSingleTargetEmail(m, 'male');
-  };
 
   // Voters statistics
   const voterUids = useMemo(() => {

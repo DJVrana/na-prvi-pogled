@@ -601,6 +601,32 @@ export default function Home() {
             </div>
           )}
         </div>
+
+        {/* Website Footer */}
+        <footer className="mt-16 pt-8 pb-6 border-t border-brand/15 text-center text-xs text-brand/75 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div>
+            © {new Date().getFullYear()} <strong>Na prvi pogled</strong>. Sva prava pridržana. • Zagreb, Hrvatska
+          </div>
+          <div className="flex items-center gap-5">
+            <Link to="/pravila-privatnosti" className="font-semibold text-brand/80 hover:text-brand underline transition-colors">
+              Pravila privatnosti
+            </Link>
+            <a
+              href="https://instagram.com/na.prvi.pogled"
+              target="_blank"
+              rel="noreferrer"
+              className="hover:text-brand transition-colors inline-flex items-center gap-1 font-medium"
+            >
+              <Instagram size={13} className="text-brand-light" /> Instagram
+            </a>
+            <a
+              href="mailto:naprvipogled.events@gmail.com"
+              className="hover:text-brand transition-colors inline-flex items-center gap-1 font-medium"
+            >
+              <Mail size={13} className="text-brand-light" /> Kontakt
+            </a>
+          </div>
+        </footer>
       </div>
 
     </div>

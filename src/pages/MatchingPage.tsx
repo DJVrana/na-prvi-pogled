@@ -31,11 +31,12 @@ import {
   Layers,
   Edit3,
   CheckCircle2,
-  Lock,
-  RefreshCw
+  Lock
 } from 'lucide-react';
 import { FaInstagram, FaGoogle } from 'react-icons/fa';
 import { sendMatchEmail, sendFemaleMatchEmail } from '../utils/matchingEmails';
+
+const ADMIN_UIDS = ['iKe7lzl7Msf7hd3kWyHC1ysyS3C3', 'Izt37mNGtpY82AKZTbyYsnctoxJ2', 'JRms1cPi2Bc513TOW0WBEFZMzrC3'];
 
 interface EventItem {
   id: string;
@@ -111,7 +112,6 @@ export default function MatchingPage() {
 
   // Match celebration modal (only used in post_event phase)
   const [newMatch, setNewMatch] = useState<MatchResult | null>(null);
-  const [sessionMatches, setSessionMatches] = useState<MatchResult[]>([]);
 
   // 1. Auth Listener
   useEffect(() => {
@@ -211,6 +211,12 @@ export default function MatchingPage() {
           return;
         }
 
+        if (!regData.attended && !ADMIN_UIDS.includes(user.uid)) {
+          setAccessError("Pristup matchingu dostupan je isključivo sudionicima koji su evidentirani na ulazu eventa (check-in lista). Ako si na susretu, javi se organizatoru kako bi zabilježio tvoj dolazak.");
+          setCheckingAccess(false);
+          return;
+        }
+
         setMyRegistration({ id: snap.docs[0].id, ...regData });
 
         let currentIg = '';
@@ -282,11 +288,14 @@ export default function MatchingPage() {
           }
         });
 
-        // 3. Filter candidates of opposite gender
+        // 3. Filter candidates of opposite gender who attended the event (check-in)
         const list: Candidate[] = [];
         allSnap.forEach(d => {
           const data = d.data();
           if (data.uid === user.uid) return; // exclude self
+
+          // U matching sustavu prikazuju se isključivo osobe koje su na eventu odabrane u check-in listi da su došle
+          if (!data.attended) return;
 
           const cGender = (data.spol || '').trim().toUpperCase();
           const cIsFemale = cGender === 'Ž' || cGender === 'Z' || cGender === 'ŽENSKO' || cGender === 'ZENSKO';
@@ -513,7 +522,6 @@ export default function MatchingPage() {
           };
 
           setNewMatch(matchResult);
-          setSessionMatches(prev => [...prev, matchResult]);
 
           // Send email notification to male participant immediately
           if (maleEmail) {
