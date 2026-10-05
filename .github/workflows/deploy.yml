@@ -2,17 +2,17 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: ["main", "master"]
+    branches: ["main", "dev"]
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
 concurrency:
   group: "pages"
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   deploy:
@@ -23,16 +23,43 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: 'npm'
+
       - name: Install dependencies
-        run: npm install
+        run: npm ci || npm install
+
+      - name: Setup Pages
+        id: pages
+        uses: actions/configure-pages@v4
+
+      - name: Determine Base Path
+        id: config
+        run: |
+          RAW_BASE="${{ steps.pages.outputs.base_path }}"
+          if [ "${{ github.ref_name }}" = "dev" ]; then
+            APP_BASE="${RAW_BASE}/dev/"
+            echo "APP_BASE_PATH=${APP_BASE}" >> $GITHUB_ENV
+            echo "TARGET_DIR=dev" >> $GITHUB_ENV
+          else
+            if [ -z "${RAW_BASE}" ]; then
+              APP_BASE="/"
+            else
+              APP_BASE="${RAW_BASE}/"
+            fi
+            echo "APP_BASE_PATH=${APP_BASE}" >> $GITHUB_ENV
+            echo "TARGET_DIR=root" >> $GITHUB_ENV
+          fi
+          echo "Selected base path: $APP_BASE"
+
       - name: Build
         run: npm run build
         env:
+          BASE_PATH: ${{ env.APP_BASE_PATH }}
           VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
           VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
           VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
@@ -40,14 +67,74 @@ jobs:
           VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
           VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
           VITE_EMAILJS_PUBLIC_KEY: ${{ secrets.VITE_EMAILJS_PUBLIC_KEY }}
-      - name: Create 404.html for SPA routing
-        run: cp dist/client/__spa-fallback.html dist/client/404.html
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
-      - name: Upload artifact
+
+      - name: Prepare Built Artifacts
+        run: |
+          # React Router prerender ugnježđuje HTML datoteke unutar dist/client<BASE_PATH> kada je basename postavljen
+          PRERENDER_DIR="dist/client${APP_BASE_PATH%/}"
+          if [ -d "$PRERENDER_DIR" ] && [ "$PRERENDER_DIR" != "dist/client" ]; then
+            echo "Flattening prerendered folder: $PRERENDER_DIR into dist/client"
+            cp -r "$PRERENDER_DIR"/* dist/client/
+            FIRST_SEGMENT=$(echo "${APP_BASE_PATH}" | sed -E 's|^/([^/]+).*|\1|')
+            rm -rf "dist/client/$FIRST_SEGMENT"
+          fi
+
+          # Kreiranje 404.html za SPA fallback rutiranje
+          if [ -f "dist/client/__spa-fallback.html" ]; then
+            cp dist/client/__spa-fallback.html dist/client/404.html
+          elif [ -f "dist/client/index.html" ]; then
+            cp dist/client/index.html dist/client/404.html
+          fi
+
+      - name: Sync with Persistent gh-pages Branch
+        run: |
+          # Kloniraj postojeću gh-pages granu ili inicijaliziraj novu
+          if git ls-remote --exit-code --heads origin gh-pages; then
+            echo "Existing gh-pages branch found. Cloning..."
+            git clone --single-branch --branch gh-pages "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" _site
+          else
+            echo "gh-pages branch does not exist yet. Initializing..."
+            mkdir -p _site
+            cd _site
+            git init
+            git checkout -b gh-pages
+            git remote add origin "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
+            cd ..
+          fi
+
+          # Smjesti build u odgovarajući direktorij bez brisanja drugog okruženja
+          if [ "${{ env.TARGET_DIR }}" = "dev" ]; then
+            echo "Deploying to /dev folder, preserving root production build..."
+            rm -rf _site/dev
+            mkdir -p _site/dev
+            cp -r dist/client/* _site/dev/
+          else
+            echo "Deploying to root, preserving /dev folder if it exists..."
+            find _site -mindepth 1 -maxdepth 1 ! -name '.git' ! -name 'dev' -exec rm -rf {} +
+            cp -r dist/client/* _site/
+          fi
+
+          # .nojekyll osigurava da GitHub Pages poslužuje datoteke bez Jekyll filtriranja
+          touch _site/.nojekyll
+
+          # Commit i push novog stanja natrag na gh-pages granu
+          cd _site
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if ! git diff-index --quiet HEAD --; then
+            git commit -m "Deploy ${{ github.ref_name }} (${{ github.sha }}) [skip ci]"
+            git push origin gh-pages
+          else
+            echo "No changes to commit in gh-pages."
+          fi
+          cd ..
+
+      - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: './dist/client'
+          path: '_site'
+
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4

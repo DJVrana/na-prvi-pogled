@@ -3,6 +3,7 @@ import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "vite";
 
 export default defineConfig({
+  base: process.env.BASE_PATH || "/",
   plugins: [tailwindcss(), reactRouter()],
   optimizeDeps: {
     include: ['jspdf', 'html2canvas-pro'],
