@@ -15,7 +15,7 @@ export default function SEO({
   description,
   canonical = 'https://naprvipogled.com/',
   ogType = 'website',
-  ogImage = '/images/hero-speed-dating.jpg',
+  ogImage = `${import.meta.env.BASE_URL}images/hero-speed-dating.jpg`,
   structuredData,
   keywords = 'speed dating zagreb, upoznavanje zagreb, na prvi pogled, izlasci zagreb, dejtanje zagreb, ljubav, druženje'
 }: SEOProps) {

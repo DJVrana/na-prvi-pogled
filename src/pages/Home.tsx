@@ -235,7 +235,7 @@ export default function Home() {
                 {/* Main Card with Generated High-End Image */}
                 <div className="relative rounded-3xl overflow-hidden shadow-2xl shadow-brand/20 border-4 border-white/80 bg-brand/5 group">
                   <img
-                    src="/images/hero-speed-dating.jpg"
+                    src={`${import.meta.env.BASE_URL}images/hero-speed-dating.jpg`}
                     alt="Atmosfera speed dating večeri u Zagrebu uz svijeće i vino"
                     className="w-full h-[400px] sm:h-[480px] object-cover group-hover:scale-105 transition-transform duration-700"
                   />
@@ -613,7 +613,7 @@ export default function Home() {
               <div className="lg:col-span-6">
                 <div className="rounded-3xl overflow-hidden shadow-xl border-2 border-white/90">
                   <img 
-                    src="/images/event-wine-cheers.jpg" 
+                    src={`${import.meta.env.BASE_URL}images/event-wine-cheers.jpg`} 
                     alt="Sretan par koji razgovara uz čašu vina na speed datingu" 
                     className="w-full h-80 sm:h-96 object-cover"
                   />

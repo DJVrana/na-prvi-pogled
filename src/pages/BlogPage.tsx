@@ -42,7 +42,7 @@ const BLOG_POSTS: BlogPost[] = [
     category: 'Vodiči',
     date: '15. ožujka 2026.',
     readTime: '4 min čitanja',
-    image: '/images/hero-speed-dating.jpg',
+    image: `${import.meta.env.BASE_URL}images/hero-speed-dating.jpg`,
     featured: true,
     excerpt: 'Detaljan vodič kroz večer brzih spojeva: od dolaska i pića dobrodošlice do 5-minutnih razgovora i tajnog označavanja simpatija.',
     content: {
@@ -80,7 +80,7 @@ const BLOG_POSTS: BlogPost[] = [
     category: 'Savjeti za spoj',
     date: '20. ožujka 2026.',
     readTime: '3 min čitanja',
-    image: '/images/event-wine-cheers.jpg',
+    image: `${import.meta.env.BASE_URL}images/event-wine-cheers.jpg`,
     featured: false,
     excerpt: 'Zaboravi dosadno ispitivanje o poslu i vremenu. Pitanja koja odmah stvaraju osmijeh, iskru i opuštenu atmosferu.',
     content: {
@@ -113,7 +113,7 @@ const BLOG_POSTS: BlogPost[] = [
     category: 'Trendovi',
     date: '10. ožujka 2026.',
     readTime: '5 min čitanja',
-    image: '/images/zagreb-dating-vibe.jpg',
+    image: `${import.meta.env.BASE_URL}images/zagreb-dating-vibe.jpg`,
     featured: false,
     excerpt: 'Zašto je dating fatigue na aplikacijama postao stvarnost i zašto govor tijela, miris i glas niti jedan algoritam ne može zamijeniti.',
     content: {
@@ -142,7 +142,7 @@ const BLOG_POSTS: BlogPost[] = [
     category: 'Stil & Priprema',
     date: '05. ožujka 2026.',
     readTime: '3 min čitanja',
-    image: '/images/hero-speed-dating.jpg',
+    image: `${import.meta.env.BASE_URL}images/hero-speed-dating.jpg`,
     featured: false,
     excerpt: 'Savjeti za smart-casual dress code u kojem ćeš se osjećati opušteno, samopouzdano i privlačno bez pretjerivanja.',
     content: {
