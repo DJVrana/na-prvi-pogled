@@ -1,0 +1,1 @@
+import{w as e}from"./firebase-Dv-BHZL6.js";var t=e(`chevron-down`,[[`path`,{d:`m6 9 6 6 6-6`,key:`qrunsl`}]]);export{t};
