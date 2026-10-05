@@ -4,6 +4,6 @@ export default {
   ssr: false,
   appDirectory: "src/app",
   buildDirectory: "dist",
-  basename: "/",
+  basename: process.env.BASE_PATH || "/",
   prerender: ["/", "/prijava", "/admin", "/profil", "/matching"],
 } satisfies Config;
