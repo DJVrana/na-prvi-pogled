@@ -3,7 +3,7 @@ import { collection, addDoc, serverTimestamp, query, where, getDocs, limit, getD
 import { db, auth, provider } from '../firebase';
 import { onAuthStateChanged, signInWithPopup } from 'firebase/auth';
 import type { User } from 'firebase/auth';
-import { ArrowLeft, CheckCircle2, Heart, LogOut, Loader2, Sparkles, Calendar, Users, UserRound, Clock, ChevronDown } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Heart, LogOut, Loader2, Sparkles, Calendar, Users, UserRound, Clock, Clock3, ChevronDown, Mail } from 'lucide-react';
 import { FaGoogle } from 'react-icons/fa';
 import { Link, useSearchParams } from 'react-router';
 
@@ -481,9 +481,43 @@ export default function FormPage() {
               )}
               {existingRegistration.status === 'pending' && (
                 <>
-                  <Loader2 size={48} className="mx-auto text-yellow-500 mb-4 animate-spin-slow" />
-                  <h2 className="text-2xl font-serif font-bold mb-2">Prijava je poslana</h2>
-                  <p className="text-brand/80 mb-8 font-light">Tvoja prijava je uspješno zaprimljena i trenutačno čeka na pregled organizatora. Javit ćemo ti se povratno na email!</p>
+                  <div className="w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-4 text-amber-600 shadow-inner">
+                    <Clock3 size={32} className="animate-pulse" />
+                  </div>
+                  <h2 className="text-2xl sm:text-3xl font-serif font-bold mb-2 text-brand">Prijava je zaprimljena</h2>
+                  <p className="text-brand/80 mb-6 font-light">
+                    Tvoja prijava je uspješno poslana i trenutačno čeka na pregled i odobrenje organizatora.
+                  </p>
+
+                  <div className="bg-gradient-to-br from-amber-50/95 via-orange-50/70 to-rose-50/80 border-2 border-amber-300 rounded-2xl p-5 sm:p-6 mb-8 text-left shadow-sm">
+                    <div className="flex items-center gap-2.5 text-amber-950 font-bold text-base mb-3 border-b border-amber-200/80 pb-2.5">
+                      <Mail size={20} className="text-amber-700 shrink-0" />
+                      <span>Važne napomene o potvrdi prijave</span>
+                    </div>
+
+                    <div className="space-y-3.5 text-xs sm:text-sm text-brand/90 leading-relaxed">
+                      <div className="flex items-start gap-2.5">
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-500/20 text-amber-950 text-xs font-bold mt-0.5">1</span>
+                        <p>
+                          <strong>Obavijest putem e-maila kroz 24 sata:</strong> Organizator će pregledati tvoju prijavu te ćeš povratnu informaciju i potvrdu primiti putem e-maila u roku od <strong>24 sata</strong>.
+                        </p>
+                      </div>
+
+                      <div className="flex items-start gap-2.5">
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-500/20 text-amber-950 text-xs font-bold mt-0.5">2</span>
+                        <p>
+                          <strong>Provjeri neželjenu poštu (Spam / Promocije):</strong> Ako ne vidiš naš e-mail unutar 24 sata, <strong>obavezno provjeri mapu za neželjenu poštu (Spam / Junk)</strong> ili pretinac Promocije da poruka nije slučajno tamo završila. Ako je poruka u neželjenoj pošti, označi je opcijom <em>„Nije neželjena pošta” (Not Spam)</em> kako bi ubuduće primao/la sve važne detalje o događaju.
+                        </p>
+                      </div>
+
+                      <div className="flex items-start gap-2.5">
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-500/20 text-amber-950 text-xs font-bold mt-0.5">3</span>
+                        <p>
+                          <strong>Provjera statusa prijave:</strong> Status svoje prijave možeš u svakom trenutku provjeriti ovdje na ovoj stranici prijave ili putem svog <Link to="/profil" className="text-brand font-bold underline hover:text-brand-light">korisničkog profila</Link>.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 </>
               )}
               {existingRegistration.status === 'waiting_list' && (
@@ -783,10 +817,10 @@ export default function FormPage() {
                       {showMediaDetails && (
                         <div className="text-[11px] sm:text-xs text-brand/85 leading-relaxed bg-brand/5 p-3 rounded-xl border border-brand/10 mt-2 max-h-48 overflow-y-auto">
                           <p className="mb-2">
-                            Dolaskom na susret "Na prvi pogled" dajem suglasnost za sudjelovanje u snimanju/prikazivanja snimki/fotografija i dr. na društvenoj mreži Instagram pod nazivom "Na prvi pogled". Organizator će za potrebe promocije objaviti kratke audiovizualne isječke na društvenim mrežama (story i reel video). Potvrđujem da su sve snimke, fotografije i ostalo napravljene uz moje zanje, od strane organizatora Na prvi pogled., te ovime dajem svoju izričitu suglasnost i pristanak za korištenje mog lika te objavljivanje istih na svim poznatim medijima (poput Interneta, radija, telefonskih mobilnih aparata,itd.) kao i na medijima koji ce tek postati poznati.
+                            Dolaskom na susret „Na prvi pogled” dajem suglasnost za sudjelovanje u snimanju te za prikazivanje snimki, fotografija i drugih materijala na društvenoj mreži Instagram na profilu „Na prvi pogled”. Organizator će u svrhu promocije objaviti kratke audiovizualne isječke na društvenim mrežama (story i reel videozapise). Potvrđujem da su sve snimke, fotografije i ostali materijali izrađeni uz moje znanje od strane organizatora „Na prvi pogled” te ovime dajem svoju izričitu suglasnost i pristanak za korištenje svojega lika i njihovo objavljivanje u svim poznatim medijima (poput interneta, radija, mobilnih uređaja itd.), kao i u medijima koji će tek postati poznati.
                           </p>
                           <p>
-                            Suglasan/suglasna sam da ukupna autorska, vlasnička i bilo koja druga materijalna i nematerijalna prava na svim materijalima pripadaju neograničeno i isključivo organizatoru Na prvi pogled.
+                            Suglasan/suglasna sam da sva autorska, vlasnička te bilo koja druga materijalna i nematerijalna prava na svim materijalima neograničeno i isključivo pripadaju organizatoru „Na prvi pogled”.
                           </p>
                         </div>
                       )}

@@ -642,6 +642,15 @@ export default function ProfilePage() {
                           </div>
                         )}
 
+                        {status === 'pending' && (
+                          <div className="mt-2 text-xs text-amber-900 bg-amber-50/90 border border-amber-200/80 rounded-xl p-3 max-w-xl flex items-start gap-2">
+                            <Clock3 size={14} className="text-amber-600 mt-0.5 shrink-0" />
+                            <span>
+                              Prijava je zaprimljena i čeka na pregled organizatora. Obavijest o potvrdi primit ćeš na e-mail unutar <strong>24 sata</strong>. Ako je ne vidiš u pristigloj pošti, svakako provjeri mapu <strong>Spam / Neželjena pošta</strong> te označi poruku da nije spam.
+                            </span>
+                          </div>
+                        )}
+
                         {status === 'waiting_list' && (
                           <div className="mt-2 text-xs text-amber-800 bg-amber-50/80 border border-amber-200/80 rounded-xl p-3 max-w-xl flex items-start gap-2">
                             <Clock3 size={14} className="text-amber-600 mt-0.5 flex-shrink-0" />
@@ -654,6 +663,15 @@ export default function ProfilePage() {
 
                       {/* Action buttons */}
                       <div className="flex flex-wrap items-center gap-2 pt-2 md:pt-0">
+                        {/* Link to Form Page for this event */}
+                        <Link
+                          to={`/prijava?eventId=${reg.eventId}`}
+                          className="inline-flex items-center gap-1.5 bg-white/80 hover:bg-brand/5 text-brand border border-brand/20 px-3.5 py-2 rounded-2xl text-xs font-semibold transition-all shadow-xs"
+                          title="Pogledaj stranicu prijave za ovaj događaj"
+                        >
+                          <ExternalLink size={13} /> Stranica prijave
+                        </Link>
+
                         {/* Matching Button if enabled and user was accepted */}
                         {isMatchingActive && status === 'accepted' && (
                           <Link
