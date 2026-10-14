@@ -91,6 +91,64 @@ export interface Prijava {
   paid?: boolean;
 }
 
+function buildWaitlistHtml(
+  prijava: { imePrezime: string; spol?: string; email: string },
+  activeEvent: EventData | undefined,
+  waitlistReason: string
+): string {
+  const isMale = prijava.spol === 'M' || prijava.spol?.toLowerCase() === 'muško';
+  const firstName = prijava.imePrezime ? prijava.imePrezime.trim().split(' ')[0] : 'Korisniče';
+  const eventTitle = activeEvent?.title || 'Speed Dating';
+
+  return `
+<div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333333; line-height: 1.6; padding: 20px; background-color: #ffffff; border: 1px solid #f0f0f0; border-radius: 12px;">
+  <div style="text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid #eeeeee;">
+    <h1 style="color: #E85D75; margin: 0; font-size: 26px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">Na prvi pogled</h1>
+    <p style="color: #888888; font-size: 14px; margin-top: 5px;">Obavijest o prijavi – Lista čekanja</p>
+  </div>
+  
+  <p style="font-size: 16px;">${isMale ? 'Dragi' : 'Draga'} <strong>${firstName}</strong>,</p>
+  
+  <p style="font-size: 16px;">Hvala ti na interesu i prijavi za događaj <strong>${eventTitle}</strong>!</p>
+  
+  <div style="background-color: #FFFBEB; border-left: 4px solid #F59E0B; padding: 16px 20px; margin: 25px 0; border-radius: 0 8px 8px 0;">
+    <p style="margin: 0; font-size: 16px; color: #B45309; font-weight: bold;">Status prijave: Na listi čekanja ⏳</p>
+  </div>
+  
+  <div style="background-color: #f9f9f9; border: 1px dashed #dddddd; padding: 18px; margin: 25px 0; border-radius: 8px;">
+    <p style="margin: 0; font-size: 15px; color: #444444; white-space: pre-wrap;">${waitlistReason}</p>
+  </div>
+  
+  <p style="font-size: 15px; color: #555555; line-height: 1.6;">
+    Tvoje mjesto još nije potvrđeno. Pratimo stanje prijava te ćemo te kontaktirati <strong>isključivo ako se oslobodi mjesto i tvoja prijava bude prihvaćena</strong>. Ako ti se povratno ne javimo s potvrdom, to znači da ovaj put nažalost nismo u mogućnosti osigurati tvoje sudjelovanje na događaju.
+  </p>
+  <p style="font-size: 14px; color: #777777; line-height: 1.5;">
+    Ako u međuvremenu znaš da nećeš moći doći, molimo te da se odjaviš putem svog korisničkog profila.
+  </p>
+
+  ${activeEvent ? `
+  <div style="margin: 25px 0; padding: 15px 0; border-top: 1px solid #eeeeee; border-bottom: 1px solid #eeeeee;">
+    <h4 style="margin-top: 0; color: #555555; font-size: 15px; text-transform: uppercase;">Detalji događaja:</h4>
+    <table style="width: 100%; font-size: 14px; border-collapse: collapse; color: #555555;">
+      ${activeEvent.dateStr ? `<tr><td style="padding: 6px 0; width: 30px;">📅</td><td><strong>${activeEvent.dateStr}</strong></td></tr>` : ''}
+      ${activeEvent.timeStr ? `<tr><td style="padding: 6px 0;">🕖</td><td><strong>${activeEvent.timeStr}</strong></td></tr>` : ''}
+      ${activeEvent.location ? `<tr><td style="padding: 6px 0;">📍</td><td><strong>${activeEvent.location}</strong></td></tr>` : ''}
+      ${activeEvent.ageGroup ? `<tr><td style="padding: 6px 0;">🎂</td><td>Dobna skupina: <strong>${activeEvent.ageGroup}</strong></td></tr>` : ''}
+      ${activeEvent.price ? `<tr><td style="padding: 6px 0;">💳</td><td>Kotizacija: <strong>${activeEvent.price}</strong></td></tr>` : ''}
+    </table>
+  </div>
+  ` : ''}
+  
+  <div style="margin-top: 30px; border-top: 1px solid #eeeeee; padding-top: 20px;">
+    <p style="font-size: 15px; margin: 0; color: #666666;">
+      Srdačan pozdrav,<br>
+      <strong style="color: #333333; font-size: 16px;">Ivan</strong><br/>Na prvi pogled<br/>Upoznaj nekoga, kao nekad.
+    </p>
+  </div>
+</div>
+  `;
+}
+
 export default function AdminDashboard() {
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -215,6 +273,21 @@ export default function AdminDashboard() {
   const [waitlistReason, setWaitlistReason] = useState(WAITLIST_REASONS[0].text);
   const [waitlistDropdownOpen, setWaitlistDropdownOpen] = useState(false);
 
+  // Batch Waitlist State
+  const [batchWaitlistModalOpen, setBatchWaitlistModalOpen] = useState(false);
+  const [batchWaitlistReason, setBatchWaitlistReason] = useState(WAITLIST_REASONS[0].text);
+  const [batchWaitlistDropdownOpen, setBatchWaitlistDropdownOpen] = useState(false);
+  const [batchSendEmail, setBatchSendEmail] = useState(true);
+  const [batchWaitlistLoading, setBatchWaitlistLoading] = useState(false);
+  const [batchWaitlistProgress, setBatchWaitlistProgress] = useState<{
+    current: number;
+    total: number;
+    success: number;
+    failed: number;
+    currentRecipientName?: string;
+  } | null>(null);
+  const [showBatchCandidateList, setShowBatchCandidateList] = useState(false);
+
   // Dropdown state
   const [filterDropdownOpen, setFilterDropdownOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
@@ -238,6 +311,19 @@ export default function AdminDashboard() {
   const reminderFemaleRecipientsCount = useMemo(() => {
     return reminderTargetRecipients.filter(p => !isMaleGender(p.spol)).length;
   }, [reminderTargetRecipients]);
+
+  // Pending applications helpers for selected event
+  const pendingPrijave = useMemo(() => {
+    return prijave.filter(p => p.status === 'pending' || !p.status);
+  }, [prijave]);
+
+  const pendingMaleCount = useMemo(() => {
+    return pendingPrijave.filter(p => p.spol === 'M' || p.spol?.toLowerCase() === 'muško').length;
+  }, [pendingPrijave]);
+
+  const pendingFemaleCount = useMemo(() => {
+    return pendingPrijave.filter(p => p.spol === 'Ž' || p.spol === 'Z' || p.spol?.toLowerCase() === 'žensko').length;
+  }, [pendingPrijave]);
 
   // Sample recipient for live preview
   const sampleRecipient = useMemo(() => {
@@ -810,63 +896,14 @@ export default function AdminDashboard() {
         }
       }
 
-      const isMale = selectedPrijava.spol === 'M' || selectedPrijava.spol.toLowerCase() === 'muško';
-      const eventTitle = activeEvent?.title || 'Speed Dating';
-
-      const htmlMessage = `
-<div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333333; line-height: 1.6; padding: 20px; background-color: #ffffff; border: 1px solid #f0f0f0; border-radius: 12px;">
-  <div style="text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid #eeeeee;">
-    <h1 style="color: #E85D75; margin: 0; font-size: 26px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">Na prvi pogled</h1>
-    <p style="color: #888888; font-size: 14px; margin-top: 5px;">Obavijest o prijavi – Lista čekanja</p>
-  </div>
-  
-  <p style="font-size: 16px;">${isMale ? 'Dragi' : 'Draga'} <strong>${selectedPrijava.imePrezime.split(' ')[0]}</strong>,</p>
-  
-  <p style="font-size: 16px;">Hvala ti na interesu i prijavi za događaj <strong>${eventTitle}</strong>!</p>
-  
-  <div style="background-color: #FFFBEB; border-left: 4px solid #F59E0B; padding: 16px 20px; margin: 25px 0; border-radius: 0 8px 8px 0;">
-    <p style="margin: 0; font-size: 16px; color: #B45309; font-weight: bold;">Status prijave: Na listi čekanja ⏳</p>
-  </div>
-  
-  <div style="background-color: #f9f9f9; border: 1px dashed #dddddd; padding: 18px; margin: 25px 0; border-radius: 8px;">
-    <p style="margin: 0; font-size: 15px; color: #444444; white-space: pre-wrap;">${waitlistReason}</p>
-  </div>
-  
-  <p style="font-size: 15px; color: #555555; line-height: 1.6;">
-    Tvoje mjesto još nije potvrđeno. Pratimo stanje prijava te ćemo te kontaktirati <strong>isključivo ako se oslobodi mjesto i tvoja prijava bude prihvaćena</strong>. Ako ti se povratno ne javimo s potvrdom, to znači da ovaj put nažalost nismo u mogućnosti osigurati tvoje sudjelovanje na događaju.
-  </p>
-  <p style="font-size: 14px; color: #777777; line-height: 1.5;">
-    Ako u međuvremenu znaš da nećeš moći doći, molimo te da se odjaviš putem svog korisničkog profila.
-  </p>
-
-  ${activeEvent ? `
-  <div style="margin: 25px 0; padding: 15px 0; border-top: 1px solid #eeeeee; border-bottom: 1px solid #eeeeee;">
-    <h4 style="margin-top: 0; color: #555555; font-size: 15px; text-transform: uppercase;">Detalji događaja:</h4>
-    <table style="width: 100%; font-size: 14px; border-collapse: collapse; color: #555555;">
-      ${activeEvent.dateStr ? `<tr><td style="padding: 6px 0; width: 30px;">📅</td><td><strong>${activeEvent.dateStr}</strong></td></tr>` : ''}
-      ${activeEvent.timeStr ? `<tr><td style="padding: 6px 0;">🕖</td><td><strong>${activeEvent.timeStr}</strong></td></tr>` : ''}
-      ${activeEvent.location ? `<tr><td style="padding: 6px 0;">📍</td><td><strong>${activeEvent.location}</strong></td></tr>` : ''}
-      ${activeEvent.ageGroup ? `<tr><td style="padding: 6px 0;">🎂</td><td>Dobna skupina: <strong>${activeEvent.ageGroup}</strong></td></tr>` : ''}
-      ${activeEvent.price ? `<tr><td style="padding: 6px 0;">💳</td><td>Kotizacija: <strong>${activeEvent.price}</strong></td></tr>` : ''}
-    </table>
-  </div>
-  ` : ''}
-  
-  <div style="margin-top: 30px; border-top: 1px solid #eeeeee; padding-top: 20px;">
-    <p style="font-size: 15px; margin: 0; color: #666666;">
-      Srdačan pozdrav,<br>
-      <strong style="color: #333333; font-size: 16px;">Ivan</strong><br/>Na prvi pogled<br/>Upoznaj nekoga, kao nekad.
-    </p>
-  </div>
-</div>
-      `;
+      const htmlMessage = buildWaitlistHtml(selectedPrijava, activeEvent, waitlistReason);
 
       try {
         await emailjs.send(
           'default_service',
           'template_uuvkcp3',
           {
-            name: selectedPrijava.imePrezime.split(' ')[0],
+            name: selectedPrijava.imePrezime.trim().split(' ')[0],
             email: selectedPrijava.email,
             subject: "Tvoja prijava je na listi čekanja! ⏳",
             html_message: htmlMessage
@@ -888,6 +925,119 @@ export default function AdminDashboard() {
     } finally {
       setActionLoading(false);
     }
+  };
+
+  const openBatchWaitlistModal = () => {
+    if (!selectedEvent) {
+      alert("Molimo odaberite događaj.");
+      return;
+    }
+    if (pendingPrijave.length === 0) {
+      alert("Nema prijava na čekanju za odabrani događaj.");
+      return;
+    }
+    setBatchWaitlistReason(WAITLIST_REASONS[0].text);
+    setBatchWaitlistProgress(null);
+    setShowBatchCandidateList(false);
+    setBatchWaitlistModalOpen(true);
+  };
+
+  const handleBatchMoveToWaitlist = async () => {
+    if (!selectedEvent || pendingPrijave.length === 0) return;
+
+    setBatchWaitlistLoading(true);
+    setBatchWaitlistProgress({
+      current: 0,
+      total: pendingPrijave.length,
+      success: 0,
+      failed: 0,
+      currentRecipientName: ''
+    });
+
+    let successCount = 0;
+    let failCount = 0;
+    let emailFailCount = 0;
+
+    for (let i = 0; i < pendingPrijave.length; i++) {
+      const prijava = pendingPrijave[i];
+      setBatchWaitlistProgress({
+        current: i + 1,
+        total: pendingPrijave.length,
+        success: successCount,
+        failed: failCount,
+        currentRecipientName: prijava.imePrezime
+      });
+
+      try {
+        // 1. Update Firestore doc status to waiting_list
+        await updateDoc(doc(db, 'prijave', prijava.id), { status: 'waiting_list' });
+        successCount++;
+
+        // 2. Send email if enabled
+        if (batchSendEmail) {
+          try {
+            const htmlMsg = buildWaitlistHtml(prijava, selectedEvent, batchWaitlistReason);
+            await emailjs.send(
+              'default_service',
+              'template_uuvkcp3',
+              {
+                name: prijava.imePrezime.trim().split(' ')[0],
+                email: prijava.email,
+                subject: "Tvoja prijava je na listi čekanja! ⏳",
+                html_message: htmlMsg
+              },
+              import.meta.env.VITE_EMAILJS_PUBLIC_KEY
+            );
+          } catch (emailErr) {
+            console.error(`Greška pri slanju emaila za ${prijava.email}:`, emailErr);
+            emailFailCount++;
+          }
+
+          if (i < pendingPrijave.length - 1) {
+            await new Promise(res => setTimeout(res, 250));
+          }
+        }
+      } catch (dbErr) {
+        console.error(`Greška pri ažuriranju prijave ${prijava.id}:`, dbErr);
+        failCount++;
+      }
+    }
+
+    // 3. Update registrationCount on event in Firestore
+    try {
+      const remainingOccupiedCount = prijave.filter(
+        p => !pendingPrijave.some(pending => pending.id === p.id) &&
+             p.status !== 'rejected' &&
+             p.status !== 'cancelled' &&
+             p.status !== 'waiting_list'
+      ).length;
+
+      await updateDoc(doc(db, 'events', selectedEvent.id), {
+        registrationCount: remainingOccupiedCount
+      });
+    } catch (syncErr) {
+      console.error("Greška pri sinkronizaciji brojača zauzetih mjesta:", syncErr);
+    }
+
+    if (selectedPrijava && pendingPrijave.some(p => p.id === selectedPrijava.id)) {
+      setSelectedPrijava({ ...selectedPrijava, status: 'waiting_list' });
+    }
+
+    await fetchPrijave(selectedEvent.id);
+    await fetchEvents();
+
+    setBatchWaitlistLoading(false);
+    setBatchWaitlistModalOpen(false);
+
+    let msg = `Uspješno premješteno ${successCount} prijava na listu čekanja.`;
+    if (batchSendEmail) {
+      if (emailFailCount > 0) {
+        msg += ` (E-mail uspješno poslan za ${successCount - emailFailCount}, a nije uspio za ${emailFailCount})`;
+      } else {
+        msg += ` E-mail obavijest je uspješno poslana svim kandidatima.`;
+      }
+    }
+    alert(msg);
   };
 
   const handleToggleAttendance = async (prijavaId: string, attended: boolean) => {
@@ -1907,6 +2057,21 @@ export default function AdminDashboard() {
                 )}
                 {selectedEvent && (
                   <button
+                    onClick={openBatchWaitlistModal}
+                    disabled={pendingCount === 0}
+                    className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 shadow-xs ${
+                      pendingCount > 0
+                        ? 'bg-amber-600 hover:bg-amber-700 text-white shadow-sm hover:shadow cursor-pointer'
+                        : 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed opacity-60'
+                    }`}
+                    title={pendingCount > 0 ? `Prebaci sve prijave na čekanju (${pendingCount}) na listu čekanja` : 'Nema prijava na čekanju za ovaj događaj'}
+                  >
+                    <Clock size={16} />
+                    <span>Sve na listu čekanja ({pendingCount})</span>
+                  </button>
+                )}
+                {selectedEvent && (
+                  <button
                     onClick={() => setCheckInModalOpen(true)}
                     className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 shadow-sm hover:shadow cursor-pointer"
                     title="Evidentiraj dolazak prihvaćenih sudionika na ulazu (Check-in uživo)"
@@ -2097,6 +2262,35 @@ export default function AdminDashboard() {
                 Otkazano ({cancelledCount})
               </button>
             </div>
+
+            {/* Quick Action Banner when filtering by "Na čekanju" */}
+            {selectedEvent && pendingCount > 0 && statusFilter === 'pending' && (
+              <div className="mb-4 bg-amber-50/80 border border-amber-200 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-amber-100 text-amber-700 rounded-xl flex-shrink-0">
+                    <Clock size={20} />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-amber-950 text-sm flex items-center gap-2">
+                      Prijave na čekanju ({pendingCount})
+                      <span className="text-xs font-normal text-amber-700">
+                        (M: {pendingMaleCount}, Ž: {pendingFemaleCount})
+                      </span>
+                    </h4>
+                    <p className="text-xs text-amber-800/80 mt-0.5">
+                      Možete jednim klikom prebaciti sve kandidate koji su na čekanju na listu čekanja za &ldquo;{selectedEvent.title}&rdquo;.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={openBatchWaitlistModal}
+                  className="px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 shadow-xs cursor-pointer flex-shrink-0"
+                >
+                  <Clock size={16} />
+                  Prebaci sve na listu čekanja ({pendingCount})
+                </button>
+              </div>
+            )}
 
             {/* Data Table */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -2580,6 +2774,234 @@ export default function AdminDashboard() {
               >
                 {actionLoading ? <Loader2 size={16} className="animate-spin" /> : <X size={16} />}
                 {selectedPrijava.status === 'waiting_list' ? 'Potvrdi odbijanje (bez emaila)' : 'Potvrdi i pošalji email'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Batch Waitlist Modal */}
+      {batchWaitlistModalOpen && selectedEvent && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-y-auto">
+          <div className="bg-white w-full max-w-xl rounded-2xl shadow-xl flex flex-col my-8 max-h-[90vh]">
+            <div className="flex items-center justify-between p-6 border-b border-gray-100 flex-shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-amber-100 text-amber-700 rounded-xl">
+                  <Clock size={22} className="text-amber-600" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-serif font-bold text-amber-800">
+                    Masovno stavljanje na listu čekanja
+                  </h3>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Događaj: <strong className="text-gray-700">{selectedEvent.title}</strong>
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setBatchWaitlistModalOpen(false)}
+                disabled={batchWaitlistLoading}
+                className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors cursor-pointer disabled:opacity-50"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto space-y-5">
+              {/* Summary Stats */}
+              <div className="bg-amber-50/70 border border-amber-200/80 rounded-xl p-4 flex items-center justify-between flex-wrap gap-3">
+                <div>
+                  <span className="text-xs font-semibold text-amber-900 uppercase tracking-wider block">Kandidati na čekanju</span>
+                  <div className="flex items-baseline gap-2 mt-1">
+                    <span className="text-2xl font-bold text-amber-900">{pendingCount}</span>
+                    <span className="text-xs text-amber-700">
+                      (Muškarci: <strong>{pendingMaleCount}</strong>, Žene: <strong>{pendingFemaleCount}</strong>)
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowBatchCandidateList(!showBatchCandidateList)}
+                  className="px-3 py-1.5 bg-white hover:bg-amber-100/60 text-amber-900 border border-amber-300/80 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span>{showBatchCandidateList ? 'Sakrij popis' : 'Prikaži popis'}</span>
+                  <ChevronDown size={14} className={`transition-transform duration-200 ${showBatchCandidateList ? 'rotate-180' : ''}`} />
+                </button>
+              </div>
+
+              {/* Collapsible Candidate List */}
+              {showBatchCandidateList && (
+                <div className="border border-gray-200 rounded-xl overflow-hidden">
+                  <div className="bg-gray-50 px-3.5 py-2 border-b border-gray-200 text-[11px] font-semibold text-gray-500 uppercase tracking-wider flex justify-between">
+                    <span>Popis kandidata ({pendingCount})</span>
+                    <span>Status: Na čekanju</span>
+                  </div>
+                  <div className="max-h-44 overflow-y-auto divide-y divide-gray-100 bg-white">
+                    {pendingPrijave.map((p, idx) => (
+                      <div key={p.id} className="p-2.5 text-xs flex items-center justify-between hover:bg-gray-50/50">
+                        <div className="flex items-center gap-2 truncate pr-2">
+                          <span className="text-gray-400 font-mono text-[10px] w-4">{idx + 1}.</span>
+                          <span className="font-semibold text-gray-800 truncate">{p.imePrezime}</span>
+                          <span className="text-gray-400 truncate text-[11px]">({p.email})</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                            p.spol === 'M' || p.spol?.toLowerCase() === 'muško'
+                              ? 'bg-blue-100 text-blue-800'
+                              : 'bg-pink-100 text-pink-800'
+                          }`}>
+                            {p.spol}
+                          </span>
+                          {p.godine && <span className="text-gray-400 text-[11px]">{p.godine} god</span>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Action Description */}
+              <p className="text-sm text-gray-600 leading-relaxed">
+                Ova akcija će <strong>sve prijavljene kandidate koji su trenutačno na čekanju ({pendingCount})</strong> premjestiti na status <em>&ldquo;Lista čekanja&rdquo;</em>. Zauzeta mjesta na događaju bit će automatski oslobođena.
+              </p>
+
+              {/* Email Option Checkbox */}
+              <div className="bg-gray-50 border border-gray-200 rounded-xl p-3.5">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={batchSendEmail}
+                    onChange={(e) => setBatchSendEmail(e.target.checked)}
+                    disabled={batchWaitlistLoading}
+                    className="mt-0.5 rounded text-amber-600 focus:ring-amber-500 w-4 h-4 cursor-pointer"
+                  />
+                  <div>
+                    <span className="font-semibold text-xs text-gray-800 block">
+                      Pošalji e-mail obavijest svakom kandidatu
+                    </span>
+                    <span className="text-[11px] text-gray-500 block mt-0.5">
+                      Kandidati će primiti službeni e-mail sa statusom liste čekanja i odabranim objašnjenjem.
+                    </span>
+                  </div>
+                </label>
+              </div>
+
+              {/* Email Reason Templates & Textarea */}
+              {batchSendEmail ? (
+                <div className="space-y-4">
+                  <div className="relative">
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">
+                      Predložak objašnjenja
+                    </label>
+                    <button
+                      type="button"
+                      disabled={batchWaitlistLoading}
+                      onClick={() => setBatchWaitlistDropdownOpen(!batchWaitlistDropdownOpen)}
+                      className="w-full flex items-center justify-between bg-white hover:bg-gray-50 border border-gray-300 text-gray-800 text-sm rounded-lg px-4 py-3 transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500/20 disabled:opacity-50"
+                    >
+                      <span className="truncate pr-2 font-medium">
+                        {WAITLIST_REASONS.find(r => r.text === batchWaitlistReason)?.label || 'Prilagođeni tekst'}
+                      </span>
+                      <ChevronDown size={16} className={`text-gray-500 transition-transform duration-200 flex-shrink-0 ${batchWaitlistDropdownOpen ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    {batchWaitlistDropdownOpen && (
+                      <>
+                        <div className="fixed inset-0 z-10" onClick={() => setBatchWaitlistDropdownOpen(false)}></div>
+                        <div className="absolute z-20 mt-2 w-full bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden py-1">
+                          {WAITLIST_REASONS.map(option => (
+                            <button
+                              key={option.id}
+                              type="button"
+                              onClick={() => {
+                                setBatchWaitlistReason(option.text);
+                                setBatchWaitlistDropdownOpen(false);
+                              }}
+                              className={`w-full text-left px-4 py-3 text-sm transition-colors ${batchWaitlistReason === option.text ? 'bg-amber-50 text-amber-900 font-semibold' : 'text-gray-700 hover:bg-gray-50'}`}
+                            >
+                              {option.label}
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">
+                      Tekst objašnjenja u e-mailu
+                    </label>
+                    <textarea
+                      value={batchWaitlistReason}
+                      onChange={(e) => setBatchWaitlistReason(e.target.value)}
+                      disabled={batchWaitlistLoading}
+                      className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-amber-500 focus:border-amber-500 text-sm bg-gray-50 min-h-[100px] disabled:opacity-50"
+                      placeholder="Unesite poruku za kandidate..."
+                    />
+                    <p className="text-[11px] text-gray-500 mt-1">
+                      Kandidati će u e-mailu biti oslovljeni svojim imenom (npr. &ldquo;Dragi Marko,&rdquo; ili &ldquo;Draga Ana,&rdquo;).
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-600">
+                  ℹ️ <strong>Bez slanja e-maila:</strong> Status prijava bit će odmah promijenjen u bazi u &ldquo;Lista čekanja&rdquo;, a zauzeta mjesta oslobođena bez slanja elektroničke pošte.
+                </div>
+              )}
+
+              {/* Progress Indicator when processing */}
+              {batchWaitlistProgress && (
+                <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                  <div className="flex justify-between items-center text-xs font-semibold mb-2">
+                    <span className="text-amber-900 flex items-center gap-2">
+                      <Loader2 size={14} className="animate-spin text-amber-600" />
+                      Obrađujem prijave: {batchWaitlistProgress.current} od {batchWaitlistProgress.total}...
+                      {batchWaitlistProgress.currentRecipientName && (
+                        <span className="text-gray-600 font-normal">({batchWaitlistProgress.currentRecipientName})</span>
+                      )}
+                    </span>
+                    <div className="flex gap-3">
+                      <span className="text-green-700">Uspješno: {batchWaitlistProgress.success}</span>
+                      {batchWaitlistProgress.failed > 0 && (
+                        <span className="text-red-600 font-bold">Greške: {batchWaitlistProgress.failed}</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="w-full h-2.5 bg-amber-200/60 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-amber-500 to-amber-600 transition-all duration-200"
+                      style={{ width: `${Math.round((batchWaitlistProgress.current / batchWaitlistProgress.total) * 100)}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="p-3 bg-amber-50/80 border border-amber-200/80 rounded-xl text-xs text-amber-900">
+                💡 <strong>Napomena:</strong> Svi kandidati ostaju zabilježeni u sustavu pod statusom &ldquo;Lista čekanja&rdquo;. Ako se oslobodi mjesto ili odlučite primiti još kandidata, možete ih pojedinačno u bilo kojem trenutku odobriti (&ldquo;Prihvati s liste čekanja&rdquo;).
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-gray-100 bg-gray-50 rounded-b-2xl flex justify-end gap-3 flex-shrink-0">
+              <button
+                type="button"
+                onClick={() => setBatchWaitlistModalOpen(false)}
+                disabled={batchWaitlistLoading}
+                className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-200 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+              >
+                Odustani
+              </button>
+              <button
+                type="button"
+                onClick={handleBatchMoveToWaitlist}
+                disabled={batchWaitlistLoading || (batchSendEmail && !batchWaitlistReason.trim())}
+                className="px-6 py-2 bg-amber-600 text-white hover:bg-amber-700 rounded-lg font-medium transition-colors flex items-center gap-2 text-sm disabled:opacity-50 cursor-pointer shadow-xs hover:shadow"
+              >
+                {batchWaitlistLoading ? <Loader2 size={16} className="animate-spin" /> : <Clock size={16} />}
+                {batchSendEmail
+                  ? `Potvrdi i pošalji e-mail (${pendingCount})`
+                  : `Potvrdi prebacivanje (${pendingCount})`
+                }
               </button>
             </div>
           </div>
