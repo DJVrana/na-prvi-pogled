@@ -8,7 +8,8 @@ import {
   Sparkles, 
   AlertCircle,
   Loader2,
-  ChevronDown
+  ChevronDown,
+  Share2
 } from 'lucide-react';
 import { FaInstagram, FaTiktok, FaFacebook } from 'react-icons/fa';
 import emailjs from '@emailjs/browser';
@@ -190,8 +191,8 @@ export default function ContactPage() {
             {/* Društvene mreže Card */}
             <div className="bg-white/70 backdrop-blur-md p-6 rounded-3xl border border-white/90 shadow-md shadow-brand/5 hover:shadow-lg transition-all">
               <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-rose-500 via-pink-500 to-amber-500 text-white flex items-center justify-center shrink-0 shadow-sm">
-                  <FaInstagram size={24} />
+                <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-700 flex items-center justify-center shrink-0">
+                  <Share2 size={24} />
                 </div>
                 <div className="flex-1">
                   <h3 className="font-bold text-brand text-lg mb-1">Društvene mreže</h3>
