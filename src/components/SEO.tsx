@@ -40,12 +40,21 @@ export default function SEO({
     setMetaTag('property', 'og:description', description);
     setMetaTag('property', 'og:type', ogType);
     setMetaTag('property', 'og:url', canonical);
-    setMetaTag('property', 'og:image', ogImage.startsWith('http') ? ogImage : `https://naprvipogled.com${ogImage}`);
+    const fullImageUrl = ogImage.startsWith('http') 
+      ? ogImage 
+      : `https://naprvipogled.com${ogImage.startsWith('/') ? '' : '/'}${ogImage}`;
+
+    setMetaTag('property', 'og:image', fullImageUrl);
+    setMetaTag('property', 'og:image:secure_url', fullImageUrl);
+    setMetaTag('property', 'og:image:type', 'image/jpeg');
+    setMetaTag('property', 'og:image:width', '1200');
+    setMetaTag('property', 'og:image:height', '630');
+    setMetaTag('property', 'og:image:alt', title);
     setMetaTag('property', 'og:site_name', 'Na prvi pogled');
     setMetaTag('name', 'twitter:card', 'summary_large_image');
     setMetaTag('name', 'twitter:title', title);
     setMetaTag('name', 'twitter:description', description);
-    setMetaTag('name', 'twitter:image', ogImage.startsWith('http') ? ogImage : `https://naprvipogled.com${ogImage}`);
+    setMetaTag('name', 'twitter:image', fullImageUrl);
 
     // Update canonical link
     let canonicalLink = document.querySelector('link[rel="canonical"]');

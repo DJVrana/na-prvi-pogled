@@ -113,6 +113,7 @@ export default function Home() {
         title="Na prvi pogled 💞 Speed dating u Hrvatskoj – susreti i eventi za samce uživo"
         description="Upoznaj nove ljude uživo kroz kratke 1 na 1 razgovore u ugodnoj atmosferi. Zaboravi aplikacije i dopisivanje – doživi stvarni prvi pogled. Najpopularniji speed dating eventi i susreti za samce u Hrvatskoj. Prijavi se!"
         canonical="https://naprvipogled.com/"
+        ogImage="https://naprvipogled.com/images/hero-speed-dating.jpg"
         structuredData={homeStructuredData}
         keywords="speed dating hrvatska, speed dating u hrvatskoj, eventi za samce, susreti za samce, upoznavanje zagreb, speed dating zagreb, na prvi pogled, brzi spojevi, upoznavanje uživo, dejtanje hrvatska"
       />

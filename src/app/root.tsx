@@ -21,13 +21,18 @@ export const meta: Route.MetaFunction = () => {
     { property: "og:url", content: "https://naprvipogled.com/" },
     { property: "og:title", content: "Na prvi pogled 💞 Speed dating u Hrvatskoj – susreti i eventi za samce uživo" },
     { property: "og:description", content: "Upoznaj nove ljude uživo kroz kratke 1 na 1 razgovore u ugodnoj atmosferi. Zaboravi aplikacije i dopisivanje – doživi stvarni prvi pogled. Najpopularniji speed dating eventi i susreti za samce u Hrvatskoj. Prijavi se!" },
-    { property: "og:image", content: "/apple-touch-icon.png" },
+    { property: "og:image", content: "https://naprvipogled.com/images/hero-speed-dating.jpg" },
+    { property: "og:image:secure_url", content: "https://naprvipogled.com/images/hero-speed-dating.jpg" },
+    { property: "og:image:type", content: "image/jpeg" },
+    { property: "og:image:width", content: "1200" },
+    { property: "og:image:height", content: "630" },
+    { property: "og:image:alt", content: "Na prvi pogled – Speed dating susreti i eventi za samce uživo" },
     { property: "og:site_name", content: "Na prvi pogled" },
     { name: "twitter:card", content: "summary_large_image" },
     { name: "twitter:url", content: "https://naprvipogled.com/" },
     { name: "twitter:title", content: "Na prvi pogled 💞 Speed dating u Hrvatskoj – susreti i eventi za samce uživo" },
     { name: "twitter:description", content: "Upoznaj nove ljude uživo kroz kratke 1 na 1 razgovore u ugodnoj atmosferi. Zaboravi aplikacije i dopisivanje – doživi stvarni prvi pogled. Najpopularniji speed dating eventi i susreti za samce u Hrvatskoj. Prijavi se!" },
-    { name: "twitter:image", content: "/apple-touch-icon.png" },
+    { name: "twitter:image", content: "https://naprvipogled.com/images/hero-speed-dating.jpg" },
     { name: "apple-mobile-web-app-title", content: "Na prvi pogled" }
   ];
 };
