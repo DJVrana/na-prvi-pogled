@@ -644,8 +644,9 @@ export default function Home() {
         </section>
 
         {/* ========================================================================= */}
-        {/* 8. TESTIMONIALS (Dojmovi polaznika)                                       */}
+        {/* 8. TESTIMONIALS (Dojmovi polaznika) - Privremeno zakomentirano            */}
         {/* ========================================================================= */}
+        {/*
         <section className="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
           <div className="text-center max-w-3xl mx-auto mb-14">
             <h2 className="font-serif text-3xl sm:text-4xl font-bold text-brand mb-3">
@@ -726,6 +727,7 @@ export default function Home() {
 
           </div>
         </section>
+        */}
 
         {/* ========================================================================= */}
         {/* 9. HOME FAQ ACCORDION (Modern HTML details disclosure)                     */}
