@@ -131,7 +131,7 @@ export default function Navbar() {
                   Na prvi pogled
                 </span>
                 <span className="text-[10px] uppercase tracking-[0.2em] text-brand-light/80 font-medium">
-                  Speed Dating Zagreb
+                  Speed Dating
                 </span>
               </div>
             </Link>

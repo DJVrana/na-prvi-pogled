@@ -214,8 +214,8 @@ export default function EventsPage() {
                   <div className="flex items-center justify-between mb-4 pb-3 border-b border-brand/10">
                     <span className="inline-flex items-center gap-2 bg-brand/10 text-brand text-[11px] font-bold uppercase tracking-wider px-3 py-1 rounded-full">
                       <span className="relative flex h-2 w-2">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-brand"></span>
                       </span>
                       Prijave su u tijeku
                     </span>

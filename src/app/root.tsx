@@ -10,23 +10,23 @@ import "../index.css"; // Ensure standard Tailwind and CSS load
 
 export const meta: Route.MetaFunction = () => {
   return [
-    { title: "Na prvi pogled 💞 | Speed Dating Zagreb" },
-    { name: "description", content: "Na prvi pogled - Ekskluzivni speed dating eventi u Zagrebu. Upoznaj nove ljude, stvori stvarna poznanstva i doživi nezaboravno iskustvo u opuštenoj atmosferi. Prijavi se na sljedeći događaj!" },
-    { name: "keywords", content: "speed dating zagreb, upoznavanje zagreb, izlasci, na prvi pogled, traženje partnera, druženje, mladi, event zagreb, zabava" },
+    { title: "Na prvi pogled 💞 Speed dating u Hrvatskoj – susreti i eventi za samce uživo" },
+    { name: "description", content: "Upoznaj nove ljude uživo kroz kratke 1 na 1 razgovore u ugodnoj atmosferi. Zaboravi aplikacije i dopisivanje – doživi stvarni prvi pogled. Najpopularniji speed dating eventi i susreti za samce u Hrvatskoj. Prijavi se!" },
+    { name: "keywords", content: "speed dating hrvatska, speed dating u hrvatskoj, eventi za samce, susreti za samce, upoznavanje zagreb, speed dating zagreb, na prvi pogled, brzi spojevi, upoznavanje uživo, dejtanje hrvatska" },
     { name: "author", content: "Na prvi pogled" },
     { name: "robots", content: "index, follow" },
     { name: "language", content: "Croatian" },
-    { name: "theme-color", content: "#E85D75" },
+    { name: "theme-color", content: "#5c141d" },
     { property: "og:type", content: "website" },
     { property: "og:url", content: "https://naprvipogled.com/" },
-    { property: "og:title", content: "Na prvi pogled 💞 | Speed Dating Zagreb" },
-    { property: "og:description", content: "Ekskluzivni speed dating eventi u Zagrebu. Upoznaj nove ljude, stvori stvarna poznanstva i doživi nezaboravno iskustvo. Prijavi se!" },
+    { property: "og:title", content: "Na prvi pogled 💞 Speed dating u Hrvatskoj – susreti i eventi za samce uživo" },
+    { property: "og:description", content: "Upoznaj nove ljude uživo kroz kratke 1 na 1 razgovore u ugodnoj atmosferi. Zaboravi aplikacije i dopisivanje – doživi stvarni prvi pogled. Najpopularniji speed dating eventi i susreti za samce u Hrvatskoj. Prijavi se!" },
     { property: "og:image", content: "/apple-touch-icon.png" },
     { property: "og:site_name", content: "Na prvi pogled" },
     { name: "twitter:card", content: "summary_large_image" },
     { name: "twitter:url", content: "https://naprvipogled.com/" },
-    { name: "twitter:title", content: "Na prvi pogled 💞 | Speed Dating Zagreb" },
-    { name: "twitter:description", content: "Ekskluzivni speed dating eventi u Zagrebu. Upoznaj nove ljude, stvori stvarna poznanstva i doživi nezaboravno iskustvo. Prijavi se!" },
+    { name: "twitter:title", content: "Na prvi pogled 💞 Speed dating u Hrvatskoj – susreti i eventi za samce uživo" },
+    { name: "twitter:description", content: "Upoznaj nove ljude uživo kroz kratke 1 na 1 razgovore u ugodnoj atmosferi. Zaboravi aplikacije i dopisivanje – doživi stvarni prvi pogled. Najpopularniji speed dating eventi i susreti za samce u Hrvatskoj. Prijavi se!" },
     { name: "twitter:image", content: "/apple-touch-icon.png" },
     { name: "apple-mobile-web-app-title", content: "Na prvi pogled" }
   ];

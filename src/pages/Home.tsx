@@ -92,9 +92,9 @@ export default function Home() {
   const homeStructuredData = {
     "@context": "https://schema.org",
     "@type": "WebSite",
-    "name": "Na prvi pogled - Speed Dating Zagreb",
+    "name": "Na prvi pogled - Speed Dating u Hrvatskoj",
     "url": "https://naprvipogled.com/",
-    "description": "Ekskluzivni speed dating eventi u Zagrebu. Upoznaj nekoga uživo, u opuštenoj atmosferi bez aplikacija i swipeanja.",
+    "description": "Speed dating susreti i eventi za samce u Hrvatskoj. Upoznaj nekoga uživo kroz kratke razgovore u opuštenoj atmosferi bez aplikacija i dopisivanja.",
     "potentialAction": {
       "@type": "SearchAction",
       "target": "https://naprvipogled.com/eventi?q={search_term_string}",
@@ -108,11 +108,11 @@ export default function Home() {
       className="min-h-screen w-full flex flex-col relative overflow-x-hidden bg-peach selection:bg-brand selection:text-white"
     >
       <SEO 
-        title="Na prvi pogled 💞 | Speed Dating Zagreb - Upoznaj nekoga. Kao nekad."
-        description="Ekskluzivni speed dating eventi u Zagrebu. Zaboravi swipeanje – doživi stvarni prvi pogled u opuštenoj atmosferi najboljih vinskih barova. Prijavi se!"
+        title="Na prvi pogled 💞 Speed dating u Hrvatskoj – susreti i eventi za samce uživo"
+        description="Upoznaj nove ljude uživo kroz kratke 1 na 1 razgovore u ugodnoj atmosferi. Zaboravi aplikacije i dopisivanje – doživi stvarni prvi pogled. Najpopularniji speed dating eventi i susreti za samce u Hrvatskoj. Prijavi se!"
         canonical="https://naprvipogled.com/"
         structuredData={homeStructuredData}
-        keywords="speed dating zagreb, upoznavanje zagreb, dejtanje zagreb, na prvi pogled, izlasci zagreb, brzi spojevi"
+        keywords="speed dating hrvatska, speed dating u hrvatskoj, eventi za samce, susreti za samce, upoznavanje zagreb, speed dating zagreb, na prvi pogled, brzi spojevi, upoznavanje uživo, dejtanje hrvatska"
       />
 
       {/* ========================================================================= */}
@@ -173,9 +173,12 @@ export default function Home() {
               
               {/* Badge */}
               <div className="inline-flex items-center gap-2 bg-white/70 backdrop-blur-md px-4 py-1.5 rounded-full border border-white/80 shadow-sm text-brand text-xs font-bold uppercase tracking-wider">
-                <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-brand"></span>
+                </span>
                 <Sparkles size={14} className="text-amber-500" />
-                <span>Ekskluzivni Speed Dating Zagreb</span>
+                <span>Speed Dating</span>
               </div>
 
               {/* Main Headline */}
@@ -186,7 +189,7 @@ export default function Home() {
 
               {/* Tagline / Subtitle */}
               <p className="text-lg sm:text-xl text-brand/85 max-w-xl mx-auto lg:mx-0 font-light leading-relaxed">
-                Koliko puta si pomislio/la da bi nekoga volio/la upoznati, ali nikad nisi napravio/la prvi korak? <strong>Na prvi pogled</strong> je večer stvorena za nove susrete uživo. Opuštena atmosfera, vrhunsko vino i stvarna kemija.
+                Koliko puta si pomislio/la da bi nekoga volio/la upoznati, ali nikad nisi napravio/la prvi korak? <strong>Na prvi pogled</strong> je večer stvorena za nove susrete uživo. Opuštena atmosfera, pravi razgovori i stvarna kemija.
               </p>
 
               {/* Action Buttons */}
@@ -196,7 +199,7 @@ export default function Home() {
                   className="group relative w-full sm:w-auto inline-flex items-center justify-center gap-3 bg-brand hover:bg-brand-light text-white px-8 py-4 rounded-full font-bold text-base transition-all duration-300 shadow-xl shadow-brand/25 transform hover:scale-105 overflow-hidden"
                 >
                   <span className="relative z-10 flex items-center gap-2">
-                    Prijavi se na sljedeći događaj
+                    Prijavi se
                     <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
                   </span>
                   <span className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
@@ -213,16 +216,16 @@ export default function Home() {
               {/* Quick stats / Trust points */}
               <div className="pt-6 grid grid-cols-3 gap-3 border-t border-brand/10 max-w-lg mx-auto lg:mx-0 text-center lg:text-left">
                 <div>
-                  <p className="font-serif font-bold text-2xl sm:text-3xl text-brand">100%</p>
+                  <p className="font-sans font-bold text-2xl sm:text-3xl text-brand tracking-tight">100%</p>
                   <p className="text-[11px] uppercase tracking-wider text-brand/70 font-semibold">Uživo bez filtera</p>
                 </div>
                 <div>
-                  <p className="font-serif font-bold text-2xl sm:text-3xl text-brand">5 – 7</p>
-                  <p className="text-[11px] uppercase tracking-wider text-brand/70 font-semibold">Minuta po spoju</p>
+                  <p className="font-sans font-bold text-2xl sm:text-3xl text-brand tracking-tight">4 – 6 min</p>
+                  <p className="text-[11px] uppercase tracking-wider text-brand/70 font-semibold">Po spoju</p>
                 </div>
                 <div>
-                  <p className="font-serif font-bold text-2xl sm:text-3xl text-brand">1 : 1</p>
-                  <p className="text-[11px] uppercase tracking-wider text-brand/70 font-semibold">Omjer M & Ž</p>
+                  <p className="font-sans font-bold text-2xl sm:text-3xl text-brand tracking-tight">1 : 1</p>
+                  <p className="text-[11px] uppercase tracking-wider text-brand/70 font-semibold">Omjer M i Ž</p>
                 </div>
               </div>
 
@@ -243,7 +246,7 @@ export default function Home() {
                   
                   <div className="absolute bottom-6 left-6 right-6 text-white pointer-events-none">
                     <p className="text-xs uppercase tracking-widest text-amber-300 font-bold mb-1">
-                      Zagrebački wine & lounge barovi
+                      Daj priliku nečem novom
                     </p>
                     <p className="font-serif text-xl sm:text-2xl font-bold leading-tight">
                       Upoznaj nekoga onako kako se nekad upoznavalo. Uživo.
@@ -349,8 +352,8 @@ export default function Home() {
                 <div className="pb-3.5 mb-5 border-b border-brand/10">
                   <div className="inline-flex items-center gap-2 bg-brand/10 text-brand text-[11px] font-bold uppercase tracking-wider px-3 py-1 rounded-full mb-2">
                     <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-brand"></span>
                     </span>
                     Prijave su u tijeku
                   </div>

@@ -17,7 +17,7 @@ export default function SEO({
   ogType = 'website',
   ogImage = `${import.meta.env.BASE_URL}images/hero-speed-dating.jpg`,
   structuredData,
-  keywords = 'speed dating zagreb, upoznavanje zagreb, na prvi pogled, izlasci zagreb, dejtanje zagreb, ljubav, druženje'
+  keywords = 'speed dating hrvatska, speed dating u hrvatskoj, eventi za samce, susreti za samce, upoznavanje zagreb, speed dating zagreb, na prvi pogled, brzi spojevi, ljubav, druženje'
 }: SEOProps) {
   useEffect(() => {
     // Dynamic document title

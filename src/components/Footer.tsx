@@ -60,7 +60,7 @@ export default function Footer() {
               </span>
             </div>
             <p className="text-sm text-peach-dark/80 leading-relaxed font-light">
-              Manje ekrana, više stvarnih susreta. Ekskluzivni speed dating događaji u Zagrebu u ugodnoj atmosferi probranih gradskih barova. Upoznaj nekoga uživo. Kao nekad.
+              Manje ekrana, više stvarnih susreta. Speed dating susreti i događaji za samce u ugodnoj atmosferi probranih barova. Upoznaj nekoga uživo. Kao nekad.
             </p>
             <div className="pt-2">
               <a 
