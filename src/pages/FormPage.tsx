@@ -1,11 +1,44 @@
 import { useState, useEffect } from 'react';
-import { collection, addDoc, serverTimestamp, query, where, getDocs, limit, getDoc, doc, updateDoc, increment } from 'firebase/firestore';
+import { 
+  collection, 
+  addDoc, 
+  serverTimestamp, 
+  query, 
+  where, 
+  getDocs, 
+  limit, 
+  getDoc, 
+  doc, 
+  updateDoc, 
+  increment 
+} from 'firebase/firestore';
 import { db, auth, provider } from '../firebase';
 import { onAuthStateChanged, signInWithPopup } from 'firebase/auth';
 import type { User } from 'firebase/auth';
-import { ArrowLeft, CheckCircle2, Heart, LogOut, Loader2, Sparkles, Calendar, Users, UserRound, Clock, Clock3, ChevronDown, Mail } from 'lucide-react';
+import { 
+  ArrowLeft, 
+  CheckCircle2, 
+  Heart, 
+  LogOut, 
+  Loader2, 
+  Sparkles, 
+  Calendar, 
+  Users, 
+  UserRound, 
+  Clock, 
+  Clock3, 
+  ChevronDown, 
+  Mail,
+  MapPin,
+  CreditCard,
+  Check,
+  AlertCircle
+} from 'lucide-react';
 import { FaGoogle } from 'react-icons/fa';
 import { Link, useSearchParams } from 'react-router';
+import Navbar from '../components/Navbar';
+import Footer from '../components/Footer';
+import SEO from '../components/SEO';
 
 export interface CustomField {
   id: string;
@@ -236,11 +269,16 @@ export default function FormPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) {
-      setError("Morate biti prijavljeni da biste se prijavili.");
+      setError("Morate biti prijavljeni da biste poslali prijavu.");
       return;
     }
     if (!activeEvent) {
       setError("Prijave su trenutno zatvorene.");
+      return;
+    }
+
+    if (!formData.spol) {
+      setError("Molimo odaberite spol (M ili Ž).");
       return;
     }
 
@@ -284,9 +322,9 @@ export default function FormPage() {
         ...formData,
         godine: Number(formData.godine),
         uid: user.uid,
-        eventId: activeEvent.id, // Link to the active event
+        eventId: activeEvent.id,
         customAnswers: customAnswersArray,
-        status: 'pending', // Postavljamo početni status
+        status: 'pending',
         acceptedPrivacy: true,
         acceptedMediaConsent: true,
         consentedAt: serverTimestamp(),
@@ -298,8 +336,6 @@ export default function FormPage() {
         registrationCount: increment(1)
       });
 
-
-      // Postavljamo u state kako bi korisnik odmah vidio ekran "Na čekanju"
       setExistingRegistration({
         status: 'pending',
         ...formData
@@ -314,277 +350,370 @@ export default function FormPage() {
 
   if (authLoading || eventLoading) {
     return (
-      <div className="min-h-screen bg-peach text-brand flex items-center justify-center font-sans">
-        <Loader2 size={32} className="animate-spin text-brand/50" />
+      <div className="min-h-screen bg-peach text-brand flex flex-col items-center justify-center font-sans">
+        <Loader2 size={36} className="animate-spin text-brand/60 mb-3" />
+        <p className="text-xs font-semibold text-brand/60 uppercase tracking-wider">Učitavanje prijavnice...</p>
       </div>
     );
   }
 
-  // Ovdje više ne koristimo success blok jer existingRegistration upravlja ekranom
-
-
   // If someone enters the URL directly when there is no active event
   if (!activeEvent) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6 bg-peach text-brand font-sans relative overflow-hidden">
-        <div className="absolute -top-10 -left-10 w-72 h-72 rounded-full bg-rose-200/30 blur-3xl animate-ambient-drift pointer-events-none" />
-        <div className="bg-white/60 backdrop-blur-md p-10 rounded-3xl shadow-xl max-w-md w-full text-center border border-white relative z-10">
-          <h2 className="text-2xl font-serif font-bold mb-4">Prijave su trenutno zatvorene</h2>
-          <p className="text-brand/80 mb-8 font-light leading-relaxed">
-            Trenutno nema aktivnih događaja za koje se moguće prijaviti. Pratite naš Instagram za najave novih susreta!
-          </p>
-          <Link to="/" className="inline-flex items-center gap-2 bg-brand text-white px-6 py-3 rounded-full font-medium hover:bg-brand-light transition-colors">
-            <ArrowLeft size={18} /> Povratak na naslovnicu
-          </Link>
-        </div>
+      <div className="min-h-screen bg-peach flex flex-col selection:bg-brand selection:text-white">
+        <SEO 
+          title="Prijave su zatvorene | Na prvi pogled 💞 Speed Dating"
+          description="Trenutno nema otvorenih termina za prijavu na speed dating. Pratite naše nove najave na profilu i prijavite se na vrijeme."
+        />
+        <Navbar />
+
+        <main className="flex-1 pt-32 pb-20 px-4 sm:px-6 lg:px-8 max-w-lg mx-auto w-full flex items-center justify-center">
+          <div className="bg-white/75 backdrop-blur-xl p-8 sm:p-10 rounded-3xl shadow-xl shadow-brand/10 border border-white/90 text-center w-full animate-fade-in-up">
+            <div className="w-16 h-16 rounded-2xl bg-brand/10 text-brand mx-auto flex items-center justify-center mb-5">
+              <Calendar size={32} className="text-brand-light" />
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-serif font-bold mb-3 text-brand">Prijave su trenutno zatvorene</h1>
+            <p className="text-brand/80 mb-8 font-light text-sm sm:text-base leading-relaxed">
+              Trenutno nema aktivnih događaja za koje se moguće prijaviti. Pratite naš Instagram za najave novih susreta i termina!
+            </p>
+            <Link to="/eventi" className="inline-flex items-center gap-2 bg-brand text-white px-7 py-3 rounded-full font-bold text-sm hover:bg-brand-light transition-all shadow-md">
+              <ArrowLeft size={16} /> Pregledaj događaje
+            </Link>
+          </div>
+        </main>
+
+        <Footer />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen py-12 px-4 sm:px-8 md:px-12 flex justify-center bg-peach text-brand relative overflow-x-hidden">
+    <div className="min-h-screen bg-peach flex flex-col selection:bg-brand selection:text-white">
+      <SEO 
+        title={`Prijava za ${activeEvent.title} | Na prvi pogled 💞 Speed Dating`}
+        description={`Prijavi se za speed dating događaj ${activeEvent.title} (${activeEvent.dateStr || ''}). Upoznaj nekoga uživo kroz kratke razgovore u opuštenoj atmosferi.`}
+      />
 
-      {/* Decorative ambient blobs */}
-      <div className="absolute top-10 left-[-5%] w-80 h-80 rounded-full bg-rose-300/20 blur-[90px] animate-ambient-drift pointer-events-none" />
-      <div className="absolute bottom-10 right-[-5%] w-96 h-96 rounded-full bg-brand/10 blur-[100px] animate-ambient-drift pointer-events-none" />
+      <Navbar />
 
-      {/* Decorative floating icons */}
-      <div className="absolute top-20 right-[-20px] text-brand-light/10 rotate-[25deg] pointer-events-none animate-float-slow hidden sm:block">
-        <Heart size={200} strokeWidth={1} />
-      </div>
+      <main className="flex-1 pt-28 pb-20 px-4 sm:px-6 lg:px-8 max-w-3xl mx-auto w-full">
+        
+        {/* Back Link */}
+        <div className="mb-4">
+          <Link
+            to="/"
+            className="inline-flex items-center gap-2 text-xs sm:text-sm font-semibold text-brand/70 hover:text-brand transition-colors group cursor-pointer"
+          >
+            <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
+            <span>Natrag na početnu</span>
+          </Link>
+        </div>
 
-      <div className="max-w-xl w-full z-10">
-        <Link to="/" className="inline-flex items-center gap-2 text-brand/70 hover:text-brand mb-6 transition-colors font-medium text-sm">
-          <ArrowLeft size={18} /> Natrag na početnu
-        </Link>
+        {/* Active Events Switcher (if multiple active events exist) */}
+        {activeEvents.length > 1 && (
+          <div className="mb-6 p-4 rounded-3xl bg-white/70 backdrop-blur-md border border-white/90 shadow-sm">
+            <div className="flex items-center justify-between mb-3 px-1">
+              <span className="text-xs font-bold uppercase tracking-wider text-brand flex items-center gap-1.5">
+                <Sparkles size={14} className="text-brand-light" />
+                Odaberi termin za prijavu:
+              </span>
+              <span className="text-xs font-semibold text-brand/60">
+                {activeEvents.length} {activeEvents.length === 1 ? 'termin' : activeEvents.length < 5 ? 'termina' : 'termina'}
+              </span>
+            </div>
 
-        <div className="bg-white/50 backdrop-blur-xl p-6 sm:p-10 rounded-3xl shadow-2xl shadow-brand/10 border border-white/80 animate-fade-in-up">
-          
-          {/* Active Events Switcher in FormPage */}
-          {activeEvents.length > 1 && (
-            <div className="mb-6 p-3.5 rounded-2xl bg-white/70 border border-white/90 shadow-sm">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-brand/70 flex items-center gap-1.5">
-                  <Sparkles size={13} className="text-brand-light" /> Odaberi termin za prijavu:
-                </span>
-                <span className="text-[11px] font-semibold text-brand/50">
-                  {activeEvents.length} termina
-                </span>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {activeEvents.map(evt => {
-                  const isCurrent = evt.id === activeEvent.id;
-                  const isFull = evt.maxRegistrations && Number(evt.maxRegistrations) > 0 
-                    ? Number(evt.registrationCount || 0) >= Number(evt.maxRegistrations) 
-                    : false;
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {activeEvents.map(evt => {
+                const isCurrent = evt.id === activeEvent.id;
+                const isFull = evt.maxRegistrations && Number(evt.maxRegistrations) > 0 
+                  ? Number(evt.registrationCount || 0) >= Number(evt.maxRegistrations) 
+                  : false;
 
-                  return (
-                    <button
-                      key={evt.id}
-                      type="button"
-                      onClick={() => handleSelectEvent(evt)}
-                      className={`p-3 rounded-xl text-left transition-all border cursor-pointer ${
-                        isCurrent
-                          ? 'bg-brand text-white border-brand shadow-md font-semibold'
-                          : 'bg-white/70 text-brand hover:bg-white border-white/80'
-                      }`}
-                    >
+                return (
+                  <button
+                    key={evt.id}
+                    type="button"
+                    onClick={() => handleSelectEvent(evt)}
+                    className={`p-3.5 rounded-2xl text-left transition-all border cursor-pointer flex flex-col justify-between ${
+                      isCurrent
+                        ? 'bg-brand text-white border-brand shadow-md shadow-brand/20 ring-2 ring-brand/30'
+                        : 'bg-white/80 text-brand hover:bg-white border-white/90 hover:border-brand/20 shadow-xs'
+                    }`}
+                  >
+                    <div>
                       <div className="flex items-center justify-between gap-1 mb-1">
-                        <span className="font-bold text-xs truncate">{evt.title}</span>
-                        {isFull && (
-                          <span className="bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase">
+                        <span className="font-serif font-bold text-sm truncate">{evt.title}</span>
+                        {isFull ? (
+                          <span className="bg-rose-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full uppercase shrink-0">
                             Popunjeno
                           </span>
-                        )}
+                        ) : isCurrent ? (
+                          <CheckCircle2 size={16} className="text-white shrink-0" />
+                        ) : null}
                       </div>
-                      <div className={`text-[11px] flex items-center justify-between ${isCurrent ? 'text-white/80' : 'text-brand/60'}`}>
-                        <span>Dob: {evt.ageGroup}</span>
-                        <span>{evt.dateStr}</span>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+                      <p className={`text-xs font-medium ${isCurrent ? 'text-white/80' : 'text-brand/70'}`}>
+                        Dob: <strong className={isCurrent ? 'text-white' : 'text-brand'}>{evt.ageGroup}</strong>
+                      </p>
+                    </div>
 
-          {/* Header of the event */}
-          <div className="text-center mb-6">
-            <span className="bg-brand/10 text-brand text-xs font-bold px-3.5 py-1 rounded-full uppercase tracking-wider mb-2 inline-block">
-              {activeEvent.title}
-            </span>
-            <div className="flex items-center justify-center gap-4 text-xs text-brand/70 mb-3">
-              <span className="flex items-center gap-1"><Calendar size={13} className="text-brand-light" /> {activeEvent.dateStr} u {activeEvent.timeStr}</span>
-              <span className="flex items-center gap-1"><Users size={13} className="text-brand-light" /> {activeEvent.ageGroup}</span>
+                    <div className={`text-[11px] pt-2 mt-2 border-t flex items-center justify-between ${
+                      isCurrent ? 'border-white/15 text-white/90' : 'border-brand/10 text-brand/75'
+                    }`}>
+                      <span>{evt.dateStr}</span>
+                      <span className="font-bold">{evt.price}</span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Main Form Container Card */}
+        <div className="bg-white/80 backdrop-blur-xl p-6 sm:p-10 rounded-3xl shadow-xl shadow-brand/10 border border-white/90">
+          
+          {/* Selected Event Details Header Badge */}
+          <div className="text-center mb-8 pb-6 border-b border-brand/10">
+            <div className="inline-flex items-center gap-2 bg-brand/10 text-brand text-[11px] font-bold uppercase tracking-wider px-3.5 py-1 rounded-full mb-3">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-brand"></span>
+              </span>
+              <span>Speed Dating</span>
             </div>
 
-            {!existingRegistration && (
-              <>
-                <h1 className="text-3xl sm:text-4xl font-serif font-bold mb-2 uppercase tracking-tight text-brand">Prijava</h1>
-                <p className="text-brand/80 font-light text-sm">
-                  {!user ? "Prijava je zaštićena. Molimo potvrdite svoj identitet kako bi pristupili formi." : "Ispuni podatke ispod. Sva polja s "}
-                  {user && <span className="text-red-500">*</span>}
-                  {user && " su obavezna."}
-                </p>
-              </>
-            )}
+            <div className="flex flex-wrap items-center justify-center gap-y-2 gap-x-3 text-xs text-brand/80 font-medium mb-4">
+              {activeEvent.dateStr && (
+                <span className="flex items-center gap-1.5 bg-brand/5 px-3 py-1 rounded-full">
+                  <Calendar size={13} className="text-brand-light" />
+                  <span>{activeEvent.dateStr} u {activeEvent.timeStr || '19:00'}</span>
+                </span>
+              )}
+              {activeEvent.ageGroup && (
+                <span className="flex items-center gap-1.5 bg-brand/5 px-3 py-1 rounded-full">
+                  <Users size={13} className="text-brand-light" />
+                  <span>{activeEvent.ageGroup}</span>
+                </span>
+              )}
+              {activeEvent.location && (
+                <span className="flex items-center gap-1.5 bg-brand/5 px-3 py-1 rounded-full">
+                  <MapPin size={13} className="text-brand-light" />
+                  <span className="truncate max-w-[180px]">{activeEvent.location}</span>
+                </span>
+              )}
+              {activeEvent.price && (
+                <span className="flex items-center gap-1.5 bg-brand/5 px-3 py-1 rounded-full">
+                  <CreditCard size={13} className="text-brand-light" />
+                  <span>{activeEvent.price}</span>
+                </span>
+              )}
+            </div>
+
+            <h1 className="font-serif text-3xl sm:text-4xl font-bold tracking-tight text-brand uppercase mb-2">
+              Prijava
+            </h1>
+            <p className="text-xs sm:text-sm text-brand/70 font-light">
+              Ispuni podatke ispod. Sva polja s <span className="text-rose-600 font-bold">*</span> su obavezna.
+            </p>
           </div>
 
           {/* Event Full Warning banner */}
           {isEventFull && (
-            <div className="bg-red-50/90 border border-red-200 text-red-800 p-5 rounded-2xl mb-6 text-center shadow-sm">
-              <p className="font-bold text-base mb-1">Popunjena sva mjesta za ovaj događaj</p>
-              <p className="text-xs text-red-700/90 mb-3">
-                Nažalost, sva mjesta za <strong>{activeEvent.title}</strong> ({activeEvent.dateStr}) su već popunjena.
-                {activeEvents.length > 1 ? " Molimo odaberi drugi dostupni termin iznad." : " Prati naš Instagram profil za najave novih termina!"}
+            <div className="bg-rose-50 border border-rose-200 text-rose-900 p-5 rounded-2xl mb-8 text-center shadow-xs">
+              <p className="font-serif font-bold text-lg mb-1">Popunjena su sva mjesta za ovaj termin</p>
+              <p className="text-xs text-rose-800/80 mb-3 leading-relaxed">
+                Nažalost, sva mjesta za <strong>{activeEvent.title}</strong> ({activeEvent.dateStr}) su već rezervirana radi balansa sudionika.
+                {activeEvents.length > 1 ? " Molimo odaberi drugi dostupni termin iznad." : " Prati naš profil za najave novih susreta!"}
               </p>
-              <Link to="/" className="inline-flex items-center gap-1.5 text-xs font-bold text-brand hover:underline">
-                <ArrowLeft size={13} /> Povratak na naslovnicu
+              <Link to="/eventi" className="inline-flex items-center gap-1.5 text-xs font-bold text-brand hover:underline">
+                <ArrowLeft size={13} /> Pregledaj ostale događaje
               </Link>
             </div>
           )}
 
           {error && (
-            <div className="bg-red-100 border border-red-200 text-red-700 px-4 py-3 rounded-xl mb-6 text-sm">
-              {error}
+            <div className="bg-rose-50 border border-rose-200 text-rose-800 px-4 py-3 rounded-2xl mb-6 text-xs sm:text-sm flex items-center gap-2">
+              <AlertCircle size={16} className="text-rose-600 shrink-0" />
+              <span>{error}</span>
             </div>
           )}
 
+          {/* User Authentication Status or Login */}
           {!user ? (
-            <div className="flex flex-col items-center py-6">
-              <div className="bg-white p-4 rounded-full shadow-md mb-6 text-brand">
-                <FaGoogle size={32} />
+            <div className="flex flex-col items-center py-8 text-center">
+              <div className="w-16 h-16 rounded-2xl bg-brand/10 text-brand flex items-center justify-center mb-5 shadow-inner">
+                <UserRound size={32} className="text-brand-light" />
               </div>
+              <h3 className="font-serif text-2xl font-bold text-brand mb-2">
+                Prijavi se prije ispunjavanja prijavnice
+              </h3>
+              <p className="text-brand/75 text-sm max-w-md mx-auto mb-6 leading-relaxed font-light">
+                Kako bismo osigurali autentičnost prijava i spriječili spam, prijava se vrši putem Google računa u jednom kliku.
+              </p>
+
               <button
                 onClick={handleGoogleLogin}
-                className="w-full bg-white hover:bg-gray-50 text-gray-800 font-semibold py-4 rounded-xl shadow-lg transition-all transform hover:scale-[1.02] border border-gray-200 flex justify-center items-center gap-3"
+                className="w-full sm:w-auto bg-white hover:bg-gray-50 text-gray-800 font-semibold py-3.5 px-8 rounded-2xl shadow-md hover:shadow-lg transition-all transform hover:scale-[1.02] border border-gray-200 flex justify-center items-center gap-3 cursor-pointer"
               >
-                <FaGoogle size={20} className="text-blue-600" />
-                Prijavi se s Googleom
+                <FaGoogle size={18} className="text-blue-600" />
+                <span>Prijavi se s Googleom</span>
               </button>
-              <p className="text-center text-xs text-brand/60 mt-6">
-                Koristimo Google prijavu isključivo za sprječavanje spama i automatiziranih prijava.
-              </p>
             </div>
           ) : checkRegistrationLoading ? (
-            <div className="flex justify-center items-center py-12 text-brand/50">
-              <Loader2 className="animate-spin" size={32} />
+            <div className="flex flex-col items-center justify-center py-14 text-brand/60 gap-3">
+              <Loader2 className="animate-spin text-brand/60" size={32} />
+              <p className="text-xs font-semibold uppercase tracking-wider">Provjera statusa prijave...</p>
             </div>
           ) : existingRegistration ? (
-            <div className="text-center py-8">
+            /* User already registered for this event */
+            <div className="text-center py-6">
               {(!existingRegistration.status || existingRegistration.status === 'accepted') && (
                 <>
-                  <CheckCircle2 size={48} className="mx-auto text-green-500 mb-4" />
-                  <h2 className="text-2xl font-serif font-bold mb-2">Prijava prihvaćena!</h2>
-                  <p className="text-brand/80 mb-8 font-light">Tvoja prijava za ovaj događaj je uspješno prihvaćena i osigurano ti je mjesto. Vidimo se!</p>
+                  <div className="w-16 h-16 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-4 border border-emerald-200">
+                    <CheckCircle2 size={36} />
+                  </div>
+                  <h3 className="text-2xl font-serif font-bold mb-2 text-brand">Prijava je potvrđena!</h3>
+                  <p className="text-brand/80 mb-8 font-light leading-relaxed max-w-md mx-auto">
+                    Tvoja prijava za ovaj događaj je uspješno prihvaćena i osigurano ti je mjesto. Radujemo se susretu!
+                  </p>
                 </>
               )}
+
               {existingRegistration.status === 'pending' && (
                 <>
-                  <div className="w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-4 text-amber-600 shadow-inner">
+                  <div className="w-16 h-16 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center mx-auto mb-4 border border-amber-200">
                     <Clock3 size={32} className="animate-pulse" />
                   </div>
-                  <h2 className="text-2xl sm:text-3xl font-serif font-bold mb-2 text-brand">Prijava je zaprimljena</h2>
-                  <p className="text-brand/80 mb-6 font-light">
-                    Tvoja prijava je uspješno poslana i trenutačno čeka na pregled i odobrenje organizatora.
+                  <h3 className="text-2xl sm:text-3xl font-serif font-bold mb-2 text-brand">Prijava je zaprimljena</h3>
+                  <p className="text-brand/80 mb-6 font-light leading-relaxed max-w-md mx-auto">
+                    Tvoja prijava je uspješno poslana i trenutačno čeka na pregled i odobrenje organizatora radi balansa sudionika.
                   </p>
 
-                  <div className="bg-gradient-to-br from-amber-50/95 via-orange-50/70 to-rose-50/80 border-2 border-amber-300 rounded-2xl p-5 sm:p-6 mb-8 text-left shadow-sm">
-                    <div className="flex items-center gap-2.5 text-amber-950 font-bold text-base mb-3 border-b border-amber-200/80 pb-2.5">
-                      <Mail size={20} className="text-amber-700 shrink-0" />
+                  <div className="bg-amber-50/90 border border-amber-200 rounded-2xl p-5 sm:p-6 mb-8 text-left shadow-xs">
+                    <div className="flex items-center gap-2.5 text-amber-950 font-bold text-base mb-3 border-b border-amber-200 pb-2.5">
+                      <Mail size={18} className="text-amber-700 shrink-0" />
                       <span>Važne napomene o potvrdi prijave</span>
                     </div>
 
-                    <div className="space-y-3.5 text-xs sm:text-sm text-brand/90 leading-relaxed">
+                    <div className="space-y-3 text-xs sm:text-sm text-brand/90 leading-relaxed">
                       <div className="flex items-start gap-2.5">
                         <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-500/20 text-amber-950 text-xs font-bold mt-0.5">1</span>
                         <p>
-                          <strong>Obavijest putem e-maila kroz 24 sata:</strong> Organizator će pregledati tvoju prijavu te ćeš povratnu informaciju i potvrdu primiti putem e-maila u roku od <strong>24 sata</strong>.
+                          <strong>Obavijest putem e-maila kroz 24 sata:</strong> Organizator će pregledati tvoju prijavu te ćeš potvrdu primiti na e-mail u roku od <strong>24 sata</strong>.
                         </p>
                       </div>
 
                       <div className="flex items-start gap-2.5">
                         <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-500/20 text-amber-950 text-xs font-bold mt-0.5">2</span>
                         <p>
-                          <strong>Provjeri neželjenu poštu (Spam / Promocije):</strong> Ako ne vidiš naš e-mail unutar 24 sata, <strong>obavezno provjeri mapu za neželjenu poštu (Spam / Junk)</strong> ili pretinac Promocije da poruka nije slučajno tamo završila. Ako je poruka u neželjenoj pošti, označi je opcijom <em>„Nije neželjena pošta” (Not Spam)</em> kako bi ubuduće primao/la sve važne detalje o događaju.
+                          <strong>Provjeri neželjenu poštu (Spam / Promocije):</strong> Ako ne vidiš e-mail, <strong>obavezno provjeri Spam mapu</strong> i označi poruku da nije neželjena pošta.
                         </p>
                       </div>
 
                       <div className="flex items-start gap-2.5">
                         <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-500/20 text-amber-950 text-xs font-bold mt-0.5">3</span>
                         <p>
-                          <strong>Provjera statusa prijave:</strong> Status svoje prijave možeš u svakom trenutku provjeriti ovdje na ovoj stranici prijave ili putem svog <Link to="/profil" className="text-brand font-bold underline hover:text-brand-light">korisničkog profila</Link>.
+                          <strong>Provjera statusa:</strong> Status svoje prijave možeš u svakom trenutku provjeriti na svom <Link to="/profil" className="text-brand font-bold underline hover:text-brand-light">korisničkom profilu</Link>.
                         </p>
                       </div>
                     </div>
                   </div>
                 </>
               )}
+
               {existingRegistration.status === 'waiting_list' && (
                 <>
-                  <div className="w-14 h-14 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-4">
-                    <Clock size={28} className="text-amber-600" />
+                  <div className="w-16 h-16 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center mx-auto mb-4 border border-amber-200">
+                    <Clock size={32} />
                   </div>
-                  <h2 className="text-2xl font-serif font-bold mb-2 text-amber-700">Na listi čekanja</h2>
-                  <p className="text-brand/80 mb-8 font-light">Tvoja prijava se trenutačno nalazi na listi čekanja. Kontaktirat ćemo te putem emaila isključivo ako se oslobodi mjesto i tvoja prijava bude potvrđena.</p>
+                  <h3 className="text-2xl font-serif font-bold mb-2 text-brand">Na listi čekanja</h3>
+                  <p className="text-brand/80 mb-8 font-light leading-relaxed max-w-md mx-auto">
+                    Tvoja prijava se trenutačno nalazi na listi čekanja. Kontaktirat ćemo te putem emaila ako se oslobodi mjesto.
+                  </p>
                 </>
               )}
+
               {existingRegistration.status === 'rejected' && (
                 <>
-                  <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
-                    <div className="text-red-500 text-2xl font-bold">X</div>
+                  <div className="w-16 h-16 rounded-2xl bg-rose-50 text-rose-700 flex items-center justify-center mx-auto mb-4 border border-rose-200">
+                    <AlertCircle size={32} />
                   </div>
-                  <h2 className="text-2xl font-serif font-bold mb-2 text-red-600">Prijava odbijena</h2>
-                  <p className="text-brand/80 mb-8 font-light">Nažalost, nismo u mogućnosti potvrditi tvoju prijavu za ovaj događaj. Hvala ti na interesu!</p>
+                  <h3 className="text-2xl font-serif font-bold mb-2 text-brand">Prijava odbijena</h3>
+                  <p className="text-brand/80 mb-8 font-light leading-relaxed max-w-md mx-auto">
+                    Nažalost, nismo u mogućnosti potvrditi tvoju prijavu za ovaj događaj. Hvala ti na iskazanom interesu!
+                  </p>
                 </>
               )}
 
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-                <Link to="/profil" className="inline-flex items-center gap-2 bg-brand text-white px-6 py-3 rounded-full font-medium hover:bg-brand-light transition-colors text-sm">
+                <Link to="/profil" className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-brand text-white px-6 py-3 rounded-full font-bold hover:bg-brand-light transition-all shadow-md text-xs sm:text-sm">
                   <UserRound size={16} /> Pregledaj u profilu
                 </Link>
-                <Link to="/" className="inline-flex items-center gap-2 bg-white/80 hover:bg-white text-brand px-6 py-3 rounded-full font-medium transition-colors text-sm border border-brand/20">
+                <Link to="/" className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-white/80 hover:bg-white text-brand px-6 py-3 rounded-full font-bold transition-all text-xs sm:text-sm border border-brand/20">
                   <ArrowLeft size={16} /> Povratak na naslovnicu
                 </Link>
               </div>
             </div>
           ) : (
+            /* Active Form to fill out */
             <>
-              <div className="flex items-center justify-between mb-8 pb-4 border-b border-brand/10">
-                <div className="flex items-center gap-3">
+              {/* Authenticated User Status Bar */}
+              <div className="bg-brand/5 rounded-2xl p-4 sm:p-5 border border-brand/10 flex flex-col sm:flex-row items-center justify-between gap-4 mb-8">
+                <div className="flex items-center gap-3.5">
                   {user.photoURL ? (
-                    <img src={user.photoURL} alt="Profile" referrerPolicy="no-referrer" className="w-10 h-10 rounded-full border border-brand/20" />
+                    <img 
+                      src={user.photoURL} 
+                      alt="Profil" 
+                      referrerPolicy="no-referrer" 
+                      className="w-11 h-11 rounded-2xl border border-white shadow-xs object-cover" 
+                    />
                   ) : (
-                    <div className="w-10 h-10 rounded-full bg-brand/10 flex items-center justify-center font-bold text-brand">
-                      {user.email?.charAt(0).toUpperCase()}
+                    <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-brand to-brand-light text-white font-serif font-bold text-base flex items-center justify-center shadow-xs">
+                      {user.displayName?.charAt(0) || user.email?.charAt(0).toUpperCase()}
                     </div>
                   )}
-                  <div className="text-sm">
-                    <p className="font-semibold">{user.displayName || "Korisnik"}</p>
-                    <p className="text-brand/60 text-xs">{user.email}</p>
-                  </div>
-                </div>
-                  <div className="flex items-center gap-2">
-                    <Link
-                      to="/profil"
-                      className="text-xs font-semibold text-brand hover:text-brand-light bg-white/80 px-3 py-1.5 rounded-full border border-brand/10 transition-colors flex items-center gap-1.5 shadow-xs"
-                    >
-                      <UserRound size={13} /> Moj profil
-                    </Link>
-                    <button
-                      onClick={handleLogout}
-                      className="p-2 text-brand/60 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
-                      title="Odjavi se"
-                    >
-                      <LogOut size={18} />
-                    </button>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-brand text-sm sm:text-base">
+                        {user.displayName || "Korisnik"}
+                      </span>
+                      <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">
+                        <Check size={10} strokeWidth={3} /> Prijavljen
+                      </span>
+                    </div>
+                    <p className="text-xs text-brand/65 flex items-center gap-1.5 font-light">
+                      <Mail size={12} className="text-brand-light" />
+                      {user.email}
+                    </p>
                   </div>
                 </div>
 
+                <div className="flex items-center gap-2 shrink-0">
+                  <Link
+                    to="/profil"
+                    className="text-xs font-bold text-brand hover:text-white hover:bg-brand bg-white/90 px-3.5 py-2 rounded-xl border border-brand/15 transition-all flex items-center gap-1.5 shadow-xs"
+                  >
+                    <UserRound size={13} />
+                    <span>Moj profil</span>
+                  </Link>
+                  <button
+                    onClick={handleLogout}
+                    className="p-2 text-brand/50 hover:text-rose-700 hover:bg-rose-50 rounded-xl transition-colors border border-transparent hover:border-rose-200 cursor-pointer"
+                    title="Odjavi se"
+                  >
+                    <LogOut size={16} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Form fields */}
               <form onSubmit={handleSubmit} className="space-y-6">
 
-                <div>
-                  <label htmlFor="imePrezime" className="block text-sm font-semibold text-brand mb-2">Ime i prezime *</label>
+                {/* Ime i prezime */}
+                <div className="space-y-1.5">
+                  <label htmlFor="imePrezime" className="block text-xs font-bold text-brand">
+                    Ime i prezime <span className="text-rose-600">*</span>
+                  </label>
                   <input
                     type="text"
                     id="imePrezime"
@@ -592,58 +721,72 @@ export default function FormPage() {
                     required
                     value={formData.imePrezime}
                     onChange={handleChange}
-                    autoComplete="off"
-                    className="w-full px-4 py-3 rounded-xl bg-white/60 border border-white focus:border-brand focus:ring-1 focus:ring-brand outline-none transition-all"
-                    placeholder="Unesite ime i prezime"
+                    autoComplete="name"
+                    className="w-full px-4 py-3 rounded-2xl bg-white/90 border border-brand/15 focus:border-brand focus:ring-2 focus:ring-brand/15 text-sm font-medium outline-none transition-all placeholder:text-brand/35 text-brand shadow-xs"
+                    placeholder="Unesite svoje ime i prezime"
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-semibold text-brand mb-3">Spol *</label>
-                  <div className="flex gap-6">
-                    <label className="flex items-center gap-2 cursor-pointer group">
-                      <input
-                        type="radio"
-                        name="spol"
-                        value="M"
-                        required
-                        checked={formData.spol === 'M'}
-                        onChange={handleChange}
-                        className="w-5 h-5 text-brand bg-white/60 border-brand focus:ring-brand accent-brand cursor-pointer"
-                      />
-                      <span className="group-hover:text-brand-light transition-colors">M</span>
-                    </label>
-                    <label className="flex items-center gap-2 cursor-pointer group">
-                      <input
-                        type="radio"
-                        name="spol"
-                        value="Ž"
-                        required
-                        checked={formData.spol === 'Ž'}
-                        onChange={handleChange}
-                        className="w-5 h-5 text-brand bg-white/60 border-brand focus:ring-brand accent-brand cursor-pointer"
-                      />
-                      <span className="group-hover:text-brand-light transition-colors">Ž</span>
-                    </label>
+                {/* Spol */}
+                <div className="space-y-2">
+                  <label className="block text-xs font-bold text-brand">
+                    Spol <span className="text-rose-600">*</span>
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, spol: 'M' }))}
+                      className={`py-3 px-4 rounded-2xl border font-bold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                        formData.spol === 'M'
+                          ? 'bg-brand text-white border-brand shadow-md shadow-brand/20 ring-2 ring-brand/30'
+                          : 'bg-white/80 hover:bg-white text-brand border-brand/15 hover:border-brand/30 shadow-xs'
+                      }`}
+                    >
+                      <span>Muški (M)</span>
+                      {formData.spol === 'M' && <Check size={16} />}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, spol: 'Ž' }))}
+                      className={`py-3 px-4 rounded-2xl border font-bold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                        formData.spol === 'Ž'
+                          ? 'bg-brand text-white border-brand shadow-md shadow-brand/20 ring-2 ring-brand/30'
+                          : 'bg-white/80 hover:bg-white text-brand border-brand/15 hover:border-brand/30 shadow-xs'
+                      }`}
+                    >
+                      <span>Ženski (Ž)</span>
+                      {formData.spol === 'Ž' && <Check size={16} />}
+                    </button>
                   </div>
                 </div>
 
-                <div>
-                  <label htmlFor="email" className="block text-sm font-semibold text-brand mb-2">E-mail adresa *</label>
-                  <input
-                    type="email"
-                    id="email"
-                    name="email"
-                    required
-                    readOnly
-                    value={formData.email}
-                    className="w-full px-4 py-3 rounded-xl bg-gray-50/50 border border-gray-200 text-gray-500 cursor-not-allowed outline-none"
-                  />
-                  <p className="text-xs text-brand/60 mt-1">E-mail je automatski preuzet s vašeg Google računa.</p>
+                {/* Email (Google account read-only) */}
+                <div className="space-y-1.5">
+                  <label htmlFor="email" className="block text-xs font-bold text-brand">
+                    E-mail adresa <span className="text-rose-600">*</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="email"
+                      id="email"
+                      name="email"
+                      required
+                      readOnly
+                      value={formData.email}
+                      className="w-full px-4 py-3 rounded-2xl bg-brand/5 border border-brand/10 text-brand/80 cursor-not-allowed outline-none text-sm font-medium shadow-xs"
+                    />
+                  </div>
+                  <p className="text-[11px] text-brand/60 font-light">
+                    E-mail je automatski preuzet s vašeg Google računa radi sigurnosti.
+                  </p>
                 </div>
 
-                <div>
-                  <label htmlFor="godine" className="block text-sm font-semibold text-brand mb-2">Koliko imaš godina? *</label>
+                {/* Godine */}
+                <div className="space-y-1.5">
+                  <label htmlFor="godine" className="block text-xs font-bold text-brand">
+                    Koliko imaš godina? <span className="text-rose-600">*</span>
+                  </label>
                   <input
                     type="number"
                     id="godine"
@@ -653,32 +796,35 @@ export default function FormPage() {
                     required
                     value={formData.godine}
                     onChange={handleChange}
-                    className="w-full px-4 py-3 rounded-xl bg-white/60 border border-white focus:border-brand focus:ring-1 focus:ring-brand outline-none transition-all"
-                    placeholder="Npr. 21"
+                    className="w-full px-4 py-3 rounded-2xl bg-white/90 border border-brand/15 focus:border-brand focus:ring-2 focus:ring-brand/15 text-sm font-medium outline-none transition-all placeholder:text-brand/35 text-brand shadow-xs"
+                    placeholder="Npr. 28"
                   />
                 </div>
 
-                <div>
-                  <label htmlFor="napomena" className="block text-sm font-semibold text-brand mb-2">Napomena (ako ju imaš)</label>
+                {/* Napomena */}
+                <div className="space-y-1.5">
+                  <label htmlFor="napomena" className="block text-xs font-bold text-brand">
+                    Napomena (opcionalno)
+                  </label>
                   <textarea
                     id="napomena"
                     name="napomena"
                     rows={3}
                     value={formData.napomena}
                     onChange={handleChange}
-                    className="w-full px-4 py-3 rounded-xl bg-white/60 border border-white focus:border-brand focus:ring-1 focus:ring-brand outline-none transition-all resize-none"
-                    placeholder="Imaš li neku napomenu za nas?"
+                    className="w-full px-4 py-3 rounded-2xl bg-white/90 border border-brand/15 focus:border-brand focus:ring-2 focus:ring-brand/15 text-sm font-medium outline-none transition-all placeholder:text-brand/35 text-brand shadow-xs resize-none"
+                    placeholder="Imaš li neku napomenu, prehrambeno ograničenje ili pitanje za nas?"
                   />
                 </div>
 
-                {/* Custom Fields */}
+                {/* Custom Fields if configured */}
                 {activeEvent.customFields && activeEvent.customFields.length > 0 && (
-                  <div className="pt-4 border-t border-brand/10 space-y-6">
-                    <h3 className="font-serif font-bold text-lg text-brand mb-4">Dodatna pitanja</h3>
+                  <div className="pt-4 border-t border-brand/10 space-y-5">
+                    <h3 className="font-serif font-bold text-lg text-brand">Dodatna pitanja</h3>
                     {activeEvent.customFields.map((field) => (
-                      <div key={field.id}>
-                        <label htmlFor={field.id} className="block text-sm font-semibold text-brand mb-2">
-                          {field.label} {field.required && '*'}
+                      <div key={field.id} className="space-y-1.5">
+                        <label htmlFor={field.id} className="block text-xs font-bold text-brand">
+                          {field.label} {field.required && <span className="text-rose-600">*</span>}
                         </label>
 
                         {field.type === 'text' && (
@@ -688,7 +834,7 @@ export default function FormPage() {
                             required={field.required}
                             value={customAnswers[field.id] || ''}
                             onChange={(e) => handleCustomChange(field.id, e.target.value)}
-                            className="w-full px-4 py-3 rounded-xl bg-white/60 border border-white focus:border-brand focus:ring-1 focus:ring-brand outline-none transition-all"
+                            className="w-full px-4 py-3 rounded-2xl bg-white/90 border border-brand/15 focus:border-brand focus:ring-2 focus:ring-brand/15 text-sm font-medium outline-none transition-all text-brand shadow-xs"
                           />
                         )}
 
@@ -699,14 +845,14 @@ export default function FormPage() {
                             required={field.required}
                             value={customAnswers[field.id] || ''}
                             onChange={(e) => handleCustomChange(field.id, e.target.value)}
-                            className="w-full px-4 py-3 rounded-xl bg-white/60 border border-white focus:border-brand focus:ring-1 focus:ring-brand outline-none transition-all resize-none"
+                            className="w-full px-4 py-3 rounded-2xl bg-white/90 border border-brand/15 focus:border-brand focus:ring-2 focus:ring-brand/15 text-sm font-medium outline-none transition-all text-brand shadow-xs resize-none"
                           />
                         )}
 
                         {field.type === 'select' && (
-                          <div className="space-y-2">
+                          <div className="space-y-2 pt-1">
                             {field.options?.map((option, idx) => (
-                              <label key={idx} className="flex items-center gap-2 cursor-pointer group">
+                              <label key={idx} className="flex items-center gap-2.5 cursor-pointer group">
                                 <input
                                   type="radio"
                                   name={field.id}
@@ -714,20 +860,20 @@ export default function FormPage() {
                                   required={field.required}
                                   checked={customAnswers[field.id] === option}
                                   onChange={(e) => handleCustomChange(field.id, e.target.value)}
-                                  className="w-5 h-5 text-brand bg-white/60 border-brand focus:ring-brand accent-brand cursor-pointer"
+                                  className="w-4 h-4 text-brand bg-white/60 border-brand focus:ring-brand accent-brand cursor-pointer"
                                 />
-                                <span className="group-hover:text-brand-light transition-colors">{option}</span>
+                                <span className="text-sm text-brand/85 group-hover:text-brand transition-colors">{option}</span>
                               </label>
                             ))}
                           </div>
                         )}
 
                         {field.type === 'multiselect' && (
-                          <div className="space-y-2">
+                          <div className="space-y-2 pt-1">
                             {field.options?.map((option, idx) => {
                               const currentValues: string[] = customAnswers[field.id] || [];
                               return (
-                                <label key={idx} className="flex items-center gap-2 cursor-pointer group">
+                                <label key={idx} className="flex items-center gap-2.5 cursor-pointer group">
                                   <input
                                     type="checkbox"
                                     name={`${field.id}_${idx}`}
@@ -742,13 +888,12 @@ export default function FormPage() {
                                       }
                                       handleCustomChange(field.id, newValues);
                                     }}
-                                    className="w-5 h-5 text-brand bg-white/60 border-brand focus:ring-brand accent-brand cursor-pointer rounded"
+                                    className="w-4 h-4 text-brand bg-white/60 border-brand focus:ring-brand accent-brand cursor-pointer rounded"
                                   />
-                                  <span className="group-hover:text-brand-light transition-colors">{option}</span>
+                                  <span className="text-sm text-brand/85 group-hover:text-brand transition-colors">{option}</span>
                                 </label>
                               );
                             })}
-                            {/* Hidden input to enforce 'required' for multiselect */}
                             {field.required && (customAnswers[field.id]?.length || 0) === 0 && (
                               <input type="checkbox" required className="opacity-0 absolute w-0 h-0" />
                             )}
@@ -759,8 +904,9 @@ export default function FormPage() {
                   </div>
                 )}
 
-                {/* Obavezna prihvaćanja: Pravila privatnosti i Suglasnost za snimanje */}
+                {/* Consent & Privacy Checkboxes */}
                 <div className="pt-5 border-t border-brand/10 space-y-4">
+                  
                   {/* Checkbox 1: Pravila privatnosti */}
                   <label className="flex items-start gap-3 cursor-pointer group select-none">
                     <input
@@ -770,9 +916,9 @@ export default function FormPage() {
                       required
                       checked={acceptedPrivacy}
                       onChange={(e) => setAcceptedPrivacy(e.target.checked)}
-                      className="mt-0.5 w-5 h-5 text-brand bg-white/60 border-brand focus:ring-brand accent-brand cursor-pointer rounded shrink-0"
+                      className="mt-0.5 w-5 h-5 text-brand bg-white/80 border-brand/30 focus:ring-brand accent-brand cursor-pointer rounded shrink-0"
                     />
-                    <span className="text-xs sm:text-sm text-brand/90 leading-snug group-hover:text-brand transition-colors">
+                    <span className="text-xs sm:text-sm text-brand/85 leading-snug group-hover:text-brand transition-colors">
                       Pročitao/la sam i prihvaćam{' '}
                       <Link
                         to="/pravila-privatnosti"
@@ -783,11 +929,11 @@ export default function FormPage() {
                       >
                         Pravila privatnosti
                       </Link>{' '}
-                      i uvjete prijave na događaj <span className="text-red-500">*</span>
+                      i uvjete prijave na događaj <span className="text-rose-600">*</span>
                     </span>
                   </label>
 
-                  {/* Checkbox 2: Suglasnost za snimanje i fotografiranje */}
+                  {/* Checkbox 2: Suglasnost za snimanje */}
                   <div>
                     <label className="flex items-start gap-3 cursor-pointer group select-none">
                       <input
@@ -797,10 +943,10 @@ export default function FormPage() {
                         required
                         checked={acceptedMediaConsent}
                         onChange={(e) => setAcceptedMediaConsent(e.target.checked)}
-                        className="mt-0.5 w-5 h-5 text-brand bg-white/60 border-brand focus:ring-brand accent-brand cursor-pointer rounded shrink-0"
+                        className="mt-0.5 w-5 h-5 text-brand bg-white/80 border-brand/30 focus:ring-brand accent-brand cursor-pointer rounded shrink-0"
                       />
-                      <span className="text-xs sm:text-sm text-brand/90 leading-snug group-hover:text-brand transition-colors">
-                        Suglasan/na sam sa snimanjem i fotografiranjem na susretu <span className="text-red-500">*</span>
+                      <span className="text-xs sm:text-sm text-brand/85 leading-snug group-hover:text-brand transition-colors">
+                        Suglasan/na sam sa snimanjem i fotografiranjem na susretu <span className="text-rose-600">*</span>
                       </span>
                     </label>
 
@@ -811,16 +957,16 @@ export default function FormPage() {
                         className="text-[11px] sm:text-xs text-brand/70 hover:text-brand font-medium underline inline-flex items-center gap-1 transition-colors cursor-pointer"
                       >
                         <span>{showMediaDetails ? 'Sakrij detalje suglasnosti' : 'Pročitaj detalje suglasnosti'}</span>
-                        <ChevronDown size={12} className={`transition-transform duration-200 ${showMediaDetails ? 'rotate-180' : ''}`} />
+                        <ChevronDown size={13} className={`transition-transform duration-200 ${showMediaDetails ? 'rotate-180' : ''}`} />
                       </button>
 
                       {showMediaDetails && (
-                        <div className="text-[11px] sm:text-xs text-brand/85 leading-relaxed bg-brand/5 p-3 rounded-xl border border-brand/10 mt-2 max-h-48 overflow-y-auto">
+                        <div className="text-[11px] sm:text-xs text-brand/80 leading-relaxed bg-brand/5 p-4 rounded-2xl border border-brand/10 mt-2.5 max-h-48 overflow-y-auto">
                           <p className="mb-2">
-                            Dolaskom na susret „Na prvi pogled” dajem suglasnost za sudjelovanje u snimanju te za prikazivanje snimki, fotografija i drugih materijala na društvenoj mreži Instagram na profilu „Na prvi pogled”. Organizator će u svrhu promocije objaviti kratke audiovizualne isječke na društvenim mrežama (story i reel videozapise). Potvrđujem da su sve snimke, fotografije i ostali materijali izrađeni uz moje znanje od strane organizatora „Na prvi pogled” te ovime dajem svoju izričitu suglasnost i pristanak za korištenje svojega lika i njihovo objavljivanje u svim poznatim medijima (poput interneta, radija, mobilnih uređaja itd.), kao i u medijima koji će tek postati poznati.
+                            Dolaskom na susret „Na prvi pogled” dajem suglasnost za sudjelovanje u snimanju te za prikazivanje snimki, fotografija i drugih materijala na društvenoj mreži Instagram na profilu „Na prvi pogled”. Organizator će u svrhu promocije objaviti kratke audiovizualne isječke na društvenim mrežama (story i reel videozapise). Potvrđujem da su sve snimke i fotografije izrađene uz moje znanje od strane organizatora „Na prvi pogled” te ovime dajem svoju suglasnost za njihovo objavljivanje u promotivne svrhe.
                           </p>
                           <p>
-                            Suglasan/suglasna sam da sva autorska, vlasnička te bilo koja druga materijalna i nematerijalna prava na svim materijalima neograničeno i isključivo pripadaju organizatoru „Na prvi pogled”.
+                            Suglasan/na sam da autorska prava na promotivnim materijalima pripadaju organizatoru „Na prvi pogled”.
                           </p>
                         </div>
                       )}
@@ -828,22 +974,42 @@ export default function FormPage() {
                   </div>
                 </div>
 
-                <button
-                  type="submit"
-                  disabled={loading || isEventFull}
-                  className="w-full bg-brand hover:bg-brand-light text-white font-semibold py-4 rounded-xl shadow-lg transition-all transform hover:scale-[1.02] disabled:opacity-70 disabled:hover:scale-100 flex justify-center items-center gap-2 cursor-pointer disabled:cursor-not-allowed"
-                >
-                  {loading ? 'Slanje...' : isEventFull ? 'Mjesta su popunjena' : 'Prijavi se'}
-                  {!loading && !isEventFull && <Heart size={18} className="fill-white" />}
-                </button>
-                <p className="text-center text-xs text-brand/60 mt-4">
-                  Pritiskom na gumb potvrđuješ prijavu. Podaci se koriste isključivo u svrhu organizacije eventa.
-                </p>
+                {/* Submit button */}
+                <div className="pt-2">
+                  <button
+                    type="submit"
+                    disabled={loading || isEventFull}
+                    className="w-full bg-brand hover:bg-brand-light text-white font-bold py-4 px-8 rounded-full shadow-xl shadow-brand/20 transition-all transform hover:scale-[1.02] disabled:opacity-60 disabled:hover:scale-100 flex justify-center items-center gap-2 cursor-pointer disabled:cursor-not-allowed text-base"
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 size={18} className="animate-spin" />
+                        <span>Slanje prijave...</span>
+                      </>
+                    ) : isEventFull ? (
+                      <span>Mjesta su popunjena</span>
+                    ) : (
+                      <>
+                        <span>Prijavi se</span>
+                        <Heart size={18} className="fill-white" />
+                      </>
+                    )}
+                  </button>
+
+                  <p className="text-center text-xs text-brand/60 mt-3 font-light">
+                    Pritiskom na gumb potvrđuješ prijavu. Tvoji podaci čuvaju se strogo povjerljivo i koriste se isključivo za potrebe organizacije susreta.
+                  </p>
+                </div>
+
               </form>
             </>
           )}
+
         </div>
-      </div>
+
+      </main>
+
+      <Footer />
     </div>
   );
 }
