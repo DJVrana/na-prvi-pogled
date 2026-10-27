@@ -312,17 +312,11 @@ export default function Home() {
               <p className="text-sm font-semibold">Učitavanje aktivnih događaja...</p>
             </div>
           ) : activeEvents.length > 0 && currentEvent ? (
-            <div className="w-full max-w-xl sm:max-w-2xl lg:max-w-7xl mx-auto">
+            <div className="max-w-xl sm:max-w-2xl mx-auto">
               
               {/* Event selector pills if multiple events */}
               {activeEvents.length > 1 && (
-                <div className={`grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3 mb-5 sm:mb-6 ${
-                  activeEvents.length === 2 
-                    ? 'lg:grid-cols-2 max-w-3xl mx-auto' 
-                    : activeEvents.length === 3 
-                    ? 'lg:grid-cols-3' 
-                    : 'lg:grid-cols-4'
-                }`}>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 mb-5">
                   {activeEvents.map((evt) => {
                     const isSelected = evt.id === currentEvent.id;
                     return (
@@ -330,10 +324,10 @@ export default function Home() {
                         key={evt.id}
                         type="button"
                         onClick={() => setSelectedEventId(evt.id)}
-                        className={`p-3 sm:p-3.5 rounded-2xl text-left transition-all duration-300 border flex flex-col justify-between cursor-pointer ${
+                        className={`p-3 rounded-xl text-left transition-all duration-300 border flex flex-col justify-between cursor-pointer ${
                           isSelected
                             ? 'bg-white/95 border-brand shadow-md ring-2 ring-brand/30 scale-[1.01]'
-                            : 'bg-white/60 hover:bg-white/80 border-white/80 shadow-2xs'
+                            : 'bg-white/60 hover:bg-white/80 border-white/80'
                         }`}
                       >
                         <div>
@@ -354,7 +348,7 @@ export default function Home() {
               )}
 
               {/* Active Selected Event Showcase Card */}
-              <div className="bg-white/75 backdrop-blur-2xl p-4 sm:p-7 md:p-8 lg:p-10 rounded-3xl border border-white/90 shadow-xl shadow-brand/10 relative overflow-hidden">
+              <div className="bg-white/75 backdrop-blur-2xl p-4 sm:p-7 md:p-8 rounded-3xl border border-white/90 shadow-xl shadow-brand/10 relative overflow-hidden">
                 
                 {/* Header */}
                 <div className="pb-2.5 sm:pb-3.5 mb-3.5 sm:mb-5 border-b border-brand/10">
@@ -370,11 +364,11 @@ export default function Home() {
                   </h3>
                 </div>
 
-                {/* Details Grid: 2-column compact on mobile, 4-column balanced on desktop */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 mb-3.5 sm:mb-5">
+                {/* Details Grid: Merged Date & Time, 2-column compact on mobile */}
+                <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-3.5 sm:mb-5">
                   
-                  {/* Datum i vrijeme */}
-                  <div className="col-span-2 lg:col-span-1 bg-white/70 p-2 sm:p-2.5 rounded-xl border border-white/80 shadow-2xs flex items-center gap-2.5">
+                  {/* Datum i vrijeme - full width, seamless */}
+                  <div className="col-span-2 bg-white/70 p-2 sm:p-2.5 rounded-xl border border-white/80 shadow-2xs flex items-center gap-2.5">
                     <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-brand/10 text-brand flex items-center justify-center shrink-0">
                       <Calendar size={14} />
                     </div>
@@ -414,8 +408,8 @@ export default function Home() {
                     </div>
                   </div>
 
-                  {/* Lokacija */}
-                  <div className="col-span-2 lg:col-span-1 bg-white/70 p-2 sm:p-2.5 rounded-xl border border-white/80 shadow-2xs flex items-center gap-2.5">
+                  {/* Lokacija - full width */}
+                  <div className="col-span-2 bg-white/70 p-2 sm:p-2.5 rounded-xl border border-white/80 shadow-2xs flex items-center gap-2.5">
                     <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-brand/10 text-brand flex items-center justify-center shrink-0">
                       <MapPin size={14} />
                     </div>
@@ -426,10 +420,10 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* What you get checklist: 2 columns on mobile, 5 columns on desktop */}
+                {/* What you get checklist - 2 columns on mobile */}
                 <div className="bg-brand/5 rounded-2xl p-2.5 sm:p-4 mb-3.5 sm:mb-5 border border-brand/10">
                   <p className="text-[10px] sm:text-xs uppercase tracking-wider font-bold text-brand mb-1.5 sm:mb-2">Što dobivate?</p>
-                  <div className="grid grid-cols-2 lg:grid-cols-5 gap-x-2 gap-y-1.5 sm:gap-3 text-[11px] sm:text-xs text-brand/85">
+                  <div className="grid grid-cols-2 gap-x-2 gap-y-1.5 text-[11px] sm:text-xs text-brand/85">
                     <div className="flex items-center gap-1.5">
                       <CheckCircle2 size={13} className="text-brand shrink-0" />
                       <span>2 pića po izboru</span>
@@ -446,7 +440,7 @@ export default function Home() {
                       <CheckCircle2 size={13} className="text-brand shrink-0" />
                       <span className="truncate">100% diskretno</span>
                     </div>
-                    <div className="flex items-center gap-1.5 col-span-2 lg:col-span-1 pt-1 lg:pt-0 border-t lg:border-t-0 border-brand/5">
+                    <div className="flex items-center gap-1.5 col-span-2 pt-1 border-t border-brand/5">
                       <CheckCircle2 size={13} className="text-brand shrink-0" />
                       <span>Rezultati u roku 24 sata</span>
                     </div>
