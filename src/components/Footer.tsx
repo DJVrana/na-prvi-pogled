@@ -52,8 +52,12 @@ export default function Footer() {
           {/* Col 1: Brand story */}
           <div className="space-y-4">
             <div className="flex items-center gap-2.5">
-              <div className="w-10 h-10 rounded-xl bg-peach text-brand flex items-center justify-center shadow-lg">
-                <Heart size={22} className="fill-brand" />
+              <div className="w-10 h-10 rounded-xl overflow-hidden shadow-lg border border-white/10 flex items-center justify-center shrink-0">
+                <img 
+                  src={`${import.meta.env.BASE_URL}images/logo.png`} 
+                  alt="Na prvi pogled logo" 
+                  className="w-full h-full object-cover" 
+                />
               </div>
               <span className="font-serif font-bold text-2xl text-white tracking-tight">
                 Na prvi pogled

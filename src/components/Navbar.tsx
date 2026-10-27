@@ -1,10 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router';
 import { 
-  Heart, 
   Menu, 
   X, 
-  Sparkles, 
   Calendar, 
   Mail, 
   Home, 
@@ -120,9 +118,12 @@ export default function Navbar() {
               className="flex items-center gap-2.5 group transition-transform duration-300 hover:scale-[1.02]"
               aria-label="Na prvi pogled - Početna stranica"
             >
-              <div className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-brand text-white flex items-center justify-center shadow-md shadow-brand/20 group-hover:bg-brand-light transition-colors">
-                <Heart size={20} className="fill-white/90 group-hover:scale-110 transition-transform duration-300" />
-                <Sparkles size={11} className="absolute -top-1 -right-1 text-amber-300 animate-spin" style={{ animationDuration: '6s' }} />
+              <div className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl overflow-hidden shadow-md shadow-brand/10 border border-brand/10 flex items-center justify-center shrink-0">
+                <img 
+                  src={`${import.meta.env.BASE_URL}images/logo.png`} 
+                  alt="Na prvi pogled logo" 
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
+                />
               </div>
               <div className="flex flex-col">
                 <span className="font-serif font-bold text-lg sm:text-xl tracking-tight text-brand leading-none">
