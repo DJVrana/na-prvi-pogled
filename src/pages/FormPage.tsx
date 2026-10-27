@@ -929,7 +929,17 @@ export default function FormPage() {
                       >
                         Pravila privatnosti
                       </Link>{' '}
-                      i uvjete prijave na događaj <span className="text-rose-600">*</span>
+                      i{' '}
+                      <Link
+                        to="/uvjeti-koristenja"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-bold underline text-brand hover:text-brand-light transition-colors"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        Uvjete korištenja
+                      </Link>{' '}
+                      <span className="text-rose-600">*</span>
                     </span>
                   </label>
 

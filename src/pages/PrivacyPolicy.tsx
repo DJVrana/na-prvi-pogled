@@ -1,67 +1,101 @@
 import { useEffect } from 'react';
-import { ArrowLeft, ShieldCheck, EyeOff, Lock, Camera, Heart, Mail, CheckCircle2 } from 'lucide-react';
+import { 
+  ArrowLeft, 
+  ShieldCheck, 
+  EyeOff, 
+  Lock, 
+  Camera, 
+  Heart, 
+  Mail, 
+  CheckCircle2, 
+  Sparkles,
+  FileText,
+  UserCheck,
+  Server
+} from 'lucide-react';
 import { FaInstagram } from 'react-icons/fa';
 import { Link } from 'react-router';
+import Navbar from '../components/Navbar';
+import Footer from '../components/Footer';
+import SEO from '../components/SEO';
 
 export function meta() {
   return [
-    { title: "Pravila privatnosti | Na prvi pogled 💞" },
-    { name: "description", content: "Pravila privatnosti i zaštite osobnih podataka platforme Na prvi pogled. Saznajte kako štitimo vaše podatke – bez vanjske analitike i praćenja." }
+    { title: "Pravila privatnosti | Na prvi pogled 💞 Speed Dating" },
+    { name: "description", content: "Pravila privatnosti i zaštite osobnih podataka platforme Na prvi pogled. Saznajte kako štitimo vaše podatke – 100% GDPR usklađeno, bez vanjske analitike i praćenja." }
   ];
 }
 
 export default function PrivacyPolicy() {
   useEffect(() => {
-    document.title = "Pravila privatnosti | Na prvi pogled 💞";
+    document.title = "Pravila privatnosti | Na prvi pogled 💞 Speed Dating";
     window.scrollTo(0, 0);
   }, []);
 
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "name": "Pravila privatnosti - Na prvi pogled",
+    "description": "Pravila privatnosti i zaštite osobnih podataka platforme Na prvi pogled u skladu s GDPR uredbom.",
+    "url": "https://naprvipogled.com/pravila-privatnosti"
+  };
+
   return (
-    <div className="min-h-screen bg-peach text-brand font-sans relative overflow-x-hidden selection:bg-brand selection:text-white">
+    <div className="min-h-screen bg-peach text-brand font-sans relative overflow-x-hidden selection:bg-brand selection:text-white flex flex-col">
+      <SEO 
+        title="Pravila privatnosti | Na prvi pogled 💞 Speed Dating"
+        description="Pravila privatnosti i zaštite osobnih podataka platforme Na prvi pogled. Saznajte kako štitimo vaše podatke u skladu s GDPR-om – bez vanjske analitike i praćenja."
+        canonical="https://naprvipogled.com/pravila-privatnosti"
+        structuredData={structuredData}
+        keywords="pravila privatnosti na prvi pogled, zaštita podataka speed dating zagreb, gdpr na prvi pogled, privatnost podataka"
+      />
+
+      <Navbar />
 
       {/* Decorative ambient blobs */}
-      <div className="absolute top-10 left-[-5%] w-80 h-80 rounded-full bg-rose-300/20 blur-[100px] animate-ambient-drift pointer-events-none" />
-      <div className="absolute bottom-20 right-[-5%] w-96 h-96 rounded-full bg-brand/10 blur-[120px] animate-ambient-drift pointer-events-none" />
-
-      {/* Navigation Header */}
-      <nav className="w-full max-w-4xl mx-auto pt-8 px-6 sm:px-8 flex items-center justify-between z-10 relative">
-        <Link
-          to="/"
-          className="inline-flex items-center gap-2 text-brand/80 hover:text-brand font-medium text-sm transition-colors bg-white/50 backdrop-blur-md px-4 py-2 rounded-full border border-white/80 shadow-xs"
-        >
-          <ArrowLeft size={16} /> Natrag na početnu
-        </Link>
-        <span className="font-serif italic text-lg sm:text-xl font-bold tracking-tight text-brand">
-          Na prvi pogled 💞
-        </span>
-      </nav>
+      <div className="absolute top-20 left-[-5%] w-80 h-80 rounded-full bg-rose-300/20 blur-[100px] animate-ambient-drift pointer-events-none" />
+      <div className="absolute bottom-40 right-[-5%] w-96 h-96 rounded-full bg-brand/10 blur-[120px] animate-ambient-drift pointer-events-none" />
 
       {/* Main Content Container */}
-      <main className="max-w-4xl mx-auto px-6 sm:px-8 py-10 sm:py-14 relative z-10">
+      <main className="flex-1 pt-28 pb-20 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto w-full relative z-10">
         
+        {/* Back Link */}
+        <div className="mb-6">
+          <Link
+            to="/"
+            className="inline-flex items-center gap-2 text-xs sm:text-sm font-semibold text-brand/70 hover:text-brand transition-colors group cursor-pointer"
+          >
+            <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
+            <span>Natrag na početnu</span>
+          </Link>
+        </div>
+
         {/* Hero Header */}
-        <header className="text-center mb-12 sm:mb-16">
-          <div className="inline-flex items-center gap-2 bg-white/70 backdrop-blur-md px-4 py-1.5 rounded-full border border-white text-xs font-bold text-brand uppercase tracking-wider mb-4 shadow-xs">
-            <ShieldCheck size={14} className="text-emerald-600" />
-            Zaštita privatnosti i transparentnost
+        <header className="text-center mb-12 sm:mb-16 animate-fade-in-up">
+          <div className="inline-flex items-center gap-2 bg-brand/10 text-brand px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider mb-4 shadow-xs">
+            <ShieldCheck size={14} className="text-emerald-700" />
+            <span>Zaštita privatnosti i transparentnost</span>
           </div>
-          <h1 className="text-3xl sm:text-5xl font-serif font-bold text-brand mb-4 leading-tight">
+          <h1 className="text-3xl sm:text-5xl font-serif font-bold text-brand mb-4 leading-tight tracking-tight">
             Pravila privatnosti
           </h1>
           <p className="text-brand/80 text-base sm:text-lg max-w-2xl mx-auto font-light leading-relaxed">
-            Vaša privatnost, sigurnost i povjerenje naš su apsolutni prioritet. Ovdje transparentno objašnjavamo kako rukujemo vašim podacima – jednostavno, iskreno i bez skrivenih uvjeta.
+            Vaša privatnost, sigurnost i povjerenje naš su apsolutni prioritet. Ovdje transparentno objašnjavamo kako rukujemo vašim podacima – jednostavno, iskreno, u potpunosti usklađeno s GDPR uredbom i bez skrivenih uvjeta.
+          </p>
+          <p className="text-xs text-brand/60 mt-3 font-medium">
+            Zadnje ažuriranje: {new Date().toLocaleDateString('hr-HR', { year: 'numeric', month: 'long', day: 'numeric' })}
           </p>
         </header>
 
         {/* Highlight Banner: ZERO EXTERNAL ANALYTICS */}
-        <section className="mb-10 bg-gradient-to-br from-emerald-500/10 via-white/80 to-white/60 backdrop-blur-xl p-6 sm:p-8 rounded-3xl border border-emerald-200/60 shadow-lg shadow-emerald-500/5">
+        <section className="mb-10 bg-gradient-to-br from-emerald-500/10 via-white/85 to-white/70 backdrop-blur-xl p-6 sm:p-8 rounded-3xl border border-emerald-300/60 shadow-lg shadow-emerald-500/5">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
-            <div className="w-14 h-14 rounded-2xl bg-emerald-500/15 text-emerald-700 flex items-center justify-center shrink-0 border border-emerald-300/50 shadow-inner">
+            <div className="w-14 h-14 rounded-2xl bg-emerald-500/15 text-emerald-800 flex items-center justify-center shrink-0 border border-emerald-300/50 shadow-inner">
               <EyeOff size={28} />
             </div>
             <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="bg-emerald-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+              <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                <span className="bg-emerald-600 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
                   Važno jamstvo
                 </span>
                 <h2 className="text-xl sm:text-2xl font-serif font-bold text-gray-900">
@@ -69,205 +103,268 @@ export default function PrivacyPolicy() {
                 </h2>
               </div>
               <p className="text-sm text-gray-700 leading-relaxed font-normal">
-                Naša web stranica <strong>ne koristi Google Analytics, Meta Pixel, Hotjar</strong> niti bilo koje druge vanjske alate za praćenje, profiliranje ili bihevioralno oglašavanje. Vaše posjete ne bilježimo, ne pratimo vaše navike po internetu i ne plasiramo vam oglase trećih strana.
+                Naša web platforma <strong>ne koristi Google Analytics, Meta (Facebook) Pixel, TikTok Pixel, Hotjar</strong> niti bilo koje druge vanjske alate za praćenje, profiliranje ili bihevioralno oglašavanje. Vaše posjete ne bilježimo, ne pratimo vaše navike po internetu i ne plasiramo vam oglase trećih strana.
               </p>
             </div>
           </div>
         </section>
 
         {/* Feature Cards Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-12">
-          <div className="bg-white/60 backdrop-blur-md p-5 rounded-2xl border border-white/80 shadow-xs">
-            <div className="w-10 h-10 rounded-xl bg-brand/10 text-brand flex items-center justify-center mb-3">
-              <Lock size={20} />
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10">
+          <div className="bg-white/70 backdrop-blur-md p-5 rounded-3xl border border-white/90 shadow-sm">
+            <div className="w-10 h-10 rounded-2xl bg-brand/10 text-brand flex items-center justify-center mb-3">
+              <Lock size={20} className="text-brand-light" />
             </div>
             <h3 className="font-bold text-sm text-brand mb-1">Sigurna pohrana</h3>
-            <p className="text-xs text-brand/75 leading-relaxed">
-              Podaci se čuvaju na zaštićenoj Google Cloud infrastrukturi sa strogim pravilima pristupa.
+            <p className="text-xs text-brand/75 leading-relaxed font-light">
+              Podaci se čuvaju na zaštićenoj Google Cloud Firebase infrastrukturi sa strogim pravilima pristupa i enkripcijom.
             </p>
           </div>
 
-          <div className="bg-white/60 backdrop-blur-md p-5 rounded-2xl border border-white/80 shadow-xs">
-            <div className="w-10 h-10 rounded-xl bg-brand/10 text-brand flex items-center justify-center mb-3">
-              <Heart size={20} />
+          <div className="bg-white/70 backdrop-blur-md p-5 rounded-3xl border border-white/90 shadow-sm">
+            <div className="w-10 h-10 rounded-2xl bg-brand/10 text-brand flex items-center justify-center mb-3">
+              <Heart size={20} className="text-brand-light" />
             </div>
             <h3 className="font-bold text-sm text-brand mb-1">Diskrecija kontakta</h3>
-            <p className="text-xs text-brand/75 leading-relaxed">
-              Vaš kontakt dijeli se isključivo s osobom s kojom ostvarite obostrani match (uzajamni like).
+            <p className="text-xs text-brand/75 leading-relaxed font-light">
+              Vaš kontakt dijeli se isključivo s osobom s kojom ostvarite obostrani match (uzajamni like). U suprotnom ostaje tajan.
             </p>
           </div>
 
-          <div className="bg-white/60 backdrop-blur-md p-5 rounded-2xl border border-white/80 shadow-xs">
-            <div className="w-10 h-10 rounded-xl bg-brand/10 text-brand flex items-center justify-center mb-3">
-              <Camera size={20} />
+          <div className="bg-white/70 backdrop-blur-md p-5 rounded-3xl border border-white/90 shadow-sm">
+            <div className="w-10 h-10 rounded-2xl bg-brand/10 text-brand flex items-center justify-center mb-3">
+              <Camera size={20} className="text-brand-light" />
             </div>
             <h3 className="font-bold text-sm text-brand mb-1">Transparentno snimanje</h3>
-            <p className="text-xs text-brand/75 leading-relaxed">
-              Promotivni isječci za Instagram snimaju se uz vaše znanje radi dočaravanja atmosfere susreta.
+            <p className="text-xs text-brand/75 leading-relaxed font-light">
+              Promotivni isječci za Instagram snimaju se uz vaše znanje radi dočaravanja atmosfere susreta, uz puno uvažavanje dostojanstva.
             </p>
           </div>
         </div>
 
         {/* Detailed Sections Container */}
-        <div className="bg-white/70 backdrop-blur-xl p-6 sm:p-10 rounded-3xl shadow-xl shadow-brand/5 border border-white space-y-10 text-brand/90 leading-relaxed text-sm sm:text-base">
+        <div className="bg-white/80 backdrop-blur-xl p-6 sm:p-10 rounded-3xl shadow-xl shadow-brand/5 border border-white space-y-10 text-brand/90 leading-relaxed text-sm sm:text-base">
 
           {/* Section 1 */}
           <section>
             <h2 className="text-xl sm:text-2xl font-serif font-bold text-brand mb-3 flex items-center gap-2">
-              <span className="text-brand-light">1.</span> O voditelju obrade podataka
+              <span className="text-brand-light">1.</span> O voditelju obrade osobnih podataka
             </h2>
             <p className="mb-3">
-              Voditelj obrade osobnih podataka je projekt <strong>„Na prvi pogled”</strong> koji organizira speed dating događaje i tematska druženja na području grada Zagreba.
+              Voditelj obrade osobnih podataka u smislu Opće uredbe o zaštiti podataka (GDPR - Uredba (EU) 2016/679) je projekt <strong>„Na prvi pogled”</strong> koji organizira speed dating događaje i tematska druženja na području grada Zagreba i Republike Hrvatske.
             </p>
             <p>
-              Za sva pitanja, zahtjeve za uvidom, izmjenom ili trajnim brisanjem vaših osobnih podataka možete nam se u svakom trenutku javiti na naš službeni e-mail:{' '}
-              <a href="mailto:naprvipogled.events@gmail.com" className="font-semibold text-brand underline hover:text-brand-light">
-                naprvipogled.events@gmail.com
-              </a>{' '}
-              ili putem Instagram profila{' '}
-              <a href="https://instagram.com/na.prvi.pogled" target="_blank" rel="noreferrer" className="font-semibold text-brand underline hover:text-brand-light">
-                @na.prvi.pogled
-              </a>.
+              Za sva pitanja, zahtjeve za uvidom, ispravkom ili trajnim brisanjem vaših osobnih podataka možete nam se u svakom trenutku obratiti putem našeg službenog kontakta:
             </p>
+            <div className="mt-3 bg-brand/5 p-4 rounded-2xl border border-brand/10 text-xs sm:text-sm space-y-1.5">
+              <p><strong>E-mail adresa:</strong> <a href="mailto:naprvipogled.events@gmail.com" className="font-semibold underline text-brand hover:text-brand-light">naprvipogled.events@gmail.com</a></p>
+              <p><strong>Instagram profil:</strong> <a href="https://instagram.com/na.prvi.pogled" target="_blank" rel="noreferrer" className="font-semibold underline text-brand hover:text-brand-light">@na.prvi.pogled</a></p>
+              <p><strong>Lokacija djelovanja:</strong> Zagreb, Republika Hrvatska</p>
+            </div>
           </section>
 
           {/* Section 2 */}
           <section className="pt-6 border-t border-brand/10">
             <h2 className="text-xl sm:text-2xl font-serif font-bold text-brand mb-3 flex items-center gap-2">
-              <span className="text-brand-light">2.</span> Potpuna odsutnost vanjske analitike i praćenja
+              <span className="text-brand-light">2.</span> Potpuna odsutnost vanjskih alata za praćenje i kolačića
             </h2>
             <p className="mb-3">
-              Za razliku od većine komercijalnih web stranica, <strong>Na prvi pogled NE koristi:</strong>
+              Za razliku od većine komercijalnih portala, <strong>Na prvi pogled NE koristi:</strong>
             </p>
             <ul className="list-disc list-inside space-y-1.5 ml-2 mb-3 text-sm sm:text-base">
-              <li>Google Analytics ili srodne analitičke platforme</li>
-              <li>Meta / Facebook Pixel</li>
-              <li>Sustave za praćenje klikova i snimanje ekrana (Hotjar, CrazyEgg i sl.)</li>
-              <li>Marketinške kolačiće trećih strana ili alate za bihevioralno profiliranje</li>
+              <li>Google Analytics, Adobe Analytics ili slične platforme za analitiku posjeta</li>
+              <li>Meta / Facebook Pixel ili društvene mrežne trackere</li>
+              <li>Sustave za praćenje ponašanja miša i snimanje ekrana (Hotjar, CrazyEgg i sl.)</li>
+              <li>Marketinške kolačiće trećih strana ili alate za profiliranje korisnika</li>
             </ul>
-            <p className="text-sm bg-brand/5 p-4 rounded-xl border border-brand/10">
-              💡 <strong>Kolačići (Cookies):</strong> Koriste se isključivo tehnički nužni elementi (poput lokalne sesije za Google prijavu) koji omogućuju siguran rad aplikacije. Zbog toga na našoj stranici nema napornih skočnih prozora (cookie bannera) za prihvaćanje marketinških kolačića – jer ih jednostavno nemamo!
-            </p>
+            <div className="text-xs sm:text-sm bg-brand/5 p-4 rounded-2xl border border-brand/10 leading-relaxed">
+              💡 <strong>Tehnički nužni kolačići (Strictly Necessary Cookies):</strong> Koriste se isključivo za osnovno funkcioniranje web aplikacije – konkretno za održavanje sigurne sesije prijave putem Google računa (Firebase Auth token). Ovi elementi ne prate vaše kretanje po drugim stranicama i brišu se odjavom ili istekom sesije. Zbog toga na našoj stranici nema napornih bannera za pristanak na marketinške kolačiće.
+            </div>
           </section>
 
           {/* Section 3 */}
           <section className="pt-6 border-t border-brand/10">
             <h2 className="text-xl sm:text-2xl font-serif font-bold text-brand mb-3 flex items-center gap-2">
-              <span className="text-brand-light">3.</span> Podaci koje prikupljamo i svrha obrade
+              <span className="text-brand-light">3.</span> Osobni podaci koje prikupljamo i svrha obrade
             </h2>
             <p className="mb-4">
-              Prikupljamo isključivo podatke koji su nužni za organizaciju kvalitetnog, sigurnog i ugodnog speed dating susreta:
+              Prikupljamo isključivo one podatke koji su strogo nužni za kvalitetnu i sigurnu organizaciju susreta, koordinaciju prijava i rad matching sustava:
             </p>
             
-            <div className="space-y-3">
-              <div className="bg-white/80 p-4 rounded-xl border border-white/90">
-                <h4 className="font-bold text-brand mb-1">E-mail adresa</h4>
-                <p className="text-xs sm:text-sm text-brand/80">
-                  Preuzima se automatski putem Google prijave. Koristi se isključivo za sprječavanje automatiziranih (lažnih) prijava te slanje obavijesti o statusu prijave, točnoj lokaciji i vremenu susreta.
+            <div className="space-y-3.5">
+              
+              {/* Google Auth */}
+              <div className="bg-white/85 p-4 sm:p-5 rounded-2xl border border-white shadow-xs">
+                <div className="flex items-center gap-2 font-bold text-brand text-sm sm:text-base mb-1">
+                  <UserCheck size={18} className="text-brand-light" />
+                  <h4>Podaci Google računa (E-mail i ime)</h4>
+                </div>
+                <p className="text-xs sm:text-sm text-brand/80 leading-relaxed">
+                  Preuzimaju se prilikom autentifikacije putem Googlea. Svrha je sprječavanje lažnih i automatiziranih (bot) prijava te slanje obavijesti o statusu prijave, točnom terminu i lokaciji susreta te rezultatima matchinga.
                 </p>
               </div>
 
-              <div className="bg-white/80 p-4 rounded-xl border border-white/90">
-                <h4 className="font-bold text-brand mb-1">Ime i prezime, dob i spol</h4>
-                <p className="text-xs sm:text-sm text-brand/80">
-                  Nužni podaci za raspored i osiguravanje ravnomjernog omjera sudionika te formiranje dobnih skupina na događajima.
+              {/* Form Data */}
+              <div className="bg-white/85 p-4 sm:p-5 rounded-2xl border border-white shadow-xs">
+                <div className="flex items-center gap-2 font-bold text-brand text-sm sm:text-base mb-1">
+                  <FileText size={18} className="text-brand-light" />
+                  <h4>Ime i prezime, dob i spol</h4>
+                </div>
+                <p className="text-xs sm:text-sm text-brand/80 leading-relaxed">
+                  Podaci koji se unose u prijavnicu za događaj. Nužni su za provjeru punoljetnosti, kreiranje optimalnog rasporeda rotacija te osiguravanje uravnoteženog omjera žena i muškaraca sličnih dobnih skupina.
                 </p>
               </div>
 
-              <div className="bg-white/80 p-4 rounded-xl border border-white/90">
-                <h4 className="font-bold text-brand mb-1">Kontakt podatak za Matching (Instagram korisničko ime ili telefon)</h4>
-                <p className="text-xs sm:text-sm text-brand/80">
-                  Kontakt koji sudionik unosi za potrebe spajanja nakon susreta. <strong>Važno:</strong> vaš kontakt podatak prosljeđuje se <em>isključivo i samo</em> osobi s kojom ostvarite obostrani match (obje osobe su označile 'Like'). Ako nema obostranog matcha, kontakt ostaje u potpunosti povjerljiv i nikome se ne prosljeđuje.
+              {/* Matching */}
+              <div className="bg-white/85 p-4 sm:p-5 rounded-2xl border border-white shadow-xs">
+                <div className="flex items-center gap-2 font-bold text-brand text-sm sm:text-base mb-1">
+                  <Heart size={18} className="text-brand-light" />
+                  <h4>Podaci za Matching sustav (Kontakt: Instagram ili mobitel)</h4>
+                </div>
+                <p className="text-xs sm:text-sm text-brand/80 leading-relaxed">
+                  Kontakt koji sudionik unosi za potrebe spajanja. <strong>Strogo pravilo diskrecije:</strong> vaš kontakt dostavlja se <em>isključivo i samo</em> osobi s kojom ostvarite obostrani match (obje osobe su označile 'Like'). Ako nema uzajamnog sviđanja, vaš odabir i kontakt ostaju 100% povjerljivi i nikada se ne otkrivaju drugoj strani.
                 </p>
               </div>
 
-              <div className="bg-white/80 p-4 rounded-xl border border-white/90">
-                <h4 className="font-bold text-brand mb-1">Napomena i specifična pitanja</h4>
-                <p className="text-xs sm:text-sm text-brand/80">
-                  Informacije koje sudionik svojevoljno unese u prijavnicu (npr. prehrambene preferencije, napomene organizatoru).
+              {/* Contact Form */}
+              <div id="kontakt-obrada" className="bg-white/85 p-4 sm:p-5 rounded-2xl border border-white shadow-xs scroll-mt-28">
+                <div className="flex items-center gap-2 font-bold text-brand text-sm sm:text-base mb-1">
+                  <Mail size={18} className="text-brand-light" />
+                  <h4>Podaci iz kontakt obrasca (Ime, e-mail, telefon i poruka)</h4>
+                </div>
+                <p className="text-xs sm:text-sm text-brand/80 leading-relaxed">
+                  Podaci koje dobrovoljno unesete u kontakt obrazac na stranici <Link to="/kontakt" className="font-bold underline text-brand hover:text-brand-light">Kontakt</Link> obrađuju se isključivo u svrhu pružanja odgovora na vaš upit ili rješavanja vašeg pitanja. Ti se podaci ne koriste za marketinške promocije i brišu se nakon što je komunikacija uspješno zaključena.
                 </p>
               </div>
+
             </div>
           </section>
 
           {/* Section 4 */}
           <section className="pt-6 border-t border-brand/10">
             <h2 className="text-xl sm:text-2xl font-serif font-bold text-brand mb-3 flex items-center gap-2">
-              <span className="text-brand-light">4.</span> Suglasnost za snimanje i fotografiranje na susretima
+              <span className="text-brand-light">4.</span> Pravne osnove za obradu podataka (GDPR čl. 6)
             </h2>
-            <p className="mb-4">
-              U svrhu promocije susreta i dočaravanja opuštene, pozitivne atmosfere, prijavom na događaj sudionici prihvaćaju sljedeću suglasnost:
+            <p className="mb-3">
+              Obrada vaših osobnih podataka temelji se na sljedećim pravnim osnovama:
             </p>
-
-            <div className="bg-rose-50/70 border-l-4 border-brand p-5 rounded-r-2xl text-xs sm:text-sm leading-relaxed text-brand italic">
-              „Dolaskom na susret »Na prvi pogled« dajem suglasnost za sudjelovanje u snimanju te za prikazivanje snimki, fotografija i drugih materijala na društvenoj mreži Instagram na profilu »Na prvi pogled«. Organizator će u svrhu promocije objaviti kratke audiovizualne isječke na društvenim mrežama (story i reel videozapise). Potvrđujem da su sve snimke, fotografije i ostali materijali izrađeni uz moje znanje od strane organizatora »Na prvi pogled« te ovime dajem svoju izričitu suglasnost i pristanak za korištenje svojega lika i njihovo objavljivanje u svim poznatim medijima (poput interneta, radija, mobilnih uređaja itd.), kao i u medijima koji će tek postati poznati.
-              <br /><br />
-              Suglasan/suglasna sam da sva autorska, vlasnička te bilo koja druga materijalna i nematerijalna prava na svim materijalima neograničeno i isključivo pripadaju organizatoru »Na prvi pogled«.”
-            </div>
-            <p className="mt-3 text-xs sm:text-sm text-brand/80">
-              Organizator uvijek pazi na dostojanstvo sudionika te se materijali kreiraju s ciljem prikazivanja lijepe i kulturne atmosfere događaja.
-            </p>
+            <ul className="list-disc list-inside space-y-2 mb-3 text-sm sm:text-base ml-1">
+              <li>
+                <strong>Izvršenje ugovora / usluge (čl. 6. st. 1. t. b GDPR-a):</strong> Obrada podataka nužna je kako bismo zaprimili prijavu, organizirali događaj, osigurali vaše mjesto i proveli postupak matchinga.
+              </li>
+              <li>
+                <strong>Privola ispitanika (čl. 6. st. 1. t. a GDPR-a):</strong> Za slanje kontakt upita te za suglasnost vezanu uz promotivno snimanje i fotografiranje na susretu. Privolu možete opozvati u svakom trenutku.
+              </li>
+              <li>
+                <strong>Legitimni interes (čl. 6. st. 1. t. f GDPR-a):</strong> Osiguravanje tehničke stabilnosti sustava, sprječavanje zlouporaba (spama i lažnih profila) te zaštita sigurnosti i dostojanstva svih sudionika susreta.
+              </li>
+            </ul>
           </section>
 
           {/* Section 5 */}
           <section className="pt-6 border-t border-brand/10">
             <h2 className="text-xl sm:text-2xl font-serif font-bold text-brand mb-3 flex items-center gap-2">
-              <span className="text-brand-light">5.</span> Čuvanje, zaštita i dijeljenje podataka
+              <span className="text-brand-light">5.</span> Suglasnost za snimanje i fotografiranje na susretima
             </h2>
-            <p className="mb-3">
-              Vaši podaci pohranjuju se u sigurnoj bazi podataka platforme Google Firebase smještenoj u Europskoj uniji / u skladu s međunarodnim sigurnosnim certifikatima (ISO 27001, SOC 2, GDPR compliance).
+            <p className="mb-4">
+              U svrhu promocije susreta i dočaravanja ugodne i opuštene atmosfere na društvenim mrežama, sudionici prijavom na događaj prihvaćaju sljedeću suglasnost:
             </p>
-            <ul className="list-disc list-inside space-y-1.5 ml-2 text-sm sm:text-base">
-              <li>Pristup prijavama ima isključivo organizacijski tim „Na prvi pogled”.</li>
-              <li>Vaši osobni podaci <strong>nikada se ne prodaju</strong>, ne ustupaju marketinškim agencijama niti dijele s trećim stranama.</li>
-              <li>Prijave i podaci čuvaju se onoliko koliko je nužno za provedbu događaja i evidenciju posjećenosti.</li>
-            </ul>
+
+            <div className="bg-rose-50/70 border-l-4 border-brand p-5 rounded-r-2xl text-xs sm:text-sm leading-relaxed text-brand italic">
+              „Dolaskom na susret »Na prvi pogled« dajem suglasnost za sudjelovanje u snimanju te za prikazivanje snimki, fotografija i drugih materijala na društvenoj mreži Instagram na profilu »Na prvi pogled«. Organizator će u svrhu promocije objaviti kratke audiovizualne isječke na društvenim mrežama (story i reel videozapise). Potvrđujem da su sve snimke, fotografije i ostali materijali izrađeni uz moje znanje od strane organizatora »Na prvi pogled« te ovime dajem svoju izričitu suglasnost i pristanak za korištenje svojega lika i njihovo objavljivanje u promotivne svrhe.
+              <br /><br />
+              Suglasan/suglasna sam da sva autorska, vlasnička te bilo koja druga materijalna i nematerijalna prava na svim promotivnim materijalima neograničeno i isključivo pripadaju organizatoru »Na prvi pogled«.”
+            </div>
+            <p className="mt-3 text-xs sm:text-sm text-brand/80">
+              Organizator uvijek pazi na dostojanstvo sudionika te se materijali kreiraju s ciljem prikazivanja lijepe, kulturne i vedre atmosfere događaja. Ukoliko iz opravdanih privatnih razloga želite da se određeni kadar u kojem ste prepoznatljivi ukloni ili zamuti, dovoljno je poslati poruku organizatoru i zahtjevu će se odmah udovoljiti.
+            </p>
           </section>
 
           {/* Section 6 */}
           <section className="pt-6 border-t border-brand/10">
             <h2 className="text-xl sm:text-2xl font-serif font-bold text-brand mb-3 flex items-center gap-2">
-              <span className="text-brand-light">6.</span> Vaša prava (GDPR)
+              <span className="text-brand-light">6.</span> Sigurnost, infrastruktura i dijeljenje podataka
             </h2>
             <p className="mb-3">
-              Kao sudionik i vlasnik svojih osobnih podataka, u svakom trenutku imate pravo na:
+              Vaši podaci pohranjuju se na Google Firebase infrastrukturi (Google Cloud Platform) unutar Europske unije, koja primjenjuje najviše međunarodne standarde sigurnosti i enkripcije (ISO 27001, SOC 2, SOC 3, GDPR).
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs sm:text-sm">
-              <div className="flex items-start gap-2 bg-white/60 p-3 rounded-xl border border-white">
-                <CheckCircle2 size={16} className="text-emerald-600 shrink-0 mt-0.5" />
-                <span><strong>Pravo na pristup i uvid:</strong> saznati koje sve podatke o vama posjedujemo.</span>
-              </div>
-              <div className="flex items-start gap-2 bg-white/60 p-3 rounded-xl border border-white">
-                <CheckCircle2 size={16} className="text-emerald-600 shrink-0 mt-0.5" />
-                <span><strong>Pravo na ispravak:</strong> zatražiti ažuriranje netočnih ili nepotpunih podataka.</span>
-              </div>
-              <div className="flex items-start gap-2 bg-white/60 p-3 rounded-xl border border-white">
-                <CheckCircle2 size={16} className="text-emerald-600 shrink-0 mt-0.5" />
-                <span><strong>Pravo na brisanje („pravo na zaborav”):</strong> trajno uklanjanje vašeg profila i prijava.</span>
-              </div>
-              <div className="flex items-start gap-2 bg-white/60 p-3 rounded-xl border border-white">
-                <CheckCircle2 size={16} className="text-emerald-600 shrink-0 mt-0.5" />
-                <span><strong>Pravo na opoziv:</strong> u bilo kojem trenutku možete povući prethodno danu privolu.</span>
-              </div>
-            </div>
-            <p className="mt-4 text-xs sm:text-sm">
-              Za ostvarivanje bilo kojeg od navedenih prava dovoljno je poslati kratku poruku na e-mail{' '}
-              <a href="mailto:naprvipogled.events@gmail.com" className="font-semibold underline">naprvipogled.events@gmail.com</a>.
-            </p>
+            <ul className="list-disc list-inside space-y-2 mb-3 text-sm sm:text-base ml-1">
+              <li>
+                <strong>Nema prodaje podataka:</strong> Vaši osobni podaci <strong>nikada se ne prodaju, ne ustupaju niti iznajmljuju</strong> oglašivačima, marketinškim agencijama ili trećim stranama.
+              </li>
+              <li>
+                <strong>Tehnički posrednici:</strong> Za slanje e-mail obavijesti koristimo pouzdani servis EmailJS koji funkcionira isključivo kao tehnički posrednik za isporuku e-maila bez trajnog zadržavanja sadržaja poruka.
+              </li>
+              <li>
+                <strong>Stroga prava pristupa:</strong> Uvid u pristigle prijave i bazu podataka ima isključivo ovlašteni organizacijski tim „Na prvi pogled”.
+              </li>
+            </ul>
           </section>
 
           {/* Section 7 */}
           <section className="pt-6 border-t border-brand/10">
             <h2 className="text-xl sm:text-2xl font-serif font-bold text-brand mb-3 flex items-center gap-2">
-              <span className="text-brand-light">7.</span> Kontakt i izmjene pravila
+              <span className="text-brand-light">7.</span> Rokovi čuvanja podataka
+            </h2>
+            <p className="mb-3">
+              Osobne podatke čuvamo samo onoliko dugo koliko je nužno za ispunjenje svrhe u koju su prikupljeni:
+            </p>
+            <ul className="list-disc list-inside space-y-1.5 mb-3 text-sm sm:text-base ml-1">
+              <li>
+                <strong>Podaci o prijavama i matching glasovima:</strong> Čuvaju se do provedbe i zaključenja susreta i razmjene kontakata, odnosno do trenutka kada korisnik zatraži brisanje profila.
+              </li>
+              <li>
+                <strong>Kontakt upiti:</strong> Čuvaju se najviše 12 mjeseci od zaprimanja radi eventualne naknadne komunikacije, nakon čega se trajno brišu.
+              </li>
+            </ul>
+          </section>
+
+          {/* Section 8 */}
+          <section className="pt-6 border-t border-brand/10">
+            <h2 className="text-xl sm:text-2xl font-serif font-bold text-brand mb-3 flex items-center gap-2">
+              <span className="text-brand-light">8.</span> Vaša prava prema GDPR uredbi
+            </h2>
+            <p className="mb-3">
+              Kao ispitanik, u svakom trenutku imate pravo ostvariti sljedeća zakonska prava bez ikakve naknade:
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs sm:text-sm">
+              <div className="flex items-start gap-2 bg-white/70 p-3.5 rounded-2xl border border-white">
+                <CheckCircle2 size={16} className="text-emerald-700 shrink-0 mt-0.5" />
+                <span><strong>Pravo na pristup i uvid:</strong> saznati koje sve podatke o vama posjedujemo i zatražiti kopiju.</span>
+              </div>
+              <div className="flex items-start gap-2 bg-white/70 p-3.5 rounded-2xl border border-white">
+                <CheckCircle2 size={16} className="text-emerald-700 shrink-0 mt-0.5" />
+                <span><strong>Pravo na ispravak:</strong> zatražiti trenutno ažuriranje netočnih ili nepotpunih podataka.</span>
+              </div>
+              <div className="flex items-start gap-2 bg-white/70 p-3.5 rounded-2xl border border-white">
+                <CheckCircle2 size={16} className="text-emerald-700 shrink-0 mt-0.5" />
+                <span><strong>Pravo na brisanje („pravo na zaborav”):</strong> trajno uklanjanje vašeg profila, prijava i svih povezanih podataka.</span>
+              </div>
+              <div className="flex items-start gap-2 bg-white/70 p-3.5 rounded-2xl border border-white">
+                <CheckCircle2 size={16} className="text-emerald-700 shrink-0 mt-0.5" />
+                <span><strong>Pravo na povlačenje privole:</strong> u bilo kojem trenutku možete opozvati prethodno danu suglasnost.</span>
+              </div>
+            </div>
+            <p className="mt-4 text-xs sm:text-sm leading-relaxed">
+              Za ostvarivanje bilo kojeg prava dovoljno je poslati e-mail na{' '}
+              <a href="mailto:naprvipogled.events@gmail.com" className="font-bold underline text-brand hover:text-brand-light">
+                naprvipogled.events@gmail.com
+              </a>. Na vaš zahtjev odgovorit ćemo u najkraćem roku, a najkasnije u roku od 30 dana. Također, imate pravo podnijeti pritužbu nadzornom tijelu – <strong>Agenciji za zaštitu osobnih podataka (AZOP)</strong>, Selska cesta 136, Zagreb (<a href="https://azop.hr" target="_blank" rel="noreferrer" className="underline font-semibold">azop.hr</a>).
+            </p>
+          </section>
+
+          {/* Section 9 */}
+          <section className="pt-6 border-t border-brand/10">
+            <h2 className="text-xl sm:text-2xl font-serif font-bold text-brand mb-3 flex items-center gap-2">
+              <span className="text-brand-light">9.</span> Kontakt i izmjene ovih pravila
             </h2>
             <p className="mb-4">
-              Zadržavamo pravo ažuriranja ovih pravila privatnosti u slučaju izmjene zakonskih propisa ili načina funkcioniranja platforme. Svaka izmjena bit će pravodobno objavljena na ovoj stranici.
+              Organizator zadržava pravo ažuriranja ovih pravila privatnosti u slučaju izmjene zakonskih propisa ili tehničkog unapređenja platforme. Svaka izmjena stupa na snagu trenutkom objave na ovoj stranici.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 pt-2">
               <a
                 href="mailto:naprvipogled.events@gmail.com"
-                className="inline-flex items-center justify-center gap-2 bg-brand text-white px-5 py-3 rounded-xl font-semibold text-xs sm:text-sm hover:bg-brand-light transition-all shadow-sm"
+                className="inline-flex items-center justify-center gap-2 bg-brand text-white px-5 py-3 rounded-2xl font-semibold text-xs sm:text-sm hover:bg-brand-light transition-all shadow-sm"
               >
                 <Mail size={16} /> naprvipogled.events@gmail.com
               </a>
@@ -275,7 +372,7 @@ export default function PrivacyPolicy() {
                 href="https://instagram.com/na.prvi.pogled"
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center justify-center gap-2 bg-white text-brand border border-brand/20 px-5 py-3 rounded-xl font-semibold text-xs sm:text-sm hover:bg-gray-50 transition-all shadow-xs"
+                className="inline-flex items-center justify-center gap-2 bg-white text-brand border border-brand/20 px-5 py-3 rounded-2xl font-semibold text-xs sm:text-sm hover:bg-gray-50 transition-all shadow-xs"
               >
                 <FaInstagram size={16} className="text-brand-light" /> @na.prvi.pogled
               </a>
@@ -288,7 +385,7 @@ export default function PrivacyPolicy() {
         <div className="mt-12 text-center">
           <Link
             to="/"
-            className="inline-flex items-center gap-2 bg-white/70 hover:bg-white text-brand font-semibold text-sm px-6 py-3 rounded-full border border-white shadow-sm transition-all hover:scale-105"
+            className="inline-flex items-center gap-2 bg-white/80 hover:bg-white text-brand font-bold text-sm px-7 py-3 rounded-full border border-white shadow-sm transition-all hover:scale-105"
           >
             <ArrowLeft size={16} /> Povratak na naslovnicu
           </Link>
@@ -298,6 +395,8 @@ export default function PrivacyPolicy() {
         </div>
 
       </main>
+
+      <Footer />
     </div>
   );
 }

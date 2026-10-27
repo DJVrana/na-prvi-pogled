@@ -13,6 +13,7 @@ import {
 import { FaInstagram } from 'react-icons/fa';
 import emailjs from '@emailjs/browser';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { Link } from 'react-router';
 import { db } from '../firebase';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
@@ -28,6 +29,7 @@ export default function ContactPage() {
     message: ''
   });
 
+  const [acceptedPrivacy, setAcceptedPrivacy] = useState(false);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -42,8 +44,14 @@ export default function ContactPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setErrorMsg('');
+
+    if (!acceptedPrivacy) {
+      setErrorMsg("Molimo potvrdite suglasnost s obradom osobnih podataka kako biste poslali upit.");
+      return;
+    }
+
+    setLoading(true);
 
     try {
       // 1. Uvijek sigurno spremamo upit u Firestore bazu 'contact_messages'
@@ -53,6 +61,8 @@ export default function ContactPage() {
         phone: formData.phone.trim() || null,
         subject: formData.subject,
         message: formData.message.trim(),
+        acceptedPrivacy: true,
+        consentedAt: serverTimestamp(),
         createdAt: serverTimestamp(),
         status: 'new'
       });
@@ -89,6 +99,7 @@ export default function ContactPage() {
       }
 
       setSuccess(true);
+      setAcceptedPrivacy(false);
       setFormData({
         name: '',
         email: '',
@@ -350,6 +361,34 @@ export default function ContactPage() {
                   />
                 </div>
 
+                {/* Consent Checkbox */}
+                <div className="pt-1">
+                  <label className="flex items-start gap-3 cursor-pointer group select-none">
+                    <input
+                      type="checkbox"
+                      id="contactAcceptedPrivacy"
+                      name="acceptedPrivacy"
+                      required
+                      checked={acceptedPrivacy}
+                      onChange={(e) => setAcceptedPrivacy(e.target.checked)}
+                      className="mt-0.5 w-5 h-5 text-brand bg-white/90 border-brand/30 focus:ring-brand accent-brand cursor-pointer rounded shrink-0"
+                    />
+                    <span className="text-xs sm:text-sm text-brand/85 leading-snug group-hover:text-brand transition-colors">
+                      Suglasan/na sam s obradom mojih osobnih podataka u svrhu pružanja odgovora na poslani upit. Pročitajte kako rukujemo vašim podacima u našim{' '}
+                      <Link
+                        to="/pravila-privatnosti#kontakt-obrada"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-bold underline text-brand hover:text-brand-light transition-colors"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        Pravilima privatnosti
+                      </Link>
+                      . <span className="text-rose-500 font-bold">*</span>
+                    </span>
+                  </label>
+                </div>
+
                 {/* Submit Button */}
                 <button
                   type="submit"
@@ -370,7 +409,7 @@ export default function ContactPage() {
                 </button>
 
                 <p className="text-[11px] text-center text-brand/60">
-                  Slanjem ovog obrasca prihvaćaš komunikaciju vezanu uz tvoj upit. Nikada ne šaljemo neželjenu poštu.
+                  Tvoji podaci su strogo povjerljivi i koriste se isključivo za odgovor na tvoju poruku.
                 </p>
 
               </form>

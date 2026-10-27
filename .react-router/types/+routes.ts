@@ -38,12 +38,15 @@ type Pages = {
   "/pravila-privatnosti": {
     params: {};
   };
+  "/uvjeti-koristenja": {
+    params: {};
+  };
 };
 
 type RouteFiles = {
   "root.tsx": {
     id: "root";
-    page: "/" | "/eventi" | "/blog" | "/kontakt" | "/prijava" | "/admin" | "/profil" | "/matching" | "/pravila-privatnosti";
+    page: "/" | "/eventi" | "/blog" | "/kontakt" | "/prijava" | "/admin" | "/profil" | "/matching" | "/pravila-privatnosti" | "/uvjeti-koristenja";
   };
   "../pages/Home.tsx": {
     id: "../pages/Home";
@@ -81,6 +84,10 @@ type RouteFiles = {
     id: "../pages/PrivacyPolicy";
     page: "/pravila-privatnosti";
   };
+  "../pages/TermsOfService.tsx": {
+    id: "../pages/TermsOfService";
+    page: "/uvjeti-koristenja";
+  };
 };
 
 type RouteModules = {
@@ -94,4 +101,5 @@ type RouteModules = {
   "../pages/ProfilePage": unknown;
   "../pages/MatchingPage": unknown;
   "../pages/PrivacyPolicy": unknown;
+  "../pages/TermsOfService": unknown;
 };

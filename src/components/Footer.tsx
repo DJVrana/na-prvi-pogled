@@ -111,6 +111,11 @@ export default function Footer() {
                   <Sparkles size={12} className="text-amber-400" /> Pravila privatnosti
                 </Link>
               </li>
+              <li>
+                <Link to="/uvjeti-koristenja" className="text-peach-dark/80 hover:text-white transition-colors flex items-center gap-1.5">
+                  <Sparkles size={12} className="text-amber-400" /> Uvjeti korištenja
+                </Link>
+              </li>
             </ul>
           </div>
 
@@ -160,11 +165,15 @@ export default function Footer() {
 
         {/* Bottom bar */}
         <div className="pt-8 border-t border-brand-light/30 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-peach-dark/60">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <p>© {currentYear} Na prvi pogled. Sva prava pridržana.</p>
             <span>•</span>
             <Link to="/pravila-privatnosti" className="underline hover:text-white transition-colors">
               Pravila privatnosti
+            </Link>
+            <span>•</span>
+            <Link to="/uvjeti-koristenja" className="underline hover:text-white transition-colors">
+              Uvjeti korištenja
             </Link>
           </div>
           <p className="flex items-center gap-1.5">

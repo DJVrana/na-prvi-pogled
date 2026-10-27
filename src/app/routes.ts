@@ -9,5 +9,7 @@ export default [
   route("admin", "../pages/AdminDashboard.tsx"),
   route("profil", "../pages/ProfilePage.tsx"),
   route("matching", "../pages/MatchingPage.tsx"),
-  route("pravila-privatnosti", "../pages/PrivacyPolicy.tsx")
+  route("pravila-privatnosti", "../pages/PrivacyPolicy.tsx"),
+  route("uvjeti-koristenja", "../pages/TermsOfService.tsx")
 ] satisfies RouteConfig;
+
