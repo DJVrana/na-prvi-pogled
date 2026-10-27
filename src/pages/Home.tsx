@@ -165,7 +165,7 @@ export default function Home() {
         {/* ========================================================================= */}
         {/* 4. HERO SECTION                                                          */}
         {/* ========================================================================= */}
-        <section className="pt-32 sm:pt-36 lg:pt-40 pb-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+        <section className="pt-32 sm:pt-36 lg:pt-40 pb-8 sm:pb-12 lg:pb-14 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
             
             {/* Left Column: Hero Text & Call to Action */}
@@ -286,32 +286,32 @@ export default function Home() {
         {/* ========================================================================= */}
         {/* 5. INTERACTIVE EVENTS SECTION (Sekcija za prikaz događaja)                */}
         {/* ========================================================================= */}
-        <section id="dogadaji-sekcija" className="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto scroll-mt-24">
+        <section id="dogadaji-sekcija" className="pt-2 pb-14 sm:pt-4 sm:pb-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto scroll-mt-24">
           
-          <div className="text-center max-w-3xl mx-auto mb-14">
-            <div className="inline-flex items-center gap-2 bg-brand/10 text-brand px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider mb-4">
-              <Calendar size={14} className="text-brand-light" />
+          <div className="text-center max-w-2xl mx-auto mb-6 sm:mb-8">
+            <div className="inline-flex items-center gap-2 bg-brand/10 text-brand px-3.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider mb-3">
+              <Calendar size={13} className="text-brand-light" />
               <span>Aktivne prijave</span>
             </div>
-            <h2 className="font-serif text-3xl sm:text-5xl font-bold text-brand tracking-tight mb-4">
-              Odaberi svoj termin & dobnu skupinu
+            <h2 className="font-serif text-2xl sm:text-4xl font-bold text-brand tracking-tight mb-3">
+              Odaberi svoj termin i dobnu skupinu
             </h2>
-            <p className="text-brand/80 text-base sm:text-lg font-light leading-relaxed">
+            <p className="text-brand/80 text-sm sm:text-base font-light leading-relaxed">
               Prijavi se za večer koja ti odgovara. Broj mjesta je ograničen radi ravnomjernog omjera sudionika.
             </p>
           </div>
 
           {loadingEvents ? (
-            <div className="flex flex-col justify-center items-center py-16 text-brand gap-3">
-              <Loader2 className="animate-spin text-brand" size={40} />
+            <div className="flex flex-col justify-center items-center py-12 text-brand gap-3">
+              <Loader2 className="animate-spin text-brand" size={36} />
               <p className="text-sm font-semibold">Učitavanje aktivnih događaja...</p>
             </div>
           ) : activeEvents.length > 0 && currentEvent ? (
-            <div className="max-w-4xl mx-auto">
+            <div className="max-w-xl sm:max-w-2xl mx-auto">
               
               {/* Event selector pills if multiple events */}
               {activeEvents.length > 1 && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-8">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 mb-5">
                   {activeEvents.map((evt) => {
                     const isSelected = evt.id === currentEvent.id;
                     return (
@@ -319,20 +319,20 @@ export default function Home() {
                         key={evt.id}
                         type="button"
                         onClick={() => setSelectedEventId(evt.id)}
-                        className={`p-4 rounded-2xl text-left transition-all duration-300 border flex flex-col justify-between cursor-pointer ${
+                        className={`p-3 rounded-xl text-left transition-all duration-300 border flex flex-col justify-between cursor-pointer ${
                           isSelected
-                            ? 'bg-white/95 border-brand shadow-lg ring-2 ring-brand/30 scale-[1.02]'
+                            ? 'bg-white/95 border-brand shadow-md ring-2 ring-brand/30 scale-[1.01]'
                             : 'bg-white/60 hover:bg-white/80 border-white/80'
                         }`}
                       >
                         <div>
                           <div className="flex items-center justify-between gap-1 mb-1">
-                            <span className="font-bold text-brand text-sm line-clamp-1">{evt.title}</span>
-                            {isSelected && <CheckCircle2 size={16} className="text-brand shrink-0" />}
+                            <span className="font-bold text-brand text-xs sm:text-sm line-clamp-1">{evt.title}</span>
+                            {isSelected && <CheckCircle2 size={15} className="text-brand shrink-0" />}
                           </div>
-                          <p className="text-xs text-brand/70 font-semibold mb-2">Dob: {evt.ageGroup}</p>
+                          <p className="text-[11px] text-brand/70 font-semibold mb-1.5">Dob: {evt.ageGroup}</p>
                         </div>
-                        <div className="flex items-center justify-between text-xs pt-2 border-t border-brand/10 text-brand/90">
+                        <div className="flex items-center justify-between text-[11px] pt-1.5 border-t border-brand/10 text-brand/90">
                           <span>{evt.dateStr}</span>
                           <span className="font-bold text-brand-light">{evt.price}</span>
                         </div>
@@ -343,85 +343,97 @@ export default function Home() {
               )}
 
               {/* Active Selected Event Showcase Card */}
-              <div className="bg-white/75 backdrop-blur-2xl p-6 sm:p-10 md:p-12 rounded-3xl border border-white/90 shadow-2xl shadow-brand/15 relative overflow-hidden">
+              <div className="bg-white/75 backdrop-blur-2xl p-5 sm:p-7 md:p-8 rounded-3xl border border-white/90 shadow-xl shadow-brand/10 relative overflow-hidden">
                 
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 mb-8 border-b border-brand/10">
-                  <div>
-                    <div className="inline-flex items-center gap-1.5 bg-brand/10 text-brand text-xs font-bold uppercase tracking-wider px-3.5 py-1 rounded-full mb-2">
-                      <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                      Prijave su u tijeku
-                    </div>
-                    <h3 className="font-serif font-bold text-3xl sm:text-4xl text-brand">
-                      {currentEvent.title}
-                    </h3>
+                {/* Header */}
+                <div className="pb-3.5 mb-5 border-b border-brand/10">
+                  <div className="inline-flex items-center gap-2 bg-brand/10 text-brand text-[11px] font-bold uppercase tracking-wider px-3 py-1 rounded-full mb-2">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+                    </span>
+                    Prijave su u tijeku
                   </div>
-
-                  <div className="bg-brand text-white px-5 py-3 rounded-2xl text-center self-start sm:self-auto shadow-md">
-                    <span className="text-[10px] uppercase tracking-wider block opacity-80">Kotizacija</span>
-                    <span className="font-serif font-bold text-2xl">{currentEvent.price}</span>
-                  </div>
+                  <h3 className="font-serif font-bold text-2xl sm:text-3xl text-brand">
+                    {currentEvent.title}
+                  </h3>
                 </div>
 
                 {/* Details Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                  <div className="bg-white/70 p-3.5 rounded-2xl border border-white/80 shadow-sm flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-brand/10 text-brand flex items-center justify-center shrink-0">
-                      <Users size={18} />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3 mb-5">
+                  <div className="bg-white/70 p-2.5 sm:p-3 rounded-xl border border-white/80 shadow-sm flex items-center gap-3">
+                    <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-brand/10 text-brand flex items-center justify-center shrink-0">
+                      <Users size={16} />
                     </div>
                     <div>
                       <span className="text-[10px] uppercase tracking-wider text-brand/60 block font-semibold">Dobna skupina</span>
-                      <strong className="text-sm text-brand">{currentEvent.ageGroup}</strong>
+                      <strong className="text-xs sm:text-sm text-brand">{currentEvent.ageGroup}</strong>
                     </div>
                   </div>
 
-                  <div className="bg-white/70 p-3.5 rounded-2xl border border-white/80 shadow-sm flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-brand/10 text-brand flex items-center justify-center shrink-0">
-                      <Calendar size={18} />
+                  <div className="bg-white/70 p-2.5 sm:p-3 rounded-xl border border-white/80 shadow-sm flex items-center gap-3">
+                    <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-brand/10 text-brand flex items-center justify-center shrink-0">
+                      <Calendar size={16} />
                     </div>
                     <div>
                       <span className="text-[10px] uppercase tracking-wider text-brand/60 block font-semibold">Datum</span>
-                      <strong className="text-sm text-brand">{currentEvent.dateStr}</strong>
+                      <strong className="text-xs sm:text-sm text-brand">{currentEvent.dateStr}</strong>
                     </div>
                   </div>
 
-                  <div className="bg-white/70 p-3.5 rounded-2xl border border-white/80 shadow-sm flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-brand/10 text-brand flex items-center justify-center shrink-0">
-                      <Clock size={18} />
+                  <div className="bg-white/70 p-2.5 sm:p-3 rounded-xl border border-white/80 shadow-sm flex items-center gap-3">
+                    <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-brand/10 text-brand flex items-center justify-center shrink-0">
+                      <Clock size={16} />
                     </div>
                     <div>
                       <span className="text-[10px] uppercase tracking-wider text-brand/60 block font-semibold">Vrijeme</span>
-                      <strong className="text-sm text-brand">{currentEvent.timeStr}</strong>
+                      <strong className="text-xs sm:text-sm text-brand">{currentEvent.timeStr}</strong>
                     </div>
                   </div>
 
-                  <div className="bg-white/70 p-3.5 rounded-2xl border border-white/80 shadow-sm flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-brand/10 text-brand flex items-center justify-center shrink-0">
-                      <MapPin size={18} />
+                  <div className="bg-white/70 p-2.5 sm:p-3 rounded-xl border border-white/80 shadow-sm flex items-center gap-3">
+                    <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-brand/10 text-brand flex items-center justify-center shrink-0">
+                      <MapPin size={16} />
                     </div>
                     <div>
                       <span className="text-[10px] uppercase tracking-wider text-brand/60 block font-semibold">Lokacija</span>
-                      <strong className="text-sm text-brand truncate block max-w-[150px]">{currentEvent.location}</strong>
+                      <strong className="text-xs sm:text-sm text-brand truncate block">{currentEvent.location}</strong>
+                    </div>
+                  </div>
+
+                  {/* Kotizacija moved below location and with normal size */}
+                  <div className="bg-white/70 p-2.5 sm:p-3 rounded-xl border border-white/80 shadow-sm flex items-center gap-3 sm:col-span-2">
+                    <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-brand/10 text-brand flex items-center justify-center shrink-0">
+                      <Wine size={16} />
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase tracking-wider text-brand/60 block font-semibold">Kotizacija</span>
+                      <strong className="text-xs sm:text-sm text-brand">{currentEvent.price}</strong>
                     </div>
                   </div>
                 </div>
 
-                {/* Included perks checklist */}
-                <div className="bg-brand/5 rounded-2xl p-4 sm:p-5 mb-8 border border-brand/10">
-                  <p className="text-xs uppercase tracking-wider font-bold text-brand mb-3">Uključeno u večer:</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs text-brand/85">
+                {/* What you get checklist */}
+                <div className="bg-brand/5 rounded-2xl p-3.5 sm:p-4 mb-5 border border-brand/10">
+                  <p className="text-xs uppercase tracking-wider font-bold text-brand mb-2.5">Što dobivate?</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-brand/85">
                     <div className="flex items-center gap-2">
                       <CheckCircle2 size={15} className="text-brand shrink-0" />
-                      <span>Piće dobrodošlice (vrhunsko vino ili sok)</span>
+                      <span>2 pića po izboru</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <CheckCircle2 size={15} className="text-brand shrink-0" />
-                      <span>10 – 15 brzih spojeva uz ugodnu glazbu</span>
+                      <span>Puno spojeva</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 size={15} className="text-brand shrink-0" />
+                      <span>Dobra glazba</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <CheckCircle2 size={15} className="text-brand shrink-0" />
                       <span>100% diskretno označavanje simpatija</span>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 sm:col-span-2">
                       <CheckCircle2 size={15} className="text-brand shrink-0" />
                       <span>Rezultati i kontakti u roku 24 sata</span>
                     </div>
@@ -432,15 +444,15 @@ export default function Home() {
                 <div className="text-center">
                   <Link
                     to={`/prijava?eventId=${currentEvent.id}`}
-                    className="group relative inline-flex items-center justify-center gap-3 bg-brand hover:bg-brand-light text-white px-10 py-4 rounded-full font-bold text-lg transition-all duration-300 shadow-xl shadow-brand/25 transform hover:scale-105 overflow-hidden"
+                    className="group relative inline-flex items-center justify-center gap-2 bg-brand hover:bg-brand-light text-white px-7 py-3 rounded-full font-bold text-sm sm:text-base transition-all duration-300 shadow-lg shadow-brand/25 transform hover:scale-105 overflow-hidden"
                   >
-                    <span className="relative z-10 flex items-center gap-2">
+                    <span className="relative z-10 flex items-center gap-1.5">
                       Ispuni prijavu za ovaj termin
-                      <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
+                      <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
                     </span>
                     <span className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
                   </Link>
-                  <p className="mt-3 text-xs text-brand/70 font-medium">
+                  <p className="mt-2 text-[11px] sm:text-xs text-brand/70 font-medium">
                     Mjesta se brzo popunjavaju radi balansa spolova
                   </p>
                 </div>
@@ -492,66 +504,66 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             
             {/* Step 1 */}
-            <div className="bg-white/70 backdrop-blur-md p-6 sm:p-8 rounded-3xl border border-white/80 shadow-md shadow-brand/5 flex flex-col justify-between group hover:shadow-xl transition-all">
+            <div className="bg-white/70 backdrop-blur-md p-6 sm:p-7 rounded-3xl border border-white/80 shadow-md shadow-brand/5 flex flex-col justify-between group hover:shadow-xl transition-all">
               <div>
-                <div className="w-12 h-12 rounded-2xl bg-brand text-white font-serif font-bold text-xl flex items-center justify-center mb-6 shadow-md shadow-brand/20 group-hover:scale-110 transition-transform">
+                <div className="w-11 h-11 rounded-2xl bg-brand text-white font-sans font-bold text-lg flex items-center justify-center mb-5 shadow-md shadow-brand/20 group-hover:scale-110 transition-transform">
                   1
                 </div>
-                <h3 className="font-serif font-bold text-xl text-brand mb-2">Online prijava</h3>
-                <p className="text-xs text-brand/80 leading-relaxed font-light">
-                  Odaberi svoju dobnu skupinu i ispuni kratku prijavu. Pazimo na točan balans broja žena i muškaraca.
+                <h3 className="font-sans font-bold text-lg text-brand mb-2">Online prijava</h3>
+                <p className="text-sm text-brand/85 leading-relaxed font-normal">
+                  Odaberi svoju dobnu skupinu i ispuni kratku prijavu. Pazimo na uravnoteženost broja prijavljenih žena i muškaraca.
                 </p>
               </div>
-              <div className="pt-4 border-t border-brand/10 mt-6 text-[11px] font-semibold text-brand/60">
+              <div className="pt-3.5 border-t border-brand/10 mt-5 text-xs font-semibold text-brand/70">
                 Trajanje: 1 minuta
               </div>
             </div>
 
             {/* Step 2 */}
-            <div className="bg-white/70 backdrop-blur-md p-6 sm:p-8 rounded-3xl border border-white/80 shadow-md shadow-brand/5 flex flex-col justify-between group hover:shadow-xl transition-all">
+            <div className="bg-white/70 backdrop-blur-md p-6 sm:p-7 rounded-3xl border border-white/80 shadow-md shadow-brand/5 flex flex-col justify-between group hover:shadow-xl transition-all">
               <div>
-                <div className="w-12 h-12 rounded-2xl bg-brand text-white font-serif font-bold text-xl flex items-center justify-center mb-6 shadow-md shadow-brand/20 group-hover:scale-110 transition-transform">
+                <div className="w-11 h-11 rounded-2xl bg-brand text-white font-sans font-bold text-lg flex items-center justify-center mb-5 shadow-md shadow-brand/20 group-hover:scale-110 transition-transform">
                   2
                 </div>
-                <h3 className="font-serif font-bold text-xl text-brand mb-2">Piće dobrodošlice</h3>
-                <p className="text-xs text-brand/80 leading-relaxed font-light">
-                  Dolazak u bar, upoznavanje s domaćinom i čaša finog vina koja odmah razbija svaku početnu tremu.
+                <h3 className="font-sans font-bold text-lg text-brand mb-2">Dolazak</h3>
+                <p className="text-sm text-brand/85 leading-relaxed font-normal">
+                  Dođite u bar 15-ak minuta prije početka događaja kako biste se smjestili
                 </p>
               </div>
-              <div className="pt-4 border-t border-brand/10 mt-6 text-[11px] font-semibold text-brand/60">
+              <div className="pt-3.5 border-t border-brand/10 mt-5 text-xs font-semibold text-brand/70">
                 15 min prije početka
               </div>
             </div>
 
             {/* Step 3 */}
-            <div className="bg-white/70 backdrop-blur-md p-6 sm:p-8 rounded-3xl border border-white/80 shadow-md shadow-brand/5 flex flex-col justify-between group hover:shadow-xl transition-all">
+            <div className="bg-white/70 backdrop-blur-md p-6 sm:p-7 rounded-3xl border border-white/80 shadow-md shadow-brand/5 flex flex-col justify-between group hover:shadow-xl transition-all">
               <div>
-                <div className="w-12 h-12 rounded-2xl bg-brand text-white font-serif font-bold text-xl flex items-center justify-center mb-6 shadow-md shadow-brand/20 group-hover:scale-110 transition-transform">
+                <div className="w-11 h-11 rounded-2xl bg-brand text-white font-sans font-bold text-lg flex items-center justify-center mb-5 shadow-md shadow-brand/20 group-hover:scale-110 transition-transform">
                   3
                 </div>
-                <h3 className="font-serif font-bold text-xl text-brand mb-2">Spojevi od 5 min</h3>
-                <p className="text-xs text-brand/80 leading-relaxed font-light">
-                  Sa svakom osobom razgovaraš 5 do 7 minuta. Zvuk zvonca označava rotaciju. Nema neugodnih tišina.
+                <h3 className="font-sans font-bold text-lg text-brand mb-2">Spojevi od nekoliko minuta</h3>
+                <p className="text-sm text-brand/85 leading-relaxed font-normal">
+                  Sa svakom osobom razgovaraš nekoliko minuta. Nakon toga slijedi rotacija i upoznaješ novu osobu.
                 </p>
               </div>
-              <div className="pt-4 border-t border-brand/10 mt-6 text-[11px] font-semibold text-brand/60">
+              <div className="pt-3.5 border-t border-brand/10 mt-5 text-xs font-semibold text-brand/70">
                 10 – 15 zanimljivih susreta
               </div>
             </div>
 
             {/* Step 4 */}
-            <div className="bg-white/70 backdrop-blur-md p-6 sm:p-8 rounded-3xl border border-white/80 shadow-md shadow-brand/5 flex flex-col justify-between group hover:shadow-xl transition-all">
+            <div className="bg-white/70 backdrop-blur-md p-6 sm:p-7 rounded-3xl border border-white/80 shadow-md shadow-brand/5 flex flex-col justify-between group hover:shadow-xl transition-all">
               <div>
-                <div className="w-12 h-12 rounded-2xl bg-brand text-white font-serif font-bold text-xl flex items-center justify-center mb-6 shadow-md shadow-brand/20 group-hover:scale-110 transition-transform">
+                <div className="w-11 h-11 rounded-2xl bg-brand text-white font-sans font-bold text-lg flex items-center justify-center mb-5 shadow-md shadow-brand/20 group-hover:scale-110 transition-transform">
                   4
                 </div>
-                <h3 className="font-serif font-bold text-xl text-brand mb-2">Obostrani match</h3>
-                <p className="text-xs text-brand/80 leading-relaxed font-light">
+                <h3 className="font-sans font-bold text-lg text-brand mb-2">Obostrani match</h3>
+                <p className="text-sm text-brand/85 leading-relaxed font-normal">
                   U potpunoj tajnosti označavaš simpatije. Ako je simpatija obostrana, razmjenjujete kontakte unutar 24h.
                 </p>
               </div>
-              <div className="pt-4 border-t border-brand/10 mt-6 text-[11px] font-semibold text-brand/60">
-                100% diskretno & sigurno
+              <div className="pt-3.5 border-t border-brand/10 mt-5 text-xs font-semibold text-brand/70">
+                100% diskretno
               </div>
             </div>
 
@@ -567,8 +579,8 @@ export default function Home() {
               
               <div className="lg:col-span-6 space-y-6">
                 <div className="inline-flex items-center gap-2 bg-brand/10 text-brand px-3.5 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider">
-                  <Wine size={14} className="text-brand-light" />
-                  <span>Stvarni dojam</span>
+                  <Sparkles size={14} className="text-brand-light" />
+                  <span>PRILIKA</span>
                 </div>
                 <h2 className="font-serif text-3xl sm:text-4xl font-bold text-brand leading-tight">
                   Zašto odabrati Na prvi pogled umjesto aplikacija za upoznavanje?
@@ -583,8 +595,8 @@ export default function Home() {
                       <CheckCircle2 size={16} />
                     </div>
                     <div>
-                      <strong className="text-sm text-brand block">Odmah znaš postoji li kemija</strong>
-                      <span className="text-xs text-brand/70 font-light">Govor tijela, glas, osmijeh i energija — to niti jedan algoritam ne može dočarati.</span>
+                      <strong className="text-sm sm:text-base text-brand block font-bold">Odmah znaš postoji li kemija</strong>
+                      <span className="text-sm text-brand/80 font-normal leading-relaxed">Govor tijela, glas, osmijeh i energija — to niti jedan algoritam ne može dočarati.</span>
                     </div>
                   </div>
 
@@ -593,8 +605,8 @@ export default function Home() {
                       <CheckCircle2 size={16} />
                     </div>
                     <div>
-                      <strong className="text-sm text-brand block">Nema neugodnog odbijanja</strong>
-                      <span className="text-xs text-brand/70 font-light">Nitko na licu mjesta ne zna koga si označio/la. Sve je 100% anonimno i bez stresa.</span>
+                      <strong className="text-sm sm:text-base text-brand block font-bold">Nema neugodnog odbijanja</strong>
+                      <span className="text-sm text-brand/80 font-normal leading-relaxed">Nitko na licu mjesta ne zna koga si označio/la. Sve je 100% anonimno i bez stresa.</span>
                     </div>
                   </div>
 
@@ -603,8 +615,8 @@ export default function Home() {
                       <CheckCircle2 size={16} />
                     </div>
                     <div>
-                      <strong className="text-sm text-brand block">Kvalitetan ambijent</strong>
-                      <span className="text-xs text-brand/70 font-light">Odabiremo isključivo intimne, ugodne zagrebačke prostore u kojima se osjećaš opušteno.</span>
+                      <strong className="text-sm sm:text-base text-brand block font-bold">Ugodan ambijent</strong>
+                      <span className="text-sm text-brand/80 font-normal leading-relaxed">Odabiremo isključivo kvalitetne i intimne prostore prilagođene razgovorima i upoznavanju novih ljudi.</span>
                     </div>
                   </div>
                 </div>

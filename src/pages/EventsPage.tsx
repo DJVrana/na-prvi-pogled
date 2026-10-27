@@ -10,7 +10,10 @@ import {
   ShieldCheck, 
   ChevronRight, 
   Loader2, 
-  ChevronDown
+  ChevronDown,
+  Heart,
+  Music,
+  CreditCard
 } from 'lucide-react';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -136,36 +139,36 @@ export default function EventsPage() {
 
         {/* What's Included Strip */}
         <section className="bg-white/70 backdrop-blur-md rounded-3xl border border-white/90 p-6 sm:p-8 shadow-lg shadow-brand/5 mb-14">
-          <h2 className="text-xs uppercase tracking-widest text-brand-light font-bold mb-4 text-center">
-            Što je sve uključeno u svaku kotizaciju?
+          <h2 className="font-serif text-2xl sm:text-3xl font-bold text-brand text-center mb-8">
+            Što sve možete očekivati kod nas?
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-brand">
-            <div className="flex items-center gap-3 bg-white/60 p-3.5 rounded-2xl border border-white/80">
-              <div className="w-10 h-10 rounded-xl bg-brand/10 text-brand flex items-center justify-center shrink-0">
+            <div className="flex items-center gap-3.5 bg-white/60 p-4 rounded-2xl border border-white/80 shadow-sm">
+              <div className="w-11 h-11 rounded-xl bg-brand/10 text-brand flex items-center justify-center shrink-0">
+                <Users size={20} className="text-brand-light" />
+              </div>
+              <span className="text-sm font-semibold">15 do 20 spojeva po 4-6 min</span>
+            </div>
+
+            <div className="flex items-center gap-3.5 bg-white/60 p-4 rounded-2xl border border-white/80 shadow-sm">
+              <div className="w-11 h-11 rounded-xl bg-brand/10 text-brand flex items-center justify-center shrink-0">
                 <Wine size={20} className="text-brand-light" />
               </div>
-              <span className="text-xs font-semibold">Piće dobrodošlice (vrhunsko vino ili sok)</span>
+              <span className="text-sm font-semibold">Dva pića po izboru</span>
             </div>
 
-            <div className="flex items-center gap-3 bg-white/60 p-3.5 rounded-2xl border border-white/80">
-              <div className="w-10 h-10 rounded-xl bg-brand/10 text-brand flex items-center justify-center shrink-0">
-                <Users size={20} />
+            <div className="flex items-center gap-3.5 bg-white/60 p-4 rounded-2xl border border-white/80 shadow-sm">
+              <div className="w-11 h-11 rounded-xl bg-brand/10 text-brand flex items-center justify-center shrink-0">
+                <Music size={20} className="text-brand-light" />
               </div>
-              <span className="text-xs font-semibold">10 do 15 brzih spojeva od 5-7 min</span>
+              <span className="text-sm font-semibold">Opuštena atmosfera i dobra glazba</span>
             </div>
 
-            <div className="flex items-center gap-3 bg-white/60 p-3.5 rounded-2xl border border-white/80">
-              <div className="w-10 h-10 rounded-xl bg-brand/10 text-brand flex items-center justify-center shrink-0">
-                <ShieldCheck size={20} />
+            <div className="flex items-center gap-3.5 bg-white/60 p-4 rounded-2xl border border-white/80 shadow-sm">
+              <div className="w-11 h-11 rounded-xl bg-brand/10 text-brand flex items-center justify-center shrink-0">
+                <ShieldCheck size={20} className="text-brand-light" />
               </div>
-              <span className="text-xs font-semibold">100% anonimni matching sustav</span>
-            </div>
-
-            <div className="flex items-center gap-3 bg-white/60 p-3.5 rounded-2xl border border-white/80">
-              <div className="w-10 h-10 rounded-xl bg-brand/10 text-brand flex items-center justify-center shrink-0">
-                <Sparkles size={20} className="text-amber-500" />
-              </div>
-              <span className="text-xs font-semibold">Domaćin i opuštena, vođena atmosfera</span>
+              <span className="text-sm font-semibold">100% anonimni matching sustav</span>
             </div>
           </div>
         </section>
@@ -209,12 +212,12 @@ export default function EventsPage() {
                 <div>
                   {/* Status pill */}
                   <div className="flex items-center justify-between mb-4 pb-3 border-b border-brand/10">
-                    <span className="inline-flex items-center gap-1.5 bg-emerald-100 text-emerald-800 text-[11px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                      Prijave otvorene
-                    </span>
-                    <span className="text-sm font-extrabold text-brand bg-brand/5 px-2.5 py-1 rounded-lg">
-                      {evt.price}
+                    <span className="inline-flex items-center gap-2 bg-brand/10 text-brand text-[11px] font-bold uppercase tracking-wider px-3 py-1 rounded-full">
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+                      </span>
+                      Prijave su u tijeku
                     </span>
                   </div>
 
@@ -253,6 +256,14 @@ export default function EventsPage() {
                       <div>
                         <span className="text-[10px] text-brand/60 uppercase block leading-none">Lokacija</span>
                         <span className="font-medium text-brand">{evt.location}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 text-sm text-brand/85 bg-white/60 p-2.5 rounded-xl border border-white/70">
+                      <CreditCard size={16} className="text-brand-light shrink-0" />
+                      <div>
+                        <span className="text-[10px] text-brand/60 uppercase block leading-none font-semibold">Kotizacija</span>
+                        <span className="font-medium text-brand">{evt.price}</span>
                       </div>
                     </div>
                   </div>
@@ -363,39 +374,72 @@ export default function EventsPage() {
         {/* FAQ for Events using modern <details name="faq"> disclosure */}
         <section className="mt-20 max-w-3xl mx-auto">
           <h2 className="font-serif text-2xl sm:text-3xl font-bold text-brand text-center mb-8">
-            Najčešća pitanja o događajima
+            Najčešća pitanja
           </h2>
 
           <div className="space-y-4">
             <details name="event-faq" className="group bg-white/70 backdrop-blur-md rounded-2xl border border-white/90 p-5 cursor-pointer shadow-sm open:ring-2 open:ring-brand/20">
               <summary className="font-bold text-brand text-base flex items-center justify-between list-none">
-                <span>Što ako mi se nitko na događaju ne svidi?</span>
+                <span>Postoji li dress code?</span>
                 <ChevronDown size={18} className="text-brand-light transition-transform duration-300 group-open:rotate-180" />
               </summary>
-              <div className="pt-3 text-sm text-brand/80 leading-relaxed border-t border-brand/10 mt-3 font-light">
-                To je sasvim u redu! Nisi obvezan/na označiti nikoga. Ako nema obostrane simpatije, tvoji podaci se nikome ne prosljeđuju, a večer si svejedno proveo/la u zabavnom društvu uz čašu vina.
+              <div className="pt-3 text-sm text-brand/85 leading-relaxed border-t border-brand/10 mt-3 font-normal">
+                Ne, dođi odjeven/a kako se najugodnije osjećaš.
               </div>
             </details>
 
             <details name="event-faq" className="group bg-white/70 backdrop-blur-md rounded-2xl border border-white/90 p-5 cursor-pointer shadow-sm open:ring-2 open:ring-brand/20">
               <summary className="font-bold text-brand text-base flex items-center justify-between list-none">
-                <span>Mogu li doći s prijateljem ili prijateljicom?</span>
+                <span>Kako funkcionira matching?</span>
                 <ChevronDown size={18} className="text-brand-light transition-transform duration-300 group-open:rotate-180" />
               </summary>
-              <div className="pt-3 text-sm text-brand/80 leading-relaxed border-t border-brand/10 mt-3 font-light">
-                Naravno! Mnogi sudionici dolaze u paru s prijateljima radi podrške. Tijekom brzih spojeva svatko razgovara samostalno sa svojim sugovornikom, no prije i poslije možete se družiti zajedno.
+              <div className="pt-3 text-sm text-brand/85 leading-relaxed border-t border-brand/10 mt-3 font-normal">
+                Nakon ili tijekom eventa označi tko ti se svidio te, ukoliko je osjećaj obostran, poslat će vam se poruka elektroničke pošte s kontaktima.
               </div>
             </details>
 
             <details name="event-faq" className="group bg-white/70 backdrop-blur-md rounded-2xl border border-white/90 p-5 cursor-pointer shadow-sm open:ring-2 open:ring-brand/20">
               <summary className="font-bold text-brand text-base flex items-center justify-between list-none">
-                <span>Što je dress code?</span>
+                <span>Kakvo piće imam u izboru?</span>
                 <ChevronDown size={18} className="text-brand-light transition-transform duration-300 group-open:rotate-180" />
               </summary>
-              <div className="pt-3 text-sm text-brand/80 leading-relaxed border-t border-brand/10 mt-3 font-light">
-                Preporučujemo <strong>smart-casual</strong> stil. Obuci ono u čemu se osjećaš privlačno i samopouzdano, kao za subotnji večernji izlazak na piće.
+              <div className="pt-3 text-sm text-brand/85 leading-relaxed border-t border-brand/10 mt-3 font-normal">
+                Imaš puno pića iz svih kategorija u izboru, gazirane i negazirane sokove, vodu, vino, pivo...
               </div>
             </details>
+          </div>
+        </section>
+
+        {/* Bottom Call to Action */}
+        <section className="mt-20 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto">
+          <div className="bg-brand text-white rounded-3xl p-8 sm:p-14 text-center relative overflow-hidden shadow-2xl">
+            <div className="relative z-10 space-y-4 max-w-2xl mx-auto">
+              <div className="w-12 h-12 rounded-2xl bg-white/10 text-amber-300 flex items-center justify-center mx-auto mb-2">
+                <Heart size={24} className="fill-amber-300" />
+              </div>
+              <h2 className="font-serif text-3xl sm:text-5xl font-bold tracking-tight">
+                Ti napravi prvi korak.
+              </h2>
+              <p className="font-serif italic text-lg sm:text-xl text-peach-dark/90">
+                Za sve ostalo pobrinut ćemo se mi.
+              </p>
+              <p className="text-xs sm:text-sm text-peach-dark/70 font-light max-w-md mx-auto">
+                Pridruži se sljedećoj večeri u Zagrebu i doživi nezaboravne susrete.
+              </p>
+              <div className="pt-4">
+                <a
+                  href="#top"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className="inline-flex items-center gap-2 bg-peach text-brand hover:bg-white px-9 py-4 rounded-full font-bold text-base shadow-xl hover:scale-105 transition-all"
+                >
+                  <span>Odaberi termin i prijavi se</span>
+                  <ChevronRight size={18} />
+                </a>
+              </div>
+            </div>
           </div>
         </section>
 

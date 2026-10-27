@@ -200,12 +200,12 @@ export default function ContactPage() {
                 </div>
                 <div>
                   <h3 className="font-bold text-brand text-lg mb-1">Lokacije održavanja</h3>
-                  <p className="text-sm text-brand/80 leading-relaxed mb-2">
-                    Zagreb, Hrvatska. Evente održavamo u pažljivo odabranim, elegantnim i intimnim lounge & wine barovima u širem i užem centru Zagreba.
+                  <p className="text-sm text-brand/85 leading-relaxed mb-2 font-medium">
+                    Zagreb, Hrvatska (Ugodni barovi u centru grada)
                   </p>
-                  <div className="flex items-center gap-2 text-xs text-brand/70 pt-2 border-t border-brand/10">
+                  <div className="flex items-center gap-2 text-xs text-brand/75 pt-2 border-t border-brand/10">
                     <Clock size={14} className="text-brand-light" />
-                    <span>Događaji se najčešće održavaju srijedom i četvrtkom od 19:30 ili 20:00 h.</span>
+                    <span>Događaji se najčešće održavaju četvrtkom u 19:00 h.</span>
                   </div>
                 </div>
               </div>
@@ -397,7 +397,7 @@ export default function ContactPage() {
                 <span>Kako se prijaviti na nadolazeći event?</span>
                 <ChevronDown size={18} className="text-brand-light transition-transform duration-300 group-open:rotate-180" />
               </summary>
-              <div className="pt-3 text-sm text-brand/80 leading-relaxed border-t border-brand/10 mt-3 font-light">
+              <div className="pt-3 text-sm text-brand/85 leading-relaxed border-t border-brand/10 mt-3 font-normal">
                 Prijave se vrše direktno na stranici <a href="/eventi" className="font-semibold underline text-brand">Eventi</a> ili na početnoj stranici klikom na željeni termin. Dovoljno je odabrati dobnu skupinu i ispuniti kratku prijavnicu.
               </div>
             </details>
@@ -407,18 +407,8 @@ export default function ContactPage() {
                 <span>Što ako moram otkazati dolazak?</span>
                 <ChevronDown size={18} className="text-brand-light transition-transform duration-300 group-open:rotate-180" />
               </summary>
-              <div className="pt-3 text-sm text-brand/80 leading-relaxed border-t border-brand/10 mt-3 font-light">
-                Radi balansa sudionika molimo te da nas obavijestiš barem 48 sati unaprijed putem ovog kontakt obrasca ili direktno na Instagram / mail kako bismo tvoje mjesto ponudili osobi s liste čekanja.
-              </div>
-            </details>
-
-            <details name="contact-faq" className="group bg-white/70 backdrop-blur-md rounded-2xl border border-white/90 p-5 cursor-pointer shadow-sm open:ring-2 open:ring-brand/20">
-              <summary className="font-bold text-brand text-base flex items-center justify-between list-none">
-                <span>Organizirate li privatne speed dating večeri za tvrtke ili rođendane?</span>
-                <ChevronDown size={18} className="text-brand-light transition-transform duration-300 group-open:rotate-180" />
-              </summary>
-              <div className="pt-3 text-sm text-brand/80 leading-relaxed border-t border-brand/10 mt-3 font-light">
-                Da! Vrlo rado organiziramo prilagođene tematske i privatne večeri. U kontakt formi odaberi predmet "Poslovna suradnja / Privatni event" i opiši nam svoju ideju.
+              <div className="pt-3 text-sm text-brand/85 leading-relaxed border-t border-brand/10 mt-3 font-normal">
+                Radi balansa sudionika molimo te da nas obavijestiš barem 48 sati unaprijed putem stranice gdje si se prijavio/la (preko svog profila ili prijavnice) kako bismo tvoje mjesto ponudili osobi s liste čekanja.
               </div>
             </details>
 
