@@ -21,6 +21,7 @@ import { db } from '../firebase';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import SEO from '../components/SEO';
+import FaqAccordion from '../components/FaqAccordion';
 
 interface ActiveEvent {
   id: string;
@@ -736,49 +737,26 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="space-y-4">
-            
-            <details name="home-faq" className="group bg-white/70 backdrop-blur-md rounded-2xl border border-white/90 p-5 cursor-pointer shadow-sm open:ring-2 open:ring-brand/20">
-              <summary className="font-bold text-brand text-base flex items-center justify-between list-none">
-                <span>Što ako mi bude neugodno ili ostanem bez teksta?</span>
-                <ChevronDown size={18} className="text-brand-light transition-transform duration-300 group-open:rotate-180" />
-              </summary>
-              <div className="pt-3 text-sm text-brand/80 leading-relaxed border-t border-brand/10 mt-3 font-light">
-                Pet do sedam minuta prođe u trenu! Osim toga, na svakom stolu se nalaze diskretne kartice sa zabavnim i neobičnim pitanjima za razbijanje leda, tako da nikad ne morate brinuti o čemu pričati.
-              </div>
-            </details>
-
-            <details name="home-faq" className="group bg-white/70 backdrop-blur-md rounded-2xl border border-white/90 p-5 cursor-pointer shadow-sm open:ring-2 open:ring-brand/20">
-              <summary className="font-bold text-brand text-base flex items-center justify-between list-none">
-                <span>Kako funkcionira razmjena kontakata?</span>
-                <ChevronDown size={18} className="text-brand-light transition-transform duration-300 group-open:rotate-180" />
-              </summary>
-              <div className="pt-3 text-sm text-brand/80 leading-relaxed border-t border-brand/10 mt-3 font-light">
-                Nitko ne daje svoj kontakt za stolom uživo. Nakon svakog spoja u listić ili online profil zabilježiš je li ti se osoba svidjela. Ako ste oboje označili potvrdno, unutar 24h na email i u profil dobivate kontakt jedno drugoga.
-              </div>
-            </details>
-
-            <details name="home-faq" className="group bg-white/70 backdrop-blur-md rounded-2xl border border-white/90 p-5 cursor-pointer shadow-sm open:ring-2 open:ring-brand/20">
-              <summary className="font-bold text-brand text-base flex items-center justify-between list-none">
-                <span>Tko su ostali sudionici?</span>
-                <ChevronDown size={18} className="text-brand-light transition-transform duration-300 group-open:rotate-180" />
-              </summary>
-              <div className="pt-3 text-sm text-brand/80 leading-relaxed border-t border-brand/10 mt-3 font-light">
-                Naši sudionici su zaposleni, urbani samci iz Zagreba i okolice koji žele proširiti krug poznanstava i kojima je dosta površnih aplikacija. Svi sudionici su u istoj dobnoj skupini koju si odabrao/la.
-              </div>
-            </details>
-
-            <details name="home-faq" className="group bg-white/70 backdrop-blur-md rounded-2xl border border-white/90 p-5 cursor-pointer shadow-sm open:ring-2 open:ring-brand/20">
-              <summary className="font-bold text-brand text-base flex items-center justify-between list-none">
-                <span>Što ako moram otkazati?</span>
-                <ChevronDown size={18} className="text-brand-light transition-transform duration-300 group-open:rotate-180" />
-              </summary>
-              <div className="pt-3 text-sm text-brand/80 leading-relaxed border-t border-brand/10 mt-3 font-light">
-                Ako nas obavijestiš najmanje 48 sati prije početka, tvoju kotizaciju prebacujemo na sljedeći odgovarajući termin.
-              </div>
-            </details>
-
-          </div>
+          <FaqAccordion
+            items={[
+              {
+                question: 'Što ako mi bude neugodno ili ostanem bez teksta?',
+                answer: 'Četiri do šest minuta prođe u trenu! Osim toga, na svakom stolu se nalaze diskretne kartice sa zabavnim i neobičnim pitanjima za razbijanje leda, tako da nikad ne morate brinuti o čemu pričati.'
+              },
+              {
+                question: 'Kako funkcionira razmjena kontakata?',
+                answer: 'Nitko ne daje svoj kontakt za stolom uživo. Nakon svakog spoja u listić ili online profil zabilježiš je li ti se osoba svidjela. Ako ste oboje označili potvrdno, unutar 24h na e-mail i u profil dobivate kontakt jedno drugoga.'
+              },
+              {
+                question: 'Tko su ostali sudionici?',
+                answer: 'Naši sudionici su zaposleni, urbani samci iz Zagreba i okolice koji žele proširiti krug poznanstava i kojima je dosta površnih aplikacija. Svi sudionici su u istoj dobnoj skupini koju si odabrao/la.'
+              },
+              {
+                question: 'Što ako moram otkazati?',
+                answer: 'Ako nas obavijestiš najmanje 48 sati prije početka, tvoju kotizaciju prebacujemo na sljedeći odgovarajući termin.'
+              }
+            ]}
+          />
         </section>
 
         {/* ========================================================================= */}

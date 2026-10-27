@@ -17,6 +17,7 @@ import { db } from '../firebase';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import SEO from '../components/SEO';
+import FaqAccordion from '../components/FaqAccordion';
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({
@@ -390,28 +391,27 @@ export default function ContactPage() {
             </p>
           </div>
 
-          <div className="max-w-3xl mx-auto space-y-4">
-            
-            <details name="contact-faq" className="group bg-white/70 backdrop-blur-md rounded-2xl border border-white/90 p-5 cursor-pointer shadow-sm open:ring-2 open:ring-brand/20">
-              <summary className="font-bold text-brand text-base flex items-center justify-between list-none">
-                <span>Kako se prijaviti na nadolazeći event?</span>
-                <ChevronDown size={18} className="text-brand-light transition-transform duration-300 group-open:rotate-180" />
-              </summary>
-              <div className="pt-3 text-sm text-brand/85 leading-relaxed border-t border-brand/10 mt-3 font-normal">
-                Prijave se vrše direktno na stranici <a href="/eventi" className="font-semibold underline text-brand">Eventi</a> ili na početnoj stranici klikom na željeni termin. Dovoljno je odabrati dobnu skupinu i ispuniti kratku prijavnicu.
-              </div>
-            </details>
-
-            <details name="contact-faq" className="group bg-white/70 backdrop-blur-md rounded-2xl border border-white/90 p-5 cursor-pointer shadow-sm open:ring-2 open:ring-brand/20">
-              <summary className="font-bold text-brand text-base flex items-center justify-between list-none">
-                <span>Što ako moram otkazati dolazak?</span>
-                <ChevronDown size={18} className="text-brand-light transition-transform duration-300 group-open:rotate-180" />
-              </summary>
-              <div className="pt-3 text-sm text-brand/85 leading-relaxed border-t border-brand/10 mt-3 font-normal">
-                Radi balansa sudionika molimo te da nas obavijestiš barem 48 sati unaprijed putem stranice gdje si se prijavio/la (preko svog profila ili prijavnice) kako bismo tvoje mjesto ponudili osobi s liste čekanja.
-              </div>
-            </details>
-
+          <div className="max-w-3xl mx-auto">
+            <FaqAccordion
+              items={[
+                {
+                  question: 'Kako se prijaviti na nadolazeći event?',
+                  answer: (
+                    <span>
+                      Prijave se vrše direktno na stranici{' '}
+                      <a href="/eventi" className="font-semibold underline text-brand">
+                        Eventi
+                      </a>{' '}
+                      ili na početnoj stranici klikom na željeni termin. Dovoljno je odabrati dobnu skupinu i ispuniti kratku prijavnicu.
+                    </span>
+                  )
+                },
+                {
+                  question: 'Što ako moram otkazati dolazak?',
+                  answer: 'Radi balansa sudionika molimo te da nas obavijestiš barem 48 sati unaprijed putem stranice gdje si se prijavio/la (preko svog profila ili prijavnice) kako bismo tvoje mjesto ponudili osobi s liste čekanja.'
+                }
+              ]}
+            />
           </div>
         </section>
 

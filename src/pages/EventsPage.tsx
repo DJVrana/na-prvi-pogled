@@ -20,6 +20,7 @@ import { db } from '../firebase';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import SEO from '../components/SEO';
+import FaqAccordion from '../components/FaqAccordion';
 
 interface ActiveEvent {
   id: string;
@@ -377,37 +378,22 @@ export default function EventsPage() {
             Najčešća pitanja
           </h2>
 
-          <div className="space-y-4">
-            <details name="event-faq" className="group bg-white/70 backdrop-blur-md rounded-2xl border border-white/90 p-5 cursor-pointer shadow-sm open:ring-2 open:ring-brand/20">
-              <summary className="font-bold text-brand text-base flex items-center justify-between list-none">
-                <span>Postoji li dress code?</span>
-                <ChevronDown size={18} className="text-brand-light transition-transform duration-300 group-open:rotate-180" />
-              </summary>
-              <div className="pt-3 text-sm text-brand/85 leading-relaxed border-t border-brand/10 mt-3 font-normal">
-                Ne, dođi odjeven/a kako se najugodnije osjećaš.
-              </div>
-            </details>
-
-            <details name="event-faq" className="group bg-white/70 backdrop-blur-md rounded-2xl border border-white/90 p-5 cursor-pointer shadow-sm open:ring-2 open:ring-brand/20">
-              <summary className="font-bold text-brand text-base flex items-center justify-between list-none">
-                <span>Kako funkcionira matching?</span>
-                <ChevronDown size={18} className="text-brand-light transition-transform duration-300 group-open:rotate-180" />
-              </summary>
-              <div className="pt-3 text-sm text-brand/85 leading-relaxed border-t border-brand/10 mt-3 font-normal">
-                Nakon ili tijekom eventa označi tko ti se svidio te, ukoliko je osjećaj obostran, poslat će vam se poruka elektroničke pošte s kontaktima.
-              </div>
-            </details>
-
-            <details name="event-faq" className="group bg-white/70 backdrop-blur-md rounded-2xl border border-white/90 p-5 cursor-pointer shadow-sm open:ring-2 open:ring-brand/20">
-              <summary className="font-bold text-brand text-base flex items-center justify-between list-none">
-                <span>Kakvo piće imam u izboru?</span>
-                <ChevronDown size={18} className="text-brand-light transition-transform duration-300 group-open:rotate-180" />
-              </summary>
-              <div className="pt-3 text-sm text-brand/85 leading-relaxed border-t border-brand/10 mt-3 font-normal">
-                Imaš puno pića iz svih kategorija u izboru, gazirane i negazirane sokove, vodu, vino, pivo...
-              </div>
-            </details>
-          </div>
+          <FaqAccordion
+            items={[
+              {
+                question: 'Postoji li dress code?',
+                answer: 'Ne, dođi odjeven/a kako se najugodnije osjećaš.'
+              },
+              {
+                question: 'Kako funkcionira matching?',
+                answer: 'Nakon ili tijekom eventa označi tko ti se svidio te, ukoliko je osjećaj obostran, poslat će vam se poruka elektroničke pošte s kontaktima.'
+              },
+              {
+                question: 'Kakvo piće imam u izboru?',
+                answer: 'Imaš puno pića iz svih kategorija u izboru, gazirane i negazirane sokove, vodu, vino, pivo...'
+              }
+            ]}
+          />
         </section>
 
         {/* Bottom Call to Action */}
