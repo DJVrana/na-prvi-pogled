@@ -210,13 +210,19 @@ export default function ContactPage() {
                 <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
                   <MapPin size={24} />
                 </div>
-                <div>
+                <div className="flex-1">
                   <h3 className="font-bold text-brand text-lg mb-1">Lokacije održavanja</h3>
                   <p className="text-sm text-brand/85 leading-relaxed mb-2 font-medium">
-                    Zagreb, Hrvatska (Ugodni barovi u centru grada)
+                    Za sada samo u <strong>Zagrebu</strong> (ugodni barovi u centru grada).
                   </p>
+                  
+                  <div className="mb-3 inline-flex items-center gap-1.5 bg-brand/5 border border-brand/15 text-brand text-xs font-semibold px-3 py-1.5 rounded-full">
+                    <Sparkles size={13} className="text-brand-light shrink-0" />
+                    <span>Uskoro dolazimo i u ostale gradove u Hrvatskoj!</span>
+                  </div>
+
                   <div className="flex items-center gap-2 text-xs text-brand/75 pt-2 border-t border-brand/10">
-                    <Clock size={14} className="text-brand-light" />
+                    <Clock size={14} className="text-brand-light shrink-0" />
                     <span>Događaji se najčešće održavaju četvrtkom u 19:00 h.</span>
                   </div>
                 </div>
@@ -448,6 +454,10 @@ export default function ContactPage() {
                 {
                   question: 'Što ako moram otkazati dolazak?',
                   answer: 'Radi balansa sudionika molimo te da nas obavijestiš barem 48 sati unaprijed putem stranice gdje si se prijavio/la (preko svog profila ili prijavnice) kako bismo tvoje mjesto ponudili osobi s liste čekanja.'
+                },
+                {
+                  question: 'Održavaju li se događaji i u drugim gradovima u Hrvatskoj?',
+                  answer: 'Za sada organiziramo speed dating događaje isključivo u Zagrebu, no uskoro dolazimo i u ostale gradove diljem Hrvatske! Ako želiš da speed dating dođe u tvoj grad, slobodno nam pošalji poruku putem kontakt obrasca.'
                 }
               ]}
             />
