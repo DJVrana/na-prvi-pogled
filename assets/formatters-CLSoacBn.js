@@ -1,0 +1,1 @@
+function e(e){if(e==null)return``;let t=String(e).trim();return t?/€|eur/i.test(t)?t:/^\d+\s*e$/i.test(t)?t.replace(/e$/i,``).trim()+` €`:/^\d+([.,]\d+)?$/.test(t)||/\d+$/.test(t)?`${t} €`:t:``}export{e as t};
