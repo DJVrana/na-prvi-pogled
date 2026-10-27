@@ -70,7 +70,7 @@ jobs:
 
       - name: Prepare Built Artifacts
         run: |
-          # React Router prerender nests HTML files inside dist/client<BASE_PATH> when basename is set
+          # React Router prerender ugnježđuje HTML datoteke unutar dist/client<BASE_PATH> kada je basename postavljen
           PRERENDER_DIR="dist/client${APP_BASE_PATH%/}"
           if [ -d "$PRERENDER_DIR" ] && [ "$PRERENDER_DIR" != "dist/client" ]; then
             echo "Flattening prerendered folder: $PRERENDER_DIR into dist/client"
@@ -79,7 +79,7 @@ jobs:
             rm -rf "dist/client/$FIRST_SEGMENT"
           fi
 
-          # Create 404.html for SPA fallback routing
+          # Kreiranje 404.html za SPA fallback rutiranje
           if [ -f "dist/client/__spa-fallback.html" ]; then
             cp dist/client/__spa-fallback.html dist/client/404.html
           elif [ -f "dist/client/index.html" ]; then
@@ -88,7 +88,7 @@ jobs:
 
       - name: Sync with Persistent gh-pages Branch
         run: |
-          # Clone existing gh-pages branch or initialize a fresh one
+          # Kloniraj postojeću gh-pages granu ili inicijaliziraj novu
           if git ls-remote --exit-code --heads origin gh-pages; then
             echo "Existing gh-pages branch found. Cloning..."
             git clone --single-branch --branch gh-pages "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" _site
@@ -102,7 +102,7 @@ jobs:
             cd ..
           fi
 
-          # Place built files in the appropriate folder without deleting the other environment
+          # Smjesti build u odgovarajući direktorij bez brisanja drugog okruženja
           if [ "${{ env.TARGET_DIR }}" = "dev" ]; then
             echo "Deploying to /dev folder, preserving root production build..."
             rm -rf _site/dev
@@ -114,10 +114,10 @@ jobs:
             cp -r dist/client/* _site/
           fi
 
-          # Ensure .nojekyll exists so GitHub Pages serves raw files and directories starting with _
+          # .nojekyll osigurava da GitHub Pages poslužuje datoteke bez Jekyll filtriranja
           touch _site/.nojekyll
 
-          # Commit & push updated state back to gh-pages branch
+          # Commit i push novog stanja natrag na gh-pages granu
           cd _site
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
