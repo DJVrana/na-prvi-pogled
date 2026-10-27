@@ -8,6 +8,8 @@ import {
   getDoc, 
   setDoc, 
   updateDoc,
+  addDoc,
+  increment,
   serverTimestamp 
 } from 'firebase/firestore';
 import { db, auth, provider } from '../firebase';
@@ -31,7 +33,11 @@ import {
   Layers,
   Edit3,
   CheckCircle2,
-  Lock
+  Lock,
+  MessageSquare,
+  ShieldCheck,
+  Send,
+  Star
 } from 'lucide-react';
 import { FaInstagram, FaGoogle } from 'react-icons/fa';
 import { sendMatchEmail, sendFemaleMatchEmail } from '../utils/matchingEmails';
@@ -112,6 +118,75 @@ export default function MatchingPage() {
 
   // Match celebration modal (only used in post_event phase)
   const [newMatch, setNewMatch] = useState<MatchResult | null>(null);
+
+  // Anonymous Event Feedback Card state
+  const [feedbackRating, setFeedbackRating] = useState<number | null>(null);
+  const [feedbackMessage, setFeedbackMessage] = useState('');
+  const [feedbackSending, setFeedbackSending] = useState(false);
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
+  const [feedbackDismissed, setFeedbackDismissed] = useState(false);
+
+  useEffect(() => {
+    if (event?.id) {
+      if (localStorage.getItem(`feedback_submitted_${event.id}`) === 'true') {
+        setFeedbackSubmitted(true);
+      }
+      if (localStorage.getItem(`feedback_dismissed_${event.id}`) === 'true') {
+        setFeedbackDismissed(true);
+      }
+    }
+  }, [event?.id]);
+
+  const handleSendFeedback = async () => {
+    if (!event) return;
+    if (!feedbackRating && !feedbackMessage.trim()) return;
+
+    setFeedbackSending(true);
+    try {
+      const ratingLabels: Record<number, string> = {
+        5: 'Oduševljen/a',
+        4: 'Bilo je super',
+        3: 'Dobro',
+        2: 'Neutralno',
+        1: 'Moglo je bolje'
+      };
+
+      // Completely anonymous: NO uid, NO email, NO user name!
+      await addDoc(collection(db, 'event_feedbacks'), {
+        eventId: event.id,
+        eventTitle: event.title || 'Speed Dating',
+        eventDate: event.dateStr || '',
+        rating: feedbackRating || null,
+        ratingLabel: feedbackRating ? ratingLabels[feedbackRating] || `${feedbackRating}/5` : null,
+        message: feedbackMessage.trim(),
+        createdAt: serverTimestamp()
+      });
+
+      // Safely increment counter on event
+      try {
+        await updateDoc(doc(db, 'events', event.id), {
+          feedbackCount: increment(1)
+        });
+      } catch (err) {
+        console.warn("Could not increment feedbackCount on event:", err);
+      }
+
+      setFeedbackSubmitted(true);
+      localStorage.setItem(`feedback_submitted_${event.id}`, 'true');
+    } catch (err) {
+      console.error("Greška pri slanju anonimnog dojma:", err);
+      alert("Došlo je do greške prilikom slanja. Molimo pokušaj ponovno.");
+    } finally {
+      setFeedbackSending(false);
+    }
+  };
+
+  const handleDismissFeedback = () => {
+    if (event?.id) {
+      localStorage.setItem(`feedback_dismissed_${event.id}`, 'true');
+    }
+    setFeedbackDismissed(true);
+  };
 
   // 1. Auth Listener
   useEffect(() => {
@@ -818,6 +893,184 @@ export default function MatchingPage() {
   const currentSwipeCandidate = filteredCandidates[currentIndex];
   const isSwipeFinished = currentIndex >= filteredCandidates.length;
 
+  const renderFeedbackSection = () => {
+    if (feedbackSubmitted) {
+      return (
+        <div className="bg-white/85 backdrop-blur-xl p-6 sm:p-8 rounded-3xl shadow-xl border border-white text-center animate-fade-in-up">
+          <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center mx-auto mb-3 shadow-xs">
+            <CheckCircle2 size={32} />
+          </div>
+          <h3 className="text-xl font-serif font-bold text-brand mb-1.5">
+            Hvala ti od srca na dojmu! ❤️
+          </h3>
+          <p className="text-xs sm:text-sm text-brand/75 font-light leading-relaxed max-w-md mx-auto mb-6">
+            Tvoja poruka je zabilježena <strong>potpuno anonimno</strong>. Tvoje povratne informacije izravno nam pomažu da zajedno gradimo još bolje i ugodnije susrete!
+          </p>
+
+          <div className="flex flex-wrap items-center justify-center gap-2.5">
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('all');
+                setSearchQuery('');
+              }}
+              className="px-5 py-2.5 bg-brand text-white rounded-full text-xs font-bold shadow-md hover:bg-brand-light transition-colors cursor-pointer"
+            >
+              Pregledaj sve sudionike
+            </button>
+            <Link
+              to="/profil"
+              className="px-5 py-2.5 bg-white text-brand border border-brand/20 rounded-full text-xs font-bold hover:bg-gray-50 transition-colors shadow-xs"
+            >
+              Idi na profil
+            </Link>
+          </div>
+        </div>
+      );
+    }
+
+    if (feedbackDismissed) {
+      return (
+        <div className="bg-white/80 backdrop-blur-xl p-8 rounded-3xl shadow-xl border border-white text-center animate-fade-in-up">
+          <div className="w-14 h-14 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center mx-auto mb-3">
+            <PartyPopper size={30} />
+          </div>
+          <h3 className="text-xl font-serif font-bold text-brand mb-2">
+            Svi sudionici su ocijenjeni! 🥂
+          </h3>
+          <p className="text-xs sm:text-sm text-brand/70 font-light leading-relaxed mb-6 max-w-md mx-auto">
+            {event?.matchingPhase === 'live'
+              ? "Tvoji odabiri su zabilježeni u tajnosti. Službeni matchevi i kontakti bit će objavljeni po završetku susreta!"
+              : "Pregledao/la si sve sudionike za ovaj događaj. Provjeri obostrane matcheve na svom profilu."}
+          </p>
+
+          <div className="flex flex-wrap items-center justify-center gap-2.5">
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('all');
+                setSearchQuery('');
+              }}
+              className="px-5 py-2.5 bg-brand text-white rounded-full text-xs font-bold shadow-md hover:bg-brand-light transition-colors cursor-pointer"
+            >
+              Otvori popis svih sudionika
+            </button>
+            <Link
+              to="/profil"
+              className="px-5 py-2.5 bg-white text-brand border border-brand/20 rounded-full text-xs font-bold hover:bg-gray-50 transition-colors shadow-xs"
+            >
+              Idi na profil
+            </Link>
+          </div>
+        </div>
+      );
+    }
+
+    // Interactive Feedback Card
+    return (
+      <div className="bg-white/90 backdrop-blur-xl p-6 sm:p-8 rounded-3xl shadow-xl border border-white text-left animate-fade-in-up space-y-5">
+        
+        {/* Header */}
+        <div className="text-center pb-4 border-b border-brand/10">
+          <div className="inline-flex items-center gap-2 bg-brand/10 text-brand text-[11px] font-bold uppercase tracking-wider px-3.5 py-1 rounded-full mb-3">
+            <Sparkles size={13} className="text-brand-light" />
+            <span>Završni dojam • 100% Anonimno</span>
+          </div>
+          <h3 className="text-xl sm:text-2xl font-serif font-bold text-brand mb-1.5">
+            Kako ti se svidio susret? ✨
+          </h3>
+          <p className="text-xs sm:text-sm text-brand/75 font-light max-w-md mx-auto leading-relaxed">
+            Tvoje mišljenje nam je iznimno važno! Napiši nam što ti se svidjelo, a što bi volio/la da promijenimo ili poboljšamo. Zajedno gradimo ovu platformu.
+          </p>
+        </div>
+
+        {/* Quick Reaction Rating Buttons */}
+        <div>
+          <label className="block text-xs font-bold text-brand mb-2">
+            Kako bi ocijenio/la cjelokupni dojam večeri?
+          </label>
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+            {[
+              { val: 5, emoji: '🤩', label: 'Oduševljen/a' },
+              { val: 4, emoji: '😊', label: 'Bilo je super' },
+              { val: 3, emoji: '👍', label: 'Dobro' },
+              { val: 2, emoji: '😐', label: 'Neutralno' },
+              { val: 1, emoji: '👎', label: 'Moglo bolje' }
+            ].map(r => (
+              <button
+                key={r.val}
+                type="button"
+                onClick={() => setFeedbackRating(r.val)}
+                className={`p-2.5 rounded-2xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-1 ${
+                  feedbackRating === r.val
+                    ? 'bg-brand text-white border-brand shadow-md shadow-brand/20 ring-2 ring-brand/30'
+                    : 'bg-white/80 hover:bg-white text-brand border-brand/15 hover:border-brand/30 shadow-2xs'
+                }`}
+              >
+                <span className="text-xl leading-none">{r.emoji}</span>
+                <span className="text-[10px] font-bold leading-tight mt-0.5">{r.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Optional Text message */}
+        <div>
+          <label htmlFor="anonymous-feedback-text" className="block text-xs font-bold text-brand mb-1.5">
+            Tvoja anonimna poruka i prijedlozi <span className="text-brand/50 font-normal">(neobvezujuće)</span>:
+          </label>
+          <textarea
+            id="anonymous-feedback-text"
+            rows={4}
+            value={feedbackMessage}
+            onChange={e => setFeedbackMessage(e.target.value)}
+            placeholder="Napiši nam što ti se najviše svidjelo, kakva je bila atmosfera, glazba, trajanje razgovora ili što bi promijenio/la..."
+            className="w-full px-4 py-3 rounded-2xl bg-white/95 border border-brand/15 focus:border-brand focus:ring-2 focus:ring-brand/15 text-xs sm:text-sm text-brand placeholder:text-brand/35 outline-none transition-all shadow-xs resize-none"
+          />
+        </div>
+
+        {/* Anonymity Guarantee Notice */}
+        <div className="bg-brand/5 p-3.5 rounded-2xl border border-brand/10 flex items-start gap-2.5 text-xs text-brand/80 leading-relaxed">
+          <ShieldCheck size={18} className="text-emerald-700 shrink-0 mt-0.5" />
+          <p className="text-[11px] leading-snug">
+            <strong>100% anonimno:</strong> Ovaj komentar sprema se bez tvog imena, e-maila ili korisničkog ID-ja. Ni organizatori ni drugi sudionici ne mogu povezati ovu poruku s tobom.
+          </p>
+        </div>
+
+        {/* Actions */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+          <button
+            type="button"
+            onClick={handleDismissFeedback}
+            className="text-xs font-semibold text-brand/60 hover:text-brand hover:underline order-2 sm:order-1 cursor-pointer py-1"
+          >
+            Preskoči ovaj korak
+          </button>
+
+          <button
+            type="button"
+            disabled={feedbackSending || (!feedbackRating && !feedbackMessage.trim())}
+            onClick={handleSendFeedback}
+            className="w-full sm:w-auto px-7 py-3 rounded-full bg-brand hover:bg-brand-light disabled:opacity-50 text-white font-bold text-xs sm:text-sm shadow-lg shadow-brand/20 transition-all flex items-center justify-center gap-2 order-1 sm:order-2 cursor-pointer disabled:cursor-not-allowed transform hover:scale-[1.02] active:scale-95"
+          >
+            {feedbackSending ? (
+              <>
+                <Loader2 size={15} className="animate-spin" />
+                <span>Slanje dojma...</span>
+              </>
+            ) : (
+              <>
+                <Send size={15} />
+                <span>Pošalji anonimni dojam</span>
+              </>
+            )}
+          </button>
+        </div>
+
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen py-6 px-4 sm:px-6 flex flex-col items-center bg-peach text-brand font-sans relative overflow-x-hidden selection:bg-brand selection:text-white">
       
@@ -1016,48 +1269,47 @@ export default function MatchingPage() {
           </div>
         ) : filteredCandidates.length === 0 ? (
           /* EMPTY FILTER RESULT */
-          <div className="bg-white/80 backdrop-blur-xl p-8 sm:p-10 rounded-3xl shadow-sm border border-white text-center">
-            <div className="w-16 h-16 rounded-full bg-rose-100 text-rose-500 flex items-center justify-center mx-auto mb-4">
-              <CheckCircle2 size={32} />
-            </div>
-            <h3 className="text-xl font-serif font-bold text-brand mb-2">
-              {activeTab === 'unvoted'
-                ? "Svi sudionici su ocijenjeni! 🎉"
-                : activeTab === 'liked'
-                ? "Nema zabilježenih simpatija"
-                : "Nema pronađenih sudionika"}
-            </h3>
-            <p className="text-brand/70 text-xs sm:text-sm font-light max-w-md mx-auto leading-relaxed mb-6">
-              {activeTab === 'unvoted'
-                ? (event.matchingPhase === 'live' 
-                    ? "Uspješno si pregledao/la sve osobe! Tvoji odabiri su zabilježeni, a matchevi će biti objavljeni po završetku eventa." 
-                    : "Pregledao/la si sve sudionike za ovaj događaj. Čim druga strana također označi da joj se sviđaš, dobit ćeš obavijest!")
-                : activeTab === 'liked'
-                ? "Još nisi označio/la niti jednu osobu sa 'Sviđa mi se'."
-                : "Pokušaj prilagoditi pojam pretrage ili odabrati drugu kategoriju."}
-            </p>
+          activeTab === 'unvoted' ? (
+            /* Render Anonymous Feedback Card when all candidates are evaluated */
+            renderFeedbackSection()
+          ) : (
+            <div className="bg-white/80 backdrop-blur-xl p-8 sm:p-10 rounded-3xl shadow-sm border border-white text-center">
+              <div className="w-16 h-16 rounded-full bg-rose-100 text-rose-500 flex items-center justify-center mx-auto mb-4">
+                <CheckCircle2 size={32} />
+              </div>
+              <h3 className="text-xl font-serif font-bold text-brand mb-2">
+                {activeTab === 'liked'
+                  ? "Nema zabilježenih simpatija"
+                  : "Nema pronađenih sudionika"}
+              </h3>
+              <p className="text-brand/70 text-xs sm:text-sm font-light max-w-md mx-auto leading-relaxed mb-6">
+                {activeTab === 'liked'
+                  ? "Još nisi označio/la niti jednu osobu sa 'Sviđa mi se'."
+                  : "Pokušaj prilagoditi pojam pretrage ili odabrati drugu kategoriju."}
+              </p>
 
-            <div className="flex flex-wrap items-center justify-center gap-2">
-              {activeTab !== 'all' && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab('all');
-                    setSearchQuery('');
-                  }}
-                  className="px-4 py-2 bg-brand text-white rounded-xl text-xs font-semibold shadow-xs hover:bg-brand-light transition-colors cursor-pointer"
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                {activeTab !== 'all' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab('all');
+                      setSearchQuery('');
+                    }}
+                    className="px-4 py-2 bg-brand text-white rounded-xl text-xs font-semibold shadow-xs hover:bg-brand-light transition-colors cursor-pointer"
+                  >
+                    Prikaži sve sudionike
+                  </button>
+                )}
+                <Link
+                  to="/profil"
+                  className="px-4 py-2 bg-white text-brand/80 border border-brand/20 rounded-xl text-xs font-semibold hover:bg-gray-50 transition-colors"
                 >
-                  Prikaži sve sudionike
-                </button>
-              )}
-              <Link
-                to="/profil"
-                className="px-4 py-2 bg-white text-brand/80 border border-brand/20 rounded-xl text-xs font-semibold hover:bg-gray-50 transition-colors"
-              >
-                Idi u profil
-              </Link>
+                  Idi u profil
+                </Link>
+              </div>
             </div>
-          </div>
+          )
         ) : viewMode === 'list' ? (
           /* MODE 1: LIST / DIRECTORY VIEW (Search friendly) */
           <div className="space-y-3">
@@ -1163,37 +1415,8 @@ export default function MatchingPage() {
           /* MODE 2: SWIPE CARDS (Classic deck view) */
           <div className="max-w-md mx-auto w-full">
             {isSwipeFinished ? (
-              <div className="bg-white/80 backdrop-blur-xl p-8 rounded-3xl shadow-xl border border-white text-center animate-fade-in-up">
-                <div className="w-16 h-16 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto mb-4">
-                  <PartyPopper size={32} />
-                </div>
-                <h3 className="text-xl font-serif font-bold text-brand mb-2">
-                  Sve kartice su pregledane! 🥂
-                </h3>
-                <p className="text-xs sm:text-sm text-brand/70 font-light leading-relaxed mb-6">
-                  {event.matchingPhase === 'live'
-                    ? "Tvoji odabiri su zabilježeni. Matchevi će biti objavljeni nakon završetka susreta!"
-                    : "Svi sudionici iz ovog odabira su ocijenjeni."}
-                </p>
-                <div className="space-y-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setViewMode('list');
-                      setActiveTab('all');
-                    }}
-                    className="w-full bg-brand text-white py-3 rounded-2xl font-semibold text-xs shadow-md hover:bg-brand-light transition-colors cursor-pointer"
-                  >
-                    Otvori popis svih sudionika
-                  </button>
-                  <Link
-                    to="/profil"
-                    className="inline-block text-xs text-brand/60 hover:text-brand transition-colors pt-2"
-                  >
-                    Idi na svoj profil
-                  </Link>
-                </div>
-              </div>
+              /* Render Anonymous Feedback Card when deck finishes */
+              renderFeedbackSection()
             ) : (
               <div>
                 {/* Progress bar */}

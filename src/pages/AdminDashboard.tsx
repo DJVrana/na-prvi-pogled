@@ -4,11 +4,12 @@ import { db, auth } from '../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import type { User } from 'firebase/auth';
 import { Link, Navigate } from 'react-router';
-import { ArrowLeft, Users, UserRound, ArrowDown01, Loader2, Plus, Calendar as CalendarIcon, CheckCircle2, List, PlayCircle, StopCircle, Trash2, X, ChevronDown, Pencil, Clock, XCircle, Flame, Heart, UserX, Send, Sparkles, AlertCircle, Mail, Eye, FileText, UserCheck, Circle, CreditCard } from 'lucide-react';
+import { ArrowLeft, Users, UserRound, ArrowDown01, Loader2, Plus, Calendar as CalendarIcon, CheckCircle2, List, PlayCircle, StopCircle, Trash2, X, ChevronDown, Pencil, Clock, XCircle, Flame, Heart, UserX, Send, Sparkles, AlertCircle, Mail, Eye, FileText, UserCheck, Circle, CreditCard, MessageSquare } from 'lucide-react';
 import emailjs from '@emailjs/browser';
 import { EventAttendancePdfModal } from '../components/EventAttendancePdfModal';
 import { EventCheckInModal } from '../components/EventCheckInModal';
 import { EventMatchesModal } from '../components/EventMatchesModal';
+import { EventFeedbackModal } from '../components/EventFeedbackModal';
 import { sendMatchEmail, sendFemaleMatchEmail } from '../utils/matchingEmails';
 import {
   REMINDER_TEMPLATES,
@@ -61,6 +62,7 @@ export interface EventData {
   timeNoteM?: string;
   timeNoteZ?: string;
   registrationCount?: number;
+  feedbackCount?: number;
   lastReminderSentAt?: any;
   lastReminderSubject?: string;
   lastReminderCount?: number;
@@ -202,6 +204,9 @@ export default function AdminDashboard() {
   const [matchesModalOpen, setMatchesModalOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'all' | 'accepted' | 'pending' | 'waiting_list' | 'rejected' | 'cancelled'>('all');
   const [selectedEventForMatches, setSelectedEventForMatches] = useState<EventData | null>(null);
+  const [selectedEventForFeedback, setSelectedEventForFeedback] = useState<EventData | null>(null);
+  const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
+  const [feedbackCounts, setFeedbackCounts] = useState<Record<string, number>>({});
   const [rejectReason, setRejectReason] = useState('Nažalost, zbog ograničenog broja mjesta i velikog interesa, ovaj put ti nismo u mogućnosti potvrditi sudjelovanje. Mjesta su se popunila vrlo brzo ili pokušavamo balansirati omjer sudionika.');
   const [rejectDropdownOpen, setRejectDropdownOpen] = useState(false);
 
@@ -520,6 +525,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (user && ADMIN_UIDS.includes(user.uid)) {
       fetchEvents();
+      fetchFeedbackCounts();
     }
   }, [user]);
 
@@ -528,6 +534,22 @@ export default function AdminDashboard() {
       fetchPrijave(selectedEventId);
     }
   }, [selectedEventId, user]);
+
+  const fetchFeedbackCounts = async () => {
+    try {
+      const feedbackSnap = await getDocs(collection(db, 'event_feedbacks'));
+      const counts: Record<string, number> = {};
+      feedbackSnap.forEach(d => {
+        const eId = d.data()?.eventId;
+        if (eId) {
+          counts[eId] = (counts[eId] || 0) + 1;
+        }
+      });
+      setFeedbackCounts(counts);
+    } catch (fbErr) {
+      console.error("Error fetching feedback counts:", fbErr);
+    }
+  };
 
   const fetchEvents = async () => {
     setEventsLoading(true);
@@ -539,6 +561,8 @@ export default function AdminDashboard() {
         ...(doc.data() as any)
       })) as EventData[];
       setEvents(data);
+
+      fetchFeedbackCounts();
 
       // Select the active event or the first one if none is selected
       if (!selectedEventId && data.length > 0) {
@@ -1476,6 +1500,11 @@ export default function AdminDashboard() {
     setMatchesModalOpen(true);
   };
 
+  const openFeedbackModal = (eventItem: EventData) => {
+    setSelectedEventForFeedback(eventItem);
+    setFeedbackModalOpen(true);
+  };
+
   if (authLoading) {
     return (
       <div className="min-h-screen bg-peach flex items-center justify-center">
@@ -1865,14 +1894,23 @@ export default function AdminDashboard() {
                           )}
                         </div>
                         <p className="text-sm text-gray-600">{event.dateStr} u {event.timeStr} • {event.location}</p>
-                        <p className="text-xs text-gray-500 mt-1">
-                          Dob: {event.ageGroup} | Cijena: {event.price} | Zauzeta mjesta u bazi: <strong className="text-gray-700">{event.registrationCount || 0}</strong>{event.maxRegistrations ? ` / ${event.maxRegistrations}` : ''}
+                        <div className="text-xs text-gray-500 mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+                          <span>Dob: {event.ageGroup} | Cijena: {event.price} | Zauzeta mjesta u bazi: <strong className="text-gray-700">{event.registrationCount || 0}</strong>{event.maxRegistrations ? ` / ${event.maxRegistrations}` : ''}</span>
                           {event.lastReminderSentAt && (
-                            <span className="ml-2 text-brand font-semibold inline-flex items-center gap-1 bg-brand/5 px-2 py-0.5 rounded border border-brand/20">
+                            <span className="text-brand font-semibold inline-flex items-center gap-1 bg-brand/5 px-2 py-0.5 rounded border border-brand/20">
                               <Mail size={11} /> Zadnji podsjetnik poslan ({event.lastReminderCount ?? '✓'})
                             </span>
                           )}
-                        </p>
+                          {(feedbackCounts[event.id] ?? event.feedbackCount ?? 0) > 0 ? (
+                            <span className="text-amber-800 font-semibold inline-flex items-center gap-1 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                              <MessageSquare size={11} className="text-amber-600" /> Anonimni dojmovi: <strong className="text-amber-900">{feedbackCounts[event.id] ?? event.feedbackCount}</strong>
+                            </span>
+                          ) : (
+                            <span className="text-gray-400 inline-flex items-center gap-1 bg-gray-50 px-2 py-0.5 rounded border border-gray-200">
+                              <MessageSquare size={11} /> 0 dojmova
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
                         <button
@@ -1902,6 +1940,21 @@ export default function AdminDashboard() {
                         >
                           <UserCheck size={16} className="text-emerald-600" />
                           <span className="hidden sm:inline">Check-in</span>
+                        </button>
+                        <button
+                          onClick={() => openFeedbackModal(event)}
+                          className="px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-1.5 transition-colors bg-white hover:bg-amber-50 border border-amber-200 text-amber-800 cursor-pointer"
+                          title="Pregledaj anonimne dojmove i prijedloge sudionika nakon eventa"
+                        >
+                          <MessageSquare size={16} className="text-amber-600" />
+                          <span className="hidden sm:inline">Dojmovi</span>
+                          <span className={`text-xs font-bold px-1.5 py-0.2 rounded-full ${
+                            (feedbackCounts[event.id] ?? event.feedbackCount ?? 0) > 0
+                              ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                              : 'bg-gray-100 text-gray-500'
+                          }`}>
+                            {feedbackCounts[event.id] ?? event.feedbackCount ?? 0}
+                          </span>
                         </button>
 
                         {/* Matching Phase Controls */}
@@ -2098,6 +2151,16 @@ export default function AdminDashboard() {
                   >
                     <Heart size={16} className="text-rose-600" />
                     <span>Matchevi</span>
+                  </button>
+                )}
+                {selectedEvent && (
+                  <button
+                    onClick={() => openFeedbackModal(selectedEvent)}
+                    className="bg-white hover:bg-amber-50 text-amber-800 border border-amber-200 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 shadow-xs hover:shadow cursor-pointer"
+                    title="Pregledaj anonimne dojmove i ocjene sudionika za ovaj event"
+                  >
+                    <MessageSquare size={16} className="text-amber-600" />
+                    <span>Dojmovi ({feedbackCounts[selectedEvent.id] ?? selectedEvent.feedbackCount ?? 0})</span>
                   </button>
                 )}
                 <button
@@ -3871,6 +3934,19 @@ export default function AdminDashboard() {
           onClose={() => setAttendanceModalOpen(false)}
           event={selectedEvent}
           prijave={prijave}
+        />
+      )}
+
+      {/* MODAL ZA ANONIMNE DOJMOVE S EVENTA */}
+      {selectedEventForFeedback && (
+        <EventFeedbackModal
+          isOpen={feedbackModalOpen}
+          onClose={() => setFeedbackModalOpen(false)}
+          event={selectedEventForFeedback}
+          onFeedbackChanged={() => {
+            fetchEvents();
+            fetchFeedbackCounts();
+          }}
         />
       )}
     </div>
