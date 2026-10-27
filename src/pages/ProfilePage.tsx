@@ -33,9 +33,14 @@ import {
   AlertTriangle,
   ExternalLink,
   ShieldCheck,
-  Check
+  Check,
+  CreditCard,
+  ChevronRight
 } from 'lucide-react';
 import { FaGoogle, FaInstagram } from 'react-icons/fa';
+import Navbar from '../components/Navbar';
+import Footer from '../components/Footer';
+import SEO from '../components/SEO';
 
 interface UserRegistration {
   id: string;
@@ -333,8 +338,9 @@ export default function ProfilePage() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-peach text-brand flex items-center justify-center font-sans">
-        <Loader2 size={36} className="animate-spin text-brand/60" />
+      <div className="min-h-screen bg-peach text-brand flex flex-col items-center justify-center font-sans">
+        <Loader2 size={36} className="animate-spin text-brand/60 mb-3" />
+        <p className="text-xs font-semibold text-brand/60 uppercase tracking-wider">Učitavanje profila...</p>
       </div>
     );
   }
@@ -342,232 +348,281 @@ export default function ProfilePage() {
   // If user is not authenticated
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6 bg-peach text-brand font-sans relative overflow-hidden">
-        <div className="absolute top-10 left-10 w-72 h-72 rounded-full bg-rose-200/30 blur-3xl animate-ambient-drift pointer-events-none" />
-        <div className="bg-white/70 backdrop-blur-xl p-8 sm:p-10 rounded-3xl shadow-xl max-w-md w-full text-center border border-white relative z-10">
-          <div className="w-16 h-16 rounded-2xl bg-brand/10 text-brand mx-auto flex items-center justify-center mb-6 shadow-inner">
-            <UserRound size={32} />
+      <div className="min-h-screen bg-peach flex flex-col selection:bg-brand selection:text-white">
+        <SEO 
+          title="Prijava na profil | Na prvi pogled 💞 Speed Dating Zagreb"
+          description="Prijavi se sa svojim Google računom na korisnički profil kako bi pregledao/la svoje prijave i ostvarene matcheve."
+        />
+        <Navbar />
+
+        <main className="flex-1 pt-32 pb-20 px-4 sm:px-6 lg:px-8 max-w-lg mx-auto w-full flex items-center justify-center">
+          <div className="bg-white/75 backdrop-blur-xl p-8 sm:p-10 rounded-3xl shadow-xl shadow-brand/10 border border-white/90 text-center w-full animate-fade-in-up">
+            <div className="w-16 h-16 rounded-2xl bg-brand/10 text-brand mx-auto flex items-center justify-center mb-6 shadow-inner">
+              <UserRound size={32} className="text-brand-light" />
+            </div>
+            <h1 className="text-3xl font-serif font-bold mb-3 text-brand">Korisnički profil</h1>
+            <p className="text-brand/80 mb-8 font-light text-sm sm:text-base leading-relaxed">
+              Prijavi se sa svojim Google računom kako bi pregledao/la svoje prijave, statuse događaja i ostvarene matcheve!
+            </p>
+
+            <button
+              onClick={handleGoogleLogin}
+              className="w-full bg-white hover:bg-gray-50 text-gray-800 font-semibold py-3.5 px-6 rounded-2xl shadow-md hover:shadow-lg transition-all transform hover:scale-[1.02] border border-gray-200 flex justify-center items-center gap-3 cursor-pointer mb-5"
+            >
+              <FaGoogle size={18} className="text-blue-600" />
+              <span>Prijavi se s Googleom</span>
+            </button>
+
+            <Link to="/" className="inline-flex items-center gap-2 text-brand/70 hover:text-brand transition-colors text-xs font-semibold">
+              <ArrowLeft size={14} /> Povratak na naslovnicu
+            </Link>
           </div>
-          <h1 className="text-3xl font-serif font-bold mb-3 text-brand">Korisnički Profil</h1>
-          <p className="text-brand/80 mb-8 font-light text-sm leading-relaxed">
-            Prijavi se sa svojim Google računom kako bi pregledao svoje prijave, upravljao događajima i vidio svoje ostvarene matcheve!
-          </p>
+        </main>
 
-          <button
-            onClick={handleGoogleLogin}
-            className="w-full bg-white hover:bg-gray-50 text-gray-800 font-semibold py-3.5 px-6 rounded-2xl shadow-md hover:shadow-lg transition-all transform hover:scale-[1.02] border border-gray-200 flex justify-center items-center gap-3 cursor-pointer mb-4"
-          >
-            <FaGoogle size={18} className="text-blue-600" />
-            Prijavi se s Googleom
-          </button>
-
-          <Link to="/" className="inline-flex items-center gap-2 text-brand/70 hover:text-brand transition-colors text-xs font-medium">
-            <ArrowLeft size={14} /> Povratak na naslovnicu
-          </Link>
-        </div>
+        <Footer />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen py-10 px-4 sm:px-8 md:px-12 flex flex-col items-center bg-peach text-brand relative overflow-x-hidden selection:bg-brand selection:text-white">
-      
-      {/* Decorative ambient background */}
-      <div className="absolute top-10 left-[-5%] w-96 h-96 rounded-full bg-rose-300/20 blur-[100px] animate-ambient-drift pointer-events-none" />
-      <div className="absolute bottom-10 right-[-5%] w-96 h-96 rounded-full bg-brand/10 blur-[100px] animate-ambient-drift pointer-events-none" />
+    <div className="min-h-screen bg-peach flex flex-col selection:bg-brand selection:text-white">
+      <SEO 
+        title="Korisnički Profil | Na prvi pogled 💞 Speed Dating Zagreb"
+        description="Pregledaj svoje prijave za speed dating susrete u Zagrebu, uredi kontakt podatke za razmjenu simpatija i provjeri ostvarene matcheve."
+      />
 
-      {/* Floating Watermark Icons */}
-      <div className="absolute top-24 right-6 text-brand-light/10 rotate-[20deg] pointer-events-none hidden lg:block">
-        <Heart size={160} strokeWidth={1} />
-      </div>
+      <Navbar />
 
-      <div className="max-w-4xl w-full z-10">
+      <main className="flex-1 pt-28 pb-20 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto w-full">
+        
+        {/* Header Hero Banner */}
+        <section className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
+          <div>
+            <div className="inline-flex items-center gap-2 bg-brand/10 text-brand px-3.5 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider mb-3">
+              <Sparkles size={14} className="text-brand-light" />
+              <span>Korisnički račun</span>
+            </div>
+            <h1 className="font-serif text-3xl sm:text-4xl font-bold text-brand tracking-tight">
+              Tvoj profil i prijave
+            </h1>
+            <p className="text-brand/75 text-sm sm:text-base font-light mt-1">
+              Pregledaj statuse svojih prijava, uredi kontakt podatke i otkrij ostvarene simpatije.
+            </p>
+          </div>
 
-        {/* Top bar navigation */}
-        <div className="flex items-center justify-between mb-8">
-          <Link to="/" className="inline-flex items-center gap-2 text-brand/70 hover:text-brand transition-colors font-medium text-sm">
-            <ArrowLeft size={16} /> Natrag na početnu
-          </Link>
-          <button
-            onClick={handleLogout}
-            className="inline-flex items-center gap-2 bg-white/60 hover:bg-red-50 text-brand/70 hover:text-red-600 px-4 py-2 rounded-full border border-white text-xs font-semibold transition-all shadow-sm cursor-pointer"
-          >
-            <LogOut size={14} /> Odjavi se
-          </button>
-        </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={handleLogout}
+              className="inline-flex items-center gap-2 bg-white/70 hover:bg-rose-50 text-brand/70 hover:text-rose-700 px-4 py-2.5 rounded-full border border-white/80 text-xs font-bold transition-all shadow-sm cursor-pointer hover:border-rose-200"
+            >
+              <LogOut size={14} /> Odjavi se
+            </button>
+          </div>
+        </section>
 
         {/* Success Alert Banner */}
         {cancelSuccessMsg && (
-          <div className="mb-6 p-4 rounded-2xl bg-green-50 border border-green-200 text-green-800 text-sm flex items-center gap-3 shadow-sm animate-fade-in">
-            <CheckCircle2 size={20} className="text-green-600 flex-shrink-0" />
+          <div className="mb-6 p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-sm flex items-center gap-3 shadow-sm animate-fade-in">
+            <CheckCircle2 size={20} className="text-emerald-600 shrink-0" />
             <span className="font-medium">{cancelSuccessMsg}</span>
           </div>
         )}
 
         {/* User Profile Overview Card */}
-        <div className="bg-white/60 backdrop-blur-xl p-6 sm:p-8 rounded-3xl shadow-xl shadow-brand/5 border border-white mb-8">
+        <section className="bg-white/80 backdrop-blur-xl p-6 sm:p-8 rounded-3xl shadow-xl shadow-brand/5 border border-white/90 mb-10">
+          
           <div className="flex flex-col sm:flex-row items-center sm:items-start justify-between gap-6 pb-6 border-b border-brand/10">
-            <div className="flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
-              {user.photoURL ? (
-                <img 
-                  src={user.photoURL} 
-                  alt={user.displayName || "Korisnik"} 
-                  referrerPolicy="no-referrer" 
-                  className="w-20 h-20 rounded-full border-2 border-brand/20 shadow-md object-cover" 
-                />
-              ) : (
-                <div className="w-20 h-20 rounded-full bg-brand/10 text-brand text-2xl font-bold flex items-center justify-center border-2 border-brand/20 shadow-inner">
-                  {user.displayName?.charAt(0) || user.email?.charAt(0).toUpperCase()}
+            <div className="flex flex-col sm:flex-row items-center gap-5 text-center sm:text-left">
+              <div className="relative shrink-0">
+                {user.photoURL ? (
+                  <img 
+                    src={user.photoURL} 
+                    alt={user.displayName || "Korisnik"} 
+                    referrerPolicy="no-referrer" 
+                    className="w-20 h-20 sm:w-22 sm:h-22 rounded-2xl sm:rounded-3xl border-2 border-white shadow-lg shadow-brand/10 object-cover ring-4 ring-brand/5" 
+                  />
+                ) : (
+                  <div className="w-20 h-20 sm:w-22 sm:h-22 rounded-2xl sm:rounded-3xl bg-gradient-to-tr from-brand to-brand-light text-white text-3xl font-serif font-bold flex items-center justify-center shadow-lg shadow-brand/20 ring-4 ring-brand/5">
+                    {user.displayName?.charAt(0) || user.email?.charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <div className="absolute -bottom-1 -right-1 bg-emerald-500 text-white p-1 rounded-full ring-2 ring-white shadow-sm" title="Verificiran račun">
+                  <Check size={11} strokeWidth={3} />
                 </div>
-              )}
+              </div>
+
               <div>
-                <div className="flex items-center justify-center sm:justify-start gap-2 mb-1">
-                  <h1 className="text-2xl sm:text-3xl font-serif font-bold text-brand">
+                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5 mb-1.5">
+                  <h2 className="text-2xl sm:text-3xl font-serif font-bold text-brand">
                     {user.displayName || "Korisnik"}
-                  </h1>
-                  <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
-                    <ShieldCheck size={12} /> Verificiran
+                  </h2>
+                  <span className="inline-flex items-center gap-1.5 bg-brand/5 text-brand border border-brand/15 text-[11px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+                    <ShieldCheck size={13} className="text-brand-light" /> Verificiran
                   </span>
                 </div>
-                <p className="text-brand/70 text-sm flex items-center justify-center sm:justify-start gap-1.5 font-light">
-                  <Mail size={14} className="text-brand-light" /> {user.email}
+                <p className="text-brand/75 text-sm flex items-center justify-center sm:justify-start gap-2 font-light">
+                  <Mail size={15} className="text-brand-light shrink-0" />
+                  <span>{user.email}</span>
                 </p>
               </div>
             </div>
 
-            <div className="flex gap-2">
-              <div className="bg-white/80 border border-white px-4 py-2 rounded-2xl text-center shadow-xs">
-                <span className="block text-xl font-serif font-bold text-brand">{registrations.length}</span>
-                <span className="text-[10px] uppercase font-bold text-brand/60">Prijave</span>
+            {/* Stat Counters */}
+            <div className="flex gap-3">
+              <div className="bg-brand/5 border border-brand/10 px-4 sm:px-5 py-3 rounded-2xl text-center min-w-[95px] shadow-xs">
+                <div className="flex items-center justify-center gap-1.5 text-brand/60 mb-1">
+                  <Calendar size={13} className="text-brand-light" />
+                  <span className="text-[10px] uppercase font-bold tracking-wider">Prijave</span>
+                </div>
+                <span className="block text-2xl font-serif font-bold text-brand">{registrations.length}</span>
               </div>
-              <div className="bg-white/80 border border-white px-4 py-2 rounded-2xl text-center shadow-xs">
-                <span className="block text-xl font-serif font-bold text-rose-600">{matches.length}</span>
-                <span className="text-[10px] uppercase font-bold text-brand/60">Matchevi</span>
+
+              <div className="bg-rose-500/10 border border-rose-500/20 px-4 sm:px-5 py-3 rounded-2xl text-center min-w-[95px] shadow-xs">
+                <div className="flex items-center justify-center gap-1.5 text-rose-700/80 mb-1">
+                  <Heart size={13} className="fill-rose-500 text-rose-500" />
+                  <span className="text-[10px] uppercase font-bold tracking-wider">Matchevi</span>
+                </div>
+                <span className="block text-2xl font-serif font-bold text-rose-600">{matches.length}</span>
               </div>
             </div>
           </div>
 
           {/* Quick Contact Settings */}
           <div className="mt-6 pt-2">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-bold uppercase tracking-wider text-brand/70 flex items-center gap-1.5">
-                <Sparkles size={14} className="text-brand-light" /> Kontakt podaci za Speed Dating Match
-              </span>
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-brand/10 text-brand flex items-center justify-center">
+                  <Sparkles size={14} className="text-brand-light" />
+                </div>
+                <span className="font-serif font-bold text-base text-brand">
+                  Kontakt podaci za Speed Dating Match
+                </span>
+              </div>
+
               {contactSavedSuccess && (
-                <span className="text-xs font-bold text-green-600 flex items-center gap-1">
+                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full flex items-center gap-1.5 animate-fade-in">
                   <Check size={14} /> Spremljeno!
                 </span>
               )}
             </div>
-            <p className="text-xs text-brand/60 mb-4 font-light">
-              Ove kontakt podatke dijelimo isključivo s osobama s kojima ostvariš obostrani match nakon završenog događaja.
+
+            <p className="text-xs text-brand/70 mb-5 font-light leading-relaxed max-w-2xl">
+              Ove kontakt podatke dijelimo isključivo s osobama s kojima ostvariš obostrani match nakon završenog događaja kako biste se mogli povezati.
             </p>
 
             <form onSubmit={handleSaveContact} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="relative">
-                <label className="block text-[11px] font-bold text-brand/80 mb-1 flex items-center gap-1">
-                  <FaInstagram size={12} className="text-pink-600" /> Instagram korisničko ime
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-brand flex items-center gap-1.5">
+                  <FaInstagram size={14} className="text-pink-600" />
+                  <span>Instagram korisničko ime</span>
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3.5 top-3 text-brand/50 text-sm font-medium">@</span>
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-brand/50 text-sm font-semibold select-none">@</span>
                   <input
                     type="text"
                     value={instagram.startsWith('@') ? instagram.slice(1) : instagram}
                     onChange={e => setInstagram(e.target.value)}
                     placeholder="tvoje_korisnicko_ime"
-                    className="w-full pl-8 pr-4 py-2.5 rounded-xl bg-white/80 border border-brand/15 focus:border-brand focus:ring-1 focus:ring-brand text-sm outline-none transition-all placeholder:text-brand/30"
+                    className="w-full pl-8 pr-4 py-3 rounded-2xl bg-white/90 border border-brand/15 focus:border-brand focus:ring-2 focus:ring-brand/15 text-sm font-medium outline-none transition-all placeholder:text-brand/35 text-brand shadow-xs"
                   />
                 </div>
               </div>
 
-              <div className="relative">
-                <label className="block text-[11px] font-bold text-brand/80 mb-1 flex items-center gap-1">
-                  <Phone size={12} className="text-brand-light" /> Broj mobitela (WhatsApp)
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-brand flex items-center gap-1.5">
+                  <Phone size={14} className="text-emerald-700" />
+                  <span>Broj mobitela (WhatsApp)</span>
                 </label>
                 <input
                   type="text"
                   value={phone}
                   onChange={e => setPhone(e.target.value)}
                   placeholder="Npr. 091 123 4567"
-                  className="w-full px-4 py-2.5 rounded-xl bg-white/80 border border-brand/15 focus:border-brand focus:ring-1 focus:ring-brand text-sm outline-none transition-all placeholder:text-brand/30"
+                  className="w-full px-4 py-3 rounded-2xl bg-white/90 border border-brand/15 focus:border-brand focus:ring-2 focus:ring-brand/15 text-sm font-medium outline-none transition-all placeholder:text-brand/35 text-brand shadow-xs"
                 />
               </div>
 
-              <div className="sm:col-span-2 flex justify-end">
+              <div className="sm:col-span-2 flex justify-end pt-2">
                 <button
                   type="submit"
                   disabled={savingContact}
-                  className="bg-brand hover:bg-brand-light text-white text-xs font-semibold px-5 py-2.5 rounded-xl transition-all shadow-sm hover:shadow-md cursor-pointer flex items-center gap-2 disabled:opacity-50"
+                  className="inline-flex items-center justify-center gap-2 bg-brand hover:bg-brand-light text-white text-xs font-bold px-6 py-3 rounded-full transition-all shadow-md shadow-brand/20 hover:scale-[1.02] cursor-pointer disabled:opacity-50"
                 >
-                  {savingContact ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-                  Spremi kontakt podatke
+                  {savingContact ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />}
+                  <span>{savingContact ? 'Spremanje...' : 'Spremi kontakt podatke'}</span>
                 </button>
               </div>
             </form>
           </div>
-        </div>
+        </section>
 
         {/* Navigation Tabs */}
-        <div className="flex items-center gap-3 mb-6 border-b border-brand/15 pb-2">
-          <button
-            onClick={() => setActiveTab('registrations')}
-            className={`flex items-center gap-2 pb-2 px-3 font-serif text-lg font-bold transition-all relative cursor-pointer ${
-              activeTab === 'registrations' 
-                ? 'text-brand' 
-                : 'text-brand/50 hover:text-brand/80'
-            }`}
-          >
-            <Calendar size={18} />
-            Moje Prijave
-            <span className="text-xs bg-brand/10 text-brand px-2 py-0.5 rounded-full font-sans font-bold">
-              {registrations.length}
-            </span>
-            {activeTab === 'registrations' && (
-              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand rounded-full animate-fade-in" />
-            )}
-          </button>
+        <section className="mb-6">
+          <div className="flex items-center justify-center sm:justify-start gap-2 p-1.5 bg-white/60 backdrop-blur-md rounded-2xl border border-white/80 shadow-xs inline-flex w-full sm:w-auto">
+            <button
+              type="button"
+              onClick={() => setActiveTab('registrations')}
+              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                activeTab === 'registrations'
+                  ? 'bg-brand text-white shadow-md shadow-brand/20'
+                  : 'text-brand/75 hover:text-brand hover:bg-white/60'
+              }`}
+            >
+              <Calendar size={16} />
+              <span>Moje prijave</span>
+              <span className={`text-[11px] px-2 py-0.5 rounded-full font-bold ${
+                activeTab === 'registrations' ? 'bg-white/20 text-white' : 'bg-brand/10 text-brand'
+              }`}>
+                {registrations.length}
+              </span>
+            </button>
 
-          <button
-            onClick={() => setActiveTab('matches')}
-            className={`flex items-center gap-2 pb-2 px-3 font-serif text-lg font-bold transition-all relative cursor-pointer ${
-              activeTab === 'matches' 
-                ? 'text-brand' 
-                : 'text-brand/50 hover:text-brand/80'
-            }`}
-          >
-            <MessageCircleHeart size={18} className="text-rose-600" />
-            Moji Matchevi
-            <span className="text-xs bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full font-sans font-bold">
-              {matches.length}
-            </span>
-            {activeTab === 'matches' && (
-              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand rounded-full animate-fade-in" />
-            )}
-          </button>
-        </div>
+            <button
+              type="button"
+              onClick={() => setActiveTab('matches')}
+              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                activeTab === 'matches'
+                  ? 'bg-rose-600 text-white shadow-md shadow-rose-600/20'
+                  : 'text-brand/75 hover:text-brand hover:bg-white/60'
+              }`}
+            >
+              <MessageCircleHeart size={16} className={activeTab === 'matches' ? 'text-white' : 'text-rose-500'} />
+              <span>Moji matchevi</span>
+              <span className={`text-[11px] px-2 py-0.5 rounded-full font-bold ${
+                activeTab === 'matches' ? 'bg-white/20 text-white' : 'bg-rose-100 text-rose-700'
+              }`}>
+                {matches.length}
+              </span>
+            </button>
+          </div>
+        </section>
 
         {/* TAB 1: REGISTRATIONS */}
         {activeTab === 'registrations' && (
-          <div className="space-y-4">
+          <section className="space-y-4">
             {loadingData ? (
-              <div className="bg-white/40 backdrop-blur-md rounded-3xl p-12 text-center text-brand/60 flex flex-col items-center justify-center">
+              <div className="bg-white/60 backdrop-blur-md rounded-3xl p-12 text-center text-brand/60 flex flex-col items-center justify-center border border-white/80">
                 <Loader2 size={32} className="animate-spin mb-3 text-brand/50" />
-                <p className="text-sm">Učitavanje tvojih prijava...</p>
+                <p className="text-sm font-medium">Učitavanje tvojih prijava...</p>
               </div>
             ) : registrations.length === 0 ? (
-              <div className="bg-white/60 backdrop-blur-md rounded-3xl p-10 text-center border border-white shadow-sm">
-                <div className="w-14 h-14 rounded-2xl bg-brand/10 text-brand flex items-center justify-center mx-auto mb-4">
-                  <Calendar size={28} />
+              <div className="bg-white/70 backdrop-blur-xl rounded-3xl p-10 sm:p-14 text-center border border-white/90 shadow-xl shadow-brand/5">
+                <div className="w-16 h-16 rounded-2xl bg-brand/10 text-brand flex items-center justify-center mx-auto mb-5 shadow-inner">
+                  <Calendar size={32} className="text-brand-light" />
                 </div>
-                <h3 className="text-xl font-serif font-bold text-brand mb-2">Nemaš aktivnih prijava</h3>
-                <p className="text-brand/70 text-sm font-light max-w-md mx-auto mb-6">
+                <h3 className="font-serif text-2xl sm:text-3xl font-bold text-brand mb-3">
+                  Nemaš aktivnih prijava
+                </h3>
+                <p className="text-brand/75 text-sm sm:text-base font-light max-w-md mx-auto leading-relaxed mb-7">
                   Trenutno nisi prijavljen/a ni na jedan nadolazeći speed dating susret. Provjeri dostupne termine i rezerviraj svoje mjesto!
                 </p>
                 <Link
-                  to="/prijava"
-                  className="inline-flex items-center gap-2 bg-brand text-white font-semibold px-6 py-3 rounded-full text-sm shadow-lg hover:bg-brand-light transition-all transform hover:scale-105"
+                  to="/eventi"
+                  className="inline-flex items-center gap-2 bg-brand hover:bg-brand-light text-white font-bold px-7 py-3.5 rounded-full text-sm shadow-xl shadow-brand/20 transition-all hover:scale-105"
                 >
-                  <Sparkles size={16} /> Pregledaj dostupne termine
+                  <Sparkles size={16} />
+                  <span>Pregledaj dostupne termine</span>
+                  <ChevronRight size={16} />
                 </Link>
               </div>
             ) : (
@@ -579,104 +634,115 @@ export default function ProfilePage() {
                 return (
                   <div 
                     key={reg.id} 
-                    className="bg-white/70 backdrop-blur-md p-5 sm:p-6 rounded-3xl border border-white shadow-md shadow-brand/5 transition-all hover:shadow-lg"
+                    className="bg-white/80 backdrop-blur-xl p-6 sm:p-8 rounded-3xl border border-white/90 shadow-xl shadow-brand/5 transition-all hover:shadow-2xl"
                   >
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                      <div className="space-y-2">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h3 className="text-lg sm:text-xl font-serif font-bold text-brand">
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                      <div className="space-y-3 flex-1">
+                        <div className="flex flex-wrap items-center gap-3">
+                          <h3 className="font-serif text-xl sm:text-2xl font-bold text-brand">
                             {eventInfo?.title || 'Speed Dating Događaj'}
                           </h3>
                           
-                          {/* Status Badges */}
+                          {/* Status Badges with glowing dots */}
                           {status === 'accepted' && (
-                            <span className="inline-flex items-center gap-1 bg-green-100 text-green-800 text-[11px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                              <CheckCircle2 size={13} /> Prijava potvrđena
+                            <span className="inline-flex items-center gap-2 bg-emerald-50 text-emerald-800 border border-emerald-200/70 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+                              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                              Prijava potvrđena
                             </span>
                           )}
                           {status === 'pending' && (
-                            <span className="inline-flex items-center gap-1 bg-yellow-100 text-yellow-800 text-[11px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                              <Clock3 size={13} /> Na čekanju pregleda
+                            <span className="inline-flex items-center gap-2 bg-amber-50 text-amber-800 border border-amber-200/70 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+                              <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                              Na čekanju pregleda
                             </span>
                           )}
                           {status === 'waiting_list' && (
-                            <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-800 text-[11px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                              <Clock3 size={13} /> Na listi čekanja
+                            <span className="inline-flex items-center gap-2 bg-amber-50 text-amber-800 border border-amber-200/70 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+                              <span className="w-2 h-2 rounded-full bg-amber-500" />
+                              Na listi čekanja
                             </span>
                           )}
                           {status === 'rejected' && (
-                            <span className="inline-flex items-center gap-1 bg-red-100 text-red-800 text-[11px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                            <span className="inline-flex items-center gap-2 bg-rose-50 text-rose-800 border border-rose-200/70 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
                               <XCircle size={13} /> Odbijeno
                             </span>
                           )}
                           {status === 'cancelled' && (
-                            <span className="inline-flex items-center gap-1 bg-gray-100 text-gray-600 text-[11px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                            <span className="inline-flex items-center gap-2 bg-gray-100 text-gray-700 border border-gray-200 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
                               <XCircle size={13} /> Otkazana prijava
                             </span>
                           )}
                         </div>
 
-                        {/* Event Details */}
+                        {/* Event Details Grid matching EventsPage */}
                         {eventInfo && (
-                          <div className="flex flex-wrap gap-y-1 gap-x-4 text-xs text-brand/70 font-light">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5 pt-1 text-xs text-brand/85">
                             {eventInfo.dateStr && (
-                              <span className="flex items-center gap-1">
-                                <Calendar size={13} className="text-brand-light" /> {eventInfo.dateStr} u {eventInfo.timeStr}
-                              </span>
+                              <div className="flex items-center gap-2 bg-white/70 p-2.5 rounded-xl border border-white/80">
+                                <Calendar size={15} className="text-brand-light shrink-0" />
+                                <div>
+                                  <span className="text-[10px] text-brand/60 uppercase block leading-none font-semibold">Datum</span>
+                                  <span className="font-medium text-brand">{eventInfo.dateStr}</span>
+                                </div>
+                              </div>
+                            )}
+                            {eventInfo.timeStr && (
+                              <div className="flex items-center gap-2 bg-white/70 p-2.5 rounded-xl border border-white/80">
+                                <Clock3 size={15} className="text-brand-light shrink-0" />
+                                <div>
+                                  <span className="text-[10px] text-brand/60 uppercase block leading-none font-semibold">Vrijeme</span>
+                                  <span className="font-medium text-brand">{eventInfo.timeStr} h</span>
+                                </div>
+                              </div>
                             )}
                             {eventInfo.location && (
-                              <span className="flex items-center gap-1">
-                                <MapPin size={13} className="text-brand-light" /> {eventInfo.location}
-                              </span>
-                            )}
-                            {eventInfo.ageGroup && (
-                              <span className="flex items-center gap-1">
-                                Dob: <strong>{eventInfo.ageGroup}</strong>
-                              </span>
+                              <div className="flex items-center gap-2 bg-white/70 p-2.5 rounded-xl border border-white/80">
+                                <MapPin size={15} className="text-brand-light shrink-0" />
+                                <div>
+                                  <span className="text-[10px] text-brand/60 uppercase block leading-none font-semibold">Lokacija</span>
+                                  <span className="font-medium text-brand truncate max-w-[150px] block" title={eventInfo.location}>{eventInfo.location}</span>
+                                </div>
+                              </div>
                             )}
                             {eventInfo.price && (
-                              <span className="flex items-center gap-1">
-                                Kotizacija: <strong>{eventInfo.price}</strong>
-                              </span>
+                              <div className="flex items-center gap-2 bg-white/70 p-2.5 rounded-xl border border-white/80">
+                                <CreditCard size={15} className="text-brand-light shrink-0" />
+                                <div>
+                                  <span className="text-[10px] text-brand/60 uppercase block leading-none font-semibold">Kotizacija</span>
+                                  <span className="font-medium text-brand">{eventInfo.price}</span>
+                                </div>
+                              </div>
                             )}
                           </div>
                         )}
 
+                        {/* Status Explanations */}
                         {status === 'pending' && (
-                          <div className="mt-2 text-xs text-amber-900 bg-amber-50/90 border border-amber-200/80 rounded-xl p-3 max-w-xl flex items-start gap-2">
-                            <Clock3 size={14} className="text-amber-600 mt-0.5 shrink-0" />
+                          <div className="text-xs text-amber-900 bg-amber-50/90 border border-amber-200/80 rounded-2xl p-3.5 flex items-start gap-2.5 leading-relaxed">
+                            <Clock3 size={16} className="text-amber-600 mt-0.5 shrink-0" />
                             <span>
-                              Prijava je zaprimljena i čeka na pregled organizatora. Obavijest o potvrdi primit ćeš na e-mail unutar <strong>24 sata</strong>. Ako je ne vidiš u pristigloj pošti, svakako provjeri mapu <strong>Spam / Neželjena pošta</strong> te označi poruku da nije spam.
+                              Prijava je zaprimljena i čeka na pregled organizatora. Obavijest o potvrdi primit ćeš na e-mail unutar <strong>24 sata</strong>. Ako je ne vidiš u pristigloj pošti, svakako provjeri mapu <strong>Spam / Neželjena pošta</strong>.
                             </span>
                           </div>
                         )}
 
                         {status === 'waiting_list' && (
-                          <div className="mt-2 text-xs text-amber-800 bg-amber-50/80 border border-amber-200/80 rounded-xl p-3 max-w-xl flex items-start gap-2">
-                            <Clock3 size={14} className="text-amber-600 mt-0.5 flex-shrink-0" />
+                          <div className="text-xs text-amber-900 bg-amber-50/90 border border-amber-200/80 rounded-2xl p-3.5 flex items-start gap-2.5 leading-relaxed">
+                            <Clock3 size={16} className="text-amber-600 mt-0.5 shrink-0" />
                             <span>
-                              Trenutačno se nalaziš na <strong>listi čekanja</strong> za ovaj događaj. Organizator će te obavijestiti putem emaila isključivo ako se oslobodi mjesto i tvoja prijava bude potvrđena.
+                              Trenutačno se nalaziš na <strong>listi čekanja</strong> za ovaj događaj. Organizator će te obavijestiti putem e-maila ako se oslobodi mjesto.
                             </span>
                           </div>
                         )}
                       </div>
 
                       {/* Action buttons */}
-                      <div className="flex flex-wrap items-center gap-2 pt-2 md:pt-0">
-                        {/* Link to Form Page for this event */}
-                        <Link
-                          to={`/prijava?eventId=${reg.eventId}`}
-                          className="inline-flex items-center gap-1.5 bg-white/80 hover:bg-brand/5 text-brand border border-brand/20 px-3.5 py-2 rounded-2xl text-xs font-semibold transition-all shadow-xs"
-                          title="Pogledaj stranicu prijave za ovaj događaj"
-                        >
-                          <ExternalLink size={13} /> Stranica prijave
-                        </Link>
-
+                      <div className="flex flex-wrap lg:flex-col gap-2 pt-2 lg:pt-0 shrink-0">
                         {/* Matching Button if enabled and user was accepted */}
                         {isMatchingActive && status === 'accepted' && (
                           <Link
                             to={`/matching?eventId=${reg.eventId}`}
-                            className={`inline-flex items-center gap-1.5 text-white px-4 py-2.5 rounded-2xl text-xs font-bold shadow-md hover:scale-[1.03] transition-all ${
+                            className={`inline-flex items-center justify-center gap-2 text-white px-5 py-3 rounded-2xl text-xs font-bold shadow-md hover:scale-[1.02] transition-all ${
                               eventInfo?.matchingPhase === 'live'
                                 ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-500/20'
                                 : 'bg-gradient-to-r from-rose-500 to-brand hover:shadow-rose-500/20'
@@ -687,14 +753,25 @@ export default function ProfilePage() {
                           </Link>
                         )}
 
+                        {/* Link to Form Page for this event */}
+                        <Link
+                          to={`/prijava?eventId=${reg.eventId}`}
+                          className="inline-flex items-center justify-center gap-2 bg-white/80 hover:bg-white text-brand border border-brand/20 px-4 py-2.5 rounded-2xl text-xs font-semibold transition-all shadow-xs"
+                          title="Pogledaj stranicu prijave za ovaj događaj"
+                        >
+                          <ExternalLink size={13} />
+                          <span>Stranica prijave</span>
+                        </Link>
+
                         {/* Cancel Registration Button (only for active registrations) */}
                         {(status === 'pending' || status === 'accepted' || status === 'waiting_list') && (
                           <button
                             type="button"
                             onClick={() => setCancellingRegistration(reg)}
-                            className="inline-flex items-center gap-1.5 bg-white/80 hover:bg-red-50 text-red-600 border border-red-200 px-3.5 py-2 rounded-2xl text-xs font-semibold transition-all shadow-xs cursor-pointer"
+                            className="inline-flex items-center justify-center gap-2 bg-white/80 hover:bg-rose-50 text-rose-700 border border-rose-200 px-4 py-2.5 rounded-2xl text-xs font-semibold transition-all shadow-xs cursor-pointer"
                           >
-                            <XCircle size={14} /> Odjavi se s događaja
+                            <XCircle size={14} />
+                            <span>Odjavi se s događaja</span>
                           </button>
                         )}
                       </div>
@@ -703,29 +780,29 @@ export default function ProfilePage() {
                 );
               })
             )}
-          </div>
+          </section>
         )}
 
         {/* TAB 2: MATCHES */}
         {activeTab === 'matches' && (
-          <div className="space-y-4">
+          <section className="space-y-4">
             {loadingData ? (
-              <div className="bg-white/40 backdrop-blur-md rounded-3xl p-12 text-center text-brand/60 flex flex-col items-center justify-center">
+              <div className="bg-white/60 backdrop-blur-md rounded-3xl p-12 text-center text-brand/60 flex flex-col items-center justify-center border border-white/80">
                 <Loader2 size={32} className="animate-spin mb-3 text-brand/50" />
-                <p className="text-sm">Učitavanje tvojih matcheva...</p>
+                <p className="text-sm font-medium">Učitavanje tvojih matcheva...</p>
               </div>
             ) : matches.length === 0 ? (
-              <div className="bg-white/60 backdrop-blur-md rounded-3xl p-12 text-center border border-white shadow-sm">
+              <div className="bg-white/70 backdrop-blur-xl rounded-3xl p-12 text-center border border-white/90 shadow-xl shadow-brand/5">
                 <div className="w-16 h-16 rounded-full bg-rose-100 text-rose-500 flex items-center justify-center mx-auto mb-4 animate-float-slow">
                   <Heart size={32} className="fill-rose-500/20" />
                 </div>
-                <h3 className="text-xl font-serif font-bold text-brand mb-2">Još nema zabilježenih matcheva</h3>
-                <p className="text-brand/70 text-sm font-light max-w-md mx-auto leading-relaxed mb-6">
+                <h3 className="text-2xl font-serif font-bold text-brand mb-2">Još nema zabilježenih matcheva</h3>
+                <p className="text-brand/75 text-sm sm:text-base font-light max-w-md mx-auto leading-relaxed mb-6">
                   Nakon završenog speed dating eventa organizator pokreće Matching. Kada ti i druga osoba označite da se jedno drugom sviđate, vaš kontakt pojavit će se ovdje!
                 </p>
                 <Link
                   to="/"
-                  className="inline-flex items-center gap-2 bg-brand text-white font-semibold px-6 py-2.5 rounded-full text-xs shadow-md hover:bg-brand-light transition-all"
+                  className="inline-flex items-center gap-2 bg-brand text-white font-bold px-6 py-3 rounded-full text-xs shadow-md hover:bg-brand-light transition-all"
                 >
                   <ArrowLeft size={14} /> Povratak na naslovnicu
                 </Link>
@@ -739,130 +816,137 @@ export default function ProfilePage() {
                   return (
                     <div 
                       key={m.id}
-                      className="bg-white/80 backdrop-blur-md p-6 rounded-3xl border border-white shadow-lg shadow-brand/5 relative overflow-hidden"
+                      className="bg-white/80 backdrop-blur-xl p-6 sm:p-7 rounded-3xl border border-white/90 shadow-xl shadow-brand/5 relative overflow-hidden flex flex-col justify-between hover:shadow-2xl transition-all"
                     >
-                      <div className="absolute top-0 right-0 w-24 h-24 bg-rose-200/40 rounded-full blur-2xl pointer-events-none" />
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-rose-200/30 rounded-full blur-2xl pointer-events-none" />
 
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-rose-500 to-brand text-white flex items-center justify-center font-bold text-lg shadow-md">
-                            {m.partnerName.charAt(0)}
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-1.5">
-                              <h4 className="font-serif font-bold text-lg text-brand">{m.partnerName}</h4>
-                              <Heart size={14} className="text-rose-500 fill-rose-500" />
+                      <div>
+                        <div className="flex items-start justify-between gap-3 mb-4">
+                          <div className="flex items-center gap-3.5">
+                            <div className="w-13 h-13 rounded-2xl bg-gradient-to-tr from-rose-500 to-brand text-white flex items-center justify-center font-serif font-bold text-xl shadow-md shadow-rose-500/20">
+                              {m.partnerName.charAt(0)}
                             </div>
-                            <p className="text-[11px] text-brand/60 font-medium">
-                              {m.eventTitle} {m.eventDate ? `• ${m.eventDate}` : ''}
-                            </p>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <h4 className="font-serif font-bold text-xl text-brand">{m.partnerName}</h4>
+                                <Heart size={16} className="text-rose-500 fill-rose-500" />
+                              </div>
+                              <p className="text-xs text-brand/60 font-medium">
+                                {m.eventTitle} {m.eventDate ? `• ${m.eventDate}` : ''}
+                              </p>
+                            </div>
                           </div>
+                          <span className="inline-flex items-center gap-1 bg-rose-50 border border-rose-200 text-rose-700 text-[11px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+                            Match 💞
+                          </span>
                         </div>
-                        <span className="bg-rose-50 border border-rose-200 text-rose-700 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">
-                          Match 💞
-                        </span>
-                      </div>
 
-                      {/* Contact Channels */}
-                      <div className="space-y-2 pt-3 border-t border-brand/10">
-                        {m.partnerInstagram && (
-                          <div className="flex items-center justify-between bg-peach/50 p-2.5 rounded-xl text-xs">
-                            <span className="font-medium text-brand/70 flex items-center gap-1.5">
-                              <FaInstagram size={14} className="text-pink-600 flex-shrink-0" />
-                              <span>{m.partnerInstagram}</span>
-                            </span>
-                            <a 
-                              href={`https://instagram.com/${m.partnerInstagram.replace('@', '')}`} 
-                              target="_blank" 
-                              rel="noreferrer"
-                              className="text-brand font-bold hover:text-brand-light flex items-center gap-1 text-[11px] hover:underline flex-shrink-0"
-                            >
-                              Otvori IG <ExternalLink size={12} />
-                            </a>
-                          </div>
-                        )}
-
-                        {m.partnerPhone && (
-                          <div className="flex items-center justify-between bg-peach/50 p-2.5 rounded-xl text-xs">
-                            <span className="font-medium text-brand/70 flex items-center gap-1.5">
-                              <Phone size={14} className="text-green-600 flex-shrink-0" />
-                              <span>{m.partnerPhone}</span>
-                            </span>
-                            <a 
-                              href={`tel:${m.partnerPhone}`}
-                              className="text-brand font-bold hover:text-brand-light flex items-center gap-1 text-[11px] hover:underline flex-shrink-0"
-                            >
-                              Nazovi <Phone size={12} />
-                            </a>
-                          </div>
-                        )}
-
-                        {!m.partnerInstagram && !m.partnerPhone && m.partnerContact && (
-                          <div className="flex items-center justify-between bg-peach/50 p-2.5 rounded-xl text-xs">
-                            <span className="font-medium text-brand/70 flex items-center gap-1.5">
-                              {isInstagram ? <FaInstagram size={14} className="text-pink-600" /> : <Phone size={14} className="text-green-600" />}
-                              <span>{m.partnerContact}</span>
-                            </span>
-                            {isInstagram ? (
+                        {/* Contact channels */}
+                        <div className="space-y-2 pt-3 border-t border-brand/10">
+                          {m.partnerInstagram && (
+                            <div className="flex items-center justify-between bg-white/70 p-3 rounded-2xl border border-white/80 text-xs">
+                              <span className="font-medium text-brand/80 flex items-center gap-2">
+                                <FaInstagram size={16} className="text-pink-600 shrink-0" />
+                                <span className="font-semibold">{m.partnerInstagram}</span>
+                              </span>
                               <a 
-                                href={`https://instagram.com/${cleanIg}`} 
+                                href={`https://instagram.com/${m.partnerInstagram.replace('@', '')}`} 
                                 target="_blank" 
                                 rel="noreferrer"
-                                className="text-brand font-bold hover:text-brand-light flex items-center gap-1 text-[11px] hover:underline"
+                                className="inline-flex items-center gap-1.5 bg-brand/5 hover:bg-brand text-brand hover:text-white px-3 py-1.5 rounded-full font-bold text-[11px] transition-all"
                               >
-                                Otvori IG <ExternalLink size={12} />
+                                <span>Otvori IG</span>
+                                <ExternalLink size={12} />
                               </a>
-                            ) : (
-                              <a 
-                                href={`tel:${m.partnerContact}`}
-                                className="text-brand font-bold hover:text-brand-light flex items-center gap-1 text-[11px] hover:underline"
-                              >
-                                Nazovi <Phone size={12} />
-                              </a>
-                            )}
-                          </div>
-                        )}
+                            </div>
+                          )}
 
-                        {m.partnerEmail && (
-                          <div className="flex items-center justify-between bg-peach/50 p-2.5 rounded-xl text-xs">
-                            <span className="font-medium text-brand/70 flex items-center gap-1.5 truncate pr-2">
-                              <Mail size={14} className="text-brand-light flex-shrink-0" />
-                              <span className="truncate">{m.partnerEmail}</span>
-                            </span>
-                            <a 
-                              href={`mailto:${m.partnerEmail}`}
-                              className="text-brand font-bold hover:text-brand-light flex items-center gap-1 text-[11px] hover:underline flex-shrink-0"
-                            >
-                              Pošalji mail <ExternalLink size={12} />
-                            </a>
-                          </div>
-                        )}
+                          {m.partnerPhone && (
+                            <div className="flex items-center justify-between bg-white/70 p-3 rounded-2xl border border-white/80 text-xs">
+                              <span className="font-medium text-brand/80 flex items-center gap-2">
+                                <Phone size={15} className="text-emerald-700 shrink-0" />
+                                <span className="font-semibold">{m.partnerPhone}</span>
+                              </span>
+                              <a 
+                                href={`tel:${m.partnerPhone}`}
+                                className="inline-flex items-center gap-1.5 bg-brand/5 hover:bg-brand text-brand hover:text-white px-3 py-1.5 rounded-full font-bold text-[11px] transition-all"
+                              >
+                                <span>Nazovi</span>
+                                <Phone size={12} />
+                              </a>
+                            </div>
+                          )}
+
+                          {!m.partnerInstagram && !m.partnerPhone && m.partnerContact && (
+                            <div className="flex items-center justify-between bg-white/70 p-3 rounded-2xl border border-white/80 text-xs">
+                              <span className="font-medium text-brand/80 flex items-center gap-2">
+                                {isInstagram ? <FaInstagram size={16} className="text-pink-600" /> : <Phone size={15} className="text-emerald-700" />}
+                                <span className="font-semibold">{m.partnerContact}</span>
+                              </span>
+                              {isInstagram ? (
+                                <a 
+                                  href={`https://instagram.com/${cleanIg}`} 
+                                  target="_blank" 
+                                  rel="noreferrer"
+                                  className="inline-flex items-center gap-1.5 bg-brand/5 hover:bg-brand text-brand hover:text-white px-3 py-1.5 rounded-full font-bold text-[11px] transition-all"
+                                >
+                                  <span>Otvori IG</span>
+                                  <ExternalLink size={12} />
+                                </a>
+                              ) : (
+                                <a 
+                                  href={`tel:${m.partnerContact}`}
+                                  className="inline-flex items-center gap-1.5 bg-brand/5 hover:bg-brand text-brand hover:text-white px-3 py-1.5 rounded-full font-bold text-[11px] transition-all"
+                                >
+                                  <span>Nazovi</span>
+                                  <Phone size={12} />
+                                </a>
+                              )}
+                            </div>
+                          )}
+
+                          {m.partnerEmail && (
+                            <div className="flex items-center justify-between bg-white/70 p-3 rounded-2xl border border-white/80 text-xs">
+                              <span className="font-medium text-brand/80 flex items-center gap-2 truncate pr-2">
+                                <Mail size={15} className="text-brand-light shrink-0" />
+                                <span className="truncate">{m.partnerEmail}</span>
+                              </span>
+                              <a 
+                                href={`mailto:${m.partnerEmail}`}
+                                className="inline-flex items-center gap-1.5 bg-brand/5 hover:bg-brand text-brand hover:text-white px-3 py-1.5 rounded-full font-bold text-[11px] transition-all shrink-0"
+                              >
+                                <span>Pošalji e-mail</span>
+                                <ExternalLink size={12} />
+                              </a>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   );
                 })}
               </div>
             )}
-          </div>
+          </section>
         )}
 
-      </div>
+      </main>
 
       {/* CANCEL REGISTRATION CONFIRMATION MODAL */}
       {cancellingRegistration && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white p-6 sm:p-8 rounded-3xl max-w-md w-full shadow-2xl border border-white animate-scale-up">
-            <div className="w-12 h-12 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center mx-auto mb-4">
-              <AlertTriangle size={24} />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white/95 backdrop-blur-xl p-6 sm:p-8 rounded-3xl max-w-md w-full shadow-2xl border border-white animate-scale-up">
+            <div className="w-14 h-14 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto mb-4 border border-rose-100">
+              <AlertTriangle size={26} />
             </div>
             
-            <h3 className="text-xl font-serif font-bold text-center text-gray-900 mb-2">
+            <h3 className="text-2xl font-serif font-bold text-center text-brand mb-2">
               Potvrda odjave s događaja
             </h3>
             
-            <p className="text-sm text-gray-600 text-center mb-6 leading-relaxed">
+            <p className="text-sm text-brand/75 text-center mb-6 leading-relaxed">
               Jeste li sigurni da želite otkazati prijavu za događaj{' '}
-              <strong>"{cancellingRegistration.eventDetails?.title || 'Speed Dating'}"</strong>? 
+              <strong className="text-brand">"{cancellingRegistration.eventDetails?.title || 'Speed Dating'}"</strong>? 
               Vaše mjesto bit će oslobođeno za druge zainteresirane sudionike.
             </p>
 
@@ -871,7 +955,7 @@ export default function ProfilePage() {
                 type="button"
                 onClick={() => setCancellingRegistration(null)}
                 disabled={cancelLoading}
-                className="flex-1 py-3 rounded-xl border border-gray-200 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-colors cursor-pointer"
+                className="flex-1 py-3 rounded-2xl border border-brand/20 text-brand font-semibold text-sm hover:bg-brand/5 transition-colors cursor-pointer"
               >
                 Odustani
               </button>
@@ -879,16 +963,17 @@ export default function ProfilePage() {
                 type="button"
                 onClick={handleConfirmCancelRegistration}
                 disabled={cancelLoading}
-                className="flex-1 py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-semibold text-sm transition-all shadow-md hover:shadow-red-600/20 cursor-pointer flex items-center justify-center gap-2"
+                className="flex-1 py-3 rounded-2xl bg-rose-700 hover:bg-rose-800 text-white font-semibold text-sm transition-all shadow-md hover:shadow-rose-700/20 cursor-pointer flex items-center justify-center gap-2"
               >
                 {cancelLoading ? <Loader2 size={16} className="animate-spin" /> : null}
-                {cancelLoading ? 'Otkazivanje...' : 'Da, odjavi me'}
+                <span>{cancelLoading ? 'Otkazivanje...' : 'Da, odjavi me'}</span>
               </button>
             </div>
           </div>
         </div>
       )}
 
+      <Footer />
     </div>
   );
 }
