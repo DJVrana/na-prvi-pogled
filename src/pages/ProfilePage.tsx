@@ -393,7 +393,7 @@ export default function ProfilePage() {
 
       <Navbar />
 
-      <main className="flex-1 pt-28 pb-20 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto w-full">
+      <main className="flex-1 pt-28 pb-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
         
         {/* Header Hero Banner */}
         <section className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
@@ -808,7 +808,7 @@ export default function ProfilePage() {
                 </Link>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {matches.map(m => {
                   const cleanIg = m.partnerContact?.startsWith('@') ? m.partnerContact.slice(1) : m.partnerContact;
                   const isInstagram = m.partnerContact?.includes('@') || (!m.partnerContact?.includes('+') && isNaN(Number(cleanIg)));
