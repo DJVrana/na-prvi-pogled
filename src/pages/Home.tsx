@@ -263,7 +263,7 @@ export default function Home() {
                       <Wine size={20} className="text-brand-light" />
                     </div>
                     <div>
-                      <p className="text-xs font-bold leading-tight">Piće dobrodošlice</p>
+                      <p className="text-xs font-bold leading-tight">2 pića po izboru</p>
                       <p className="text-[10px] text-brand/60">Uključeno u kotizaciju 🍷</p>
                     </div>
                   </div>

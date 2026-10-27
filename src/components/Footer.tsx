@@ -30,8 +30,8 @@ export default function Footer() {
               <Wine size={20} />
             </div>
             <div>
-              <p className="text-sm font-bold text-white">Piće dobrodošlice</p>
-              <p className="text-xs text-peach-dark/70">Čaša vrhunskog vina uključena uz kotizaciju</p>
+              <p className="text-sm font-bold text-white">2 pića po izboru</p>
+              <p className="text-xs text-peach-dark/70">Dva pića uključena uz kotizaciju</p>
             </div>
           </div>
 
@@ -144,8 +144,8 @@ export default function Footer() {
               <li>🎯 Grupa Mladi: 20 – 30 godina</li>
               <li>🥂 Grupa Zreli: 28 – 38 godina</li>
               <li>✨ Grupa 35+: 35 – 48 godina</li>
-              <li>⏱️ 5 – 7 minuta po spoju</li>
-              <li>🍷 Piće dobrodošlice po izboru</li>
+              <li>⏱️ 4 – 6 minuta po spoju</li>
+              <li>🍷 2 pića po izboru</li>
               <li>🔒 100% anonimni matching sustav</li>
             </ul>
           </div>
@@ -193,7 +193,7 @@ export default function Footer() {
             </Link>
           </div>
           <p className="flex items-center gap-1.5">
-            Stvoreno s <Heart size={13} className="text-rose-400 fill-rose-400" /> za iskrene i nezaboravne susrete u Zagrebu
+            Stvoreno s <Heart size={13} className="text-rose-400 fill-rose-400" /> za iskrene i nezaboravne susrete
           </p>
         </div>
 

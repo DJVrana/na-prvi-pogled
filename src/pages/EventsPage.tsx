@@ -348,7 +348,7 @@ export default function EventsPage() {
               </div>
               <h3 className="font-bold text-brand text-base mb-2">Dolazak & Piće</h3>
               <p className="text-xs text-brand/75 leading-relaxed font-light">
-                Dođi 15 minuta ranije. Domaćin te dočekuje, preuzimaš svoje piće dobrodošlice i svoj osobni broj stola.
+                Dođi 15 minuta ranije. Domaćin te dočekuje, preuzimaš svoja 2 pića po izboru i svoj osobni broj stola.
               </p>
             </div>
 
@@ -358,7 +358,7 @@ export default function EventsPage() {
               </div>
               <h3 className="font-bold text-brand text-base mb-2">Brzi spojevi</h3>
               <p className="text-xs text-brand/75 leading-relaxed font-light">
-                Sa svakom osobom razgovaraš 5 do 7 minuta. Zvonce označava rotaciju. Nema neugodnih pauza.
+                Sa svakom osobom razgovaraš 4 do 6 minuta. Zvonce označava rotaciju. Nema neugodnih pauza.
               </p>
             </div>
 
