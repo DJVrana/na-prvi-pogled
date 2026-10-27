@@ -159,6 +159,8 @@ export default function PrivacyPolicy() {
             <div className="mt-3 bg-brand/5 p-4 rounded-2xl border border-brand/10 text-xs sm:text-sm space-y-1.5">
               <p><strong>E-mail adresa:</strong> <a href="mailto:naprvipogled.events@gmail.com" className="font-semibold underline text-brand hover:text-brand-light">naprvipogled.events@gmail.com</a></p>
               <p><strong>Instagram profil:</strong> <a href="https://instagram.com/na.prvi.pogled" target="_blank" rel="noreferrer" className="font-semibold underline text-brand hover:text-brand-light">@na.prvi.pogled</a></p>
+              <p><strong>TikTok profil:</strong> <a href="https://www.tiktok.com/@na.prvi.pogled" target="_blank" rel="noreferrer" className="font-semibold underline text-brand hover:text-brand-light">@na.prvi.pogled</a></p>
+              <p><strong>Facebook stranica:</strong> <a href="https://web.facebook.com/profile.php?id=61594619954084" target="_blank" rel="noreferrer" className="font-semibold underline text-brand hover:text-brand-light">Na prvi pogled</a></p>
               <p><strong>Lokacija djelovanja:</strong> Zagreb, Republika Hrvatska</p>
             </div>
           </section>

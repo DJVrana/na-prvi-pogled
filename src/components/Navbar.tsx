@@ -13,7 +13,7 @@ import {
   Flame,
   ChevronRight
 } from 'lucide-react';
-import { FaGoogle, FaInstagram } from 'react-icons/fa';
+import { FaGoogle, FaInstagram, FaTiktok, FaFacebook } from 'react-icons/fa';
 import { onAuthStateChanged, signInWithPopup } from 'firebase/auth';
 import type { User } from 'firebase/auth';
 import { collection, query, where, getDocs } from 'firebase/firestore';
@@ -350,14 +350,33 @@ export default function Navbar() {
                 <span>Prijavi se na sljedeći događaj</span>
               </Link>
 
-              <div className="flex items-center justify-center gap-4 pt-2 text-brand/70 text-xs">
+              <div className="flex flex-wrap items-center justify-center gap-4 pt-2 text-brand/70 text-xs">
                 <a 
                   href="https://instagram.com/na.prvi.pogled" 
                   target="_blank" 
                   rel="noreferrer" 
                   className="flex items-center gap-1.5 hover:text-brand"
+                  title="Instagram"
                 >
-                  <FaInstagram size={14} /> @na.prvi.pogled
+                  <FaInstagram size={14} className="text-pink-600" /> <span>Instagram</span>
+                </a>
+                <a 
+                  href="https://www.tiktok.com/@na.prvi.pogled" 
+                  target="_blank" 
+                  rel="noreferrer" 
+                  className="flex items-center gap-1.5 hover:text-brand"
+                  title="TikTok"
+                >
+                  <FaTiktok size={13} className="text-black" /> <span>TikTok</span>
+                </a>
+                <a 
+                  href="https://web.facebook.com/profile.php?id=61594619954084" 
+                  target="_blank" 
+                  rel="noreferrer" 
+                  className="flex items-center gap-1.5 hover:text-brand"
+                  title="Facebook"
+                >
+                  <FaFacebook size={14} className="text-blue-600" /> <span>Facebook</span>
                 </a>
               </div>
             </div>

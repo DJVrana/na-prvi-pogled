@@ -10,7 +10,7 @@ import {
   Loader2,
   ChevronDown
 } from 'lucide-react';
-import { FaInstagram } from 'react-icons/fa';
+import { FaInstagram, FaTiktok, FaFacebook } from 'react-icons/fa';
 import emailjs from '@emailjs/browser';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { Link } from 'react-router';
@@ -126,7 +126,11 @@ export default function ContactPage() {
       "name": "Na prvi pogled",
       "email": "naprvipogled.events@gmail.com",
       "areaServed": "Zagreb, Croatia",
-      "sameAs": ["https://instagram.com/na.prvi.pogled"]
+      "sameAs": [
+        "https://instagram.com/na.prvi.pogled",
+        "https://www.tiktok.com/@na.prvi.pogled",
+        "https://web.facebook.com/profile.php?id=61594619954084"
+      ]
     }
   };
 
@@ -183,23 +187,56 @@ export default function ContactPage() {
               </div>
             </div>
 
-            {/* Instagram Card */}
+            {/* Društvene mreže Card */}
             <div className="bg-white/70 backdrop-blur-md p-6 rounded-3xl border border-white/90 shadow-md shadow-brand/5 hover:shadow-lg transition-all">
               <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
-                  <FaInstagram size={26} />
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-rose-500 via-pink-500 to-amber-500 text-white flex items-center justify-center shrink-0 shadow-sm">
+                  <FaInstagram size={24} />
                 </div>
-                <div>
-                  <h3 className="font-bold text-brand text-lg mb-1">Instagram</h3>
-                  <p className="text-xs text-brand/70 mb-2">Prati najave, storyje i atmosferu s evenata.</p>
-                  <a 
-                    href="https://instagram.com/na.prvi.pogled" 
-                    target="_blank" 
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1.5 font-bold text-brand hover:text-brand-light transition-colors"
-                  >
-                    @na.prvi.pogled
-                  </a>
+                <div className="flex-1">
+                  <h3 className="font-bold text-brand text-lg mb-1">Društvene mreže</h3>
+                  <p className="text-xs text-brand/70 mb-3">Prati najave, objave i atmosferu s evenata:</p>
+                  
+                  <div className="space-y-2">
+                    <a 
+                      href="https://instagram.com/na.prvi.pogled" 
+                      target="_blank" 
+                      rel="noreferrer"
+                      className="flex items-center gap-2.5 p-2 rounded-xl bg-pink-50/70 hover:bg-pink-100/80 border border-pink-200/70 text-xs font-bold text-brand transition-all group"
+                    >
+                      <span className="w-7 h-7 rounded-lg bg-pink-500 text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                        <FaInstagram size={15} />
+                      </span>
+                      <span className="flex-1 truncate">Instagram</span>
+                      <span className="text-pink-600 font-semibold text-[11px]">@na.prvi.pogled</span>
+                    </a>
+
+                    <a 
+                      href="https://www.tiktok.com/@na.prvi.pogled" 
+                      target="_blank" 
+                      rel="noreferrer"
+                      className="flex items-center gap-2.5 p-2 rounded-xl bg-gray-50/80 hover:bg-gray-100 border border-gray-200 text-xs font-bold text-brand transition-all group"
+                    >
+                      <span className="w-7 h-7 rounded-lg bg-black text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                        <FaTiktok size={13} />
+                      </span>
+                      <span className="flex-1 truncate">TikTok</span>
+                      <span className="text-gray-700 font-semibold text-[11px]">@na.prvi.pogled</span>
+                    </a>
+
+                    <a 
+                      href="https://web.facebook.com/profile.php?id=61594619954084" 
+                      target="_blank" 
+                      rel="noreferrer"
+                      className="flex items-center gap-2.5 p-2 rounded-xl bg-blue-50/70 hover:bg-blue-100/80 border border-blue-200/70 text-xs font-bold text-brand transition-all group"
+                    >
+                      <span className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                        <FaFacebook size={14} />
+                      </span>
+                      <span className="flex-1 truncate">Facebook</span>
+                      <span className="text-blue-600 font-semibold text-[11px]">Na prvi pogled</span>
+                    </a>
+                  </div>
                 </div>
               </div>
             </div>

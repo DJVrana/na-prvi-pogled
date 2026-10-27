@@ -1,6 +1,6 @@
 import { Link } from 'react-router';
 import { Heart, Sparkles, Mail, MapPin, ShieldCheck, Wine, Users } from 'lucide-react';
-import { FaInstagram } from 'react-icons/fa';
+import { FaInstagram, FaTiktok, FaFacebook } from 'react-icons/fa';
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
@@ -62,15 +62,36 @@ export default function Footer() {
             <p className="text-sm text-peach-dark/80 leading-relaxed font-light">
               Manje ekrana, više stvarnih susreta. Speed dating susreti i događaji za samce u ugodnoj atmosferi probranih barova. Upoznaj nekoga uživo. Kao nekad.
             </p>
-            <div className="pt-2">
+            <div className="pt-2 flex flex-wrap items-center gap-2">
               <a 
                 href="https://instagram.com/na.prvi.pogled" 
                 target="_blank" 
                 rel="noreferrer"
-                className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-colors border border-white/15"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-colors border border-white/15"
+                title="Pratite nas na Instagramu"
               >
                 <FaInstagram size={14} className="text-pink-400" />
-                <span>@na.prvi.pogled</span>
+                <span>Instagram</span>
+              </a>
+              <a 
+                href="https://www.tiktok.com/@na.prvi.pogled" 
+                target="_blank" 
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-colors border border-white/15"
+                title="Pratite nas na TikToku"
+              >
+                <FaTiktok size={13} className="text-cyan-300" />
+                <span>TikTok</span>
+              </a>
+              <a 
+                href="https://web.facebook.com/profile.php?id=61594619954084" 
+                target="_blank" 
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-colors border border-white/15"
+                title="Pratite nas na Facebooku"
+              >
+                <FaFacebook size={14} className="text-blue-400" />
+                <span>Facebook</span>
               </a>
             </div>
           </div>
