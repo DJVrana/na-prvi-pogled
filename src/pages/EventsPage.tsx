@@ -22,6 +22,7 @@ import Footer from '../components/Footer';
 import SEO from '../components/SEO';
 import FaqAccordion from '../components/FaqAccordion';
 import { formatPrice } from '../utils/formatters';
+import { matchesAgeFilter, getAvailableAgeCategories, type AgeCategoryOption } from '../utils/ageFilter';
 
 interface ActiveEvent {
   id: string;
@@ -66,11 +67,20 @@ export default function EventsPage() {
     fetchEvents();
   }, []);
 
-  const ageCategories = ['Sve', '20-30', '25-35', '30-45'];
+  const ageCategories: AgeCategoryOption[] = useMemo(() => {
+    return getAvailableAgeCategories(events);
+  }, [events]);
+
+  // If currently selected filter category is no longer available in the active events, reset to 'Sve'
+  useEffect(() => {
+    if (selectedFilter !== 'Sve' && !ageCategories.some(c => c.key === selectedFilter)) {
+      setSelectedFilter('Sve');
+    }
+  }, [ageCategories, selectedFilter]);
 
   const filteredEvents = useMemo(() => {
     if (selectedFilter === 'Sve') return events;
-    return events.filter(e => e.ageGroup.includes(selectedFilter.split('-')[0]));
+    return events.filter(e => matchesAgeFilter(e.ageGroup, selectedFilter));
   }, [events, selectedFilter]);
 
   // Schema.org Structured Data for Events
@@ -176,23 +186,23 @@ export default function EventsPage() {
         </section>
 
         {/* Filter Tabs */}
-        {events.length > 0 && (
-          <div className="flex items-center justify-center gap-2 mb-10">
+        {events.length > 0 && ageCategories.length > 1 && (
+          <div className="flex flex-wrap items-center justify-center gap-2 mb-10 px-2">
             <span className="text-xs font-bold text-brand uppercase tracking-wider mr-2 hidden sm:inline">
               Filtriraj po dobi:
             </span>
             {ageCategories.map((cat) => (
               <button
-                key={cat}
+                key={cat.key}
                 type="button"
-                onClick={() => setSelectedFilter(cat)}
+                onClick={() => setSelectedFilter(cat.key)}
                 className={`px-4 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                  selectedFilter === cat
-                    ? 'bg-brand text-white shadow-md shadow-brand/20'
-                    : 'bg-white/70 hover:bg-white text-brand border border-white/80'
+                  selectedFilter === cat.key
+                    ? 'bg-brand text-white shadow-md shadow-brand/20 scale-[1.02]'
+                    : 'bg-white/70 hover:bg-white text-brand border border-white/80 shadow-sm hover:shadow'
                 }`}
               >
-                {cat === 'Sve' ? 'Svi događaji' : `Dob: ${cat}`}
+                {cat.label}
               </button>
             ))}
           </div>
