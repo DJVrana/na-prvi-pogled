@@ -92,11 +92,6 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link to="/blog" className="text-peach-dark/80 hover:text-white transition-colors flex items-center gap-1.5">
-                  <Sparkles size={12} className="text-amber-400" /> Blog & Savjeti za spojeve
-                </Link>
-              </li>
-              <li>
                 <Link to="/kontakt" className="text-peach-dark/80 hover:text-white transition-colors flex items-center gap-1.5">
                   <Sparkles size={12} className="text-amber-400" /> Kontakt & lokacije
                 </Link>

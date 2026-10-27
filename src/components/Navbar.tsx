@@ -6,7 +6,6 @@ import {
   X, 
   Sparkles, 
   Calendar, 
-  BookOpen, 
   Mail, 
   Home, 
   LogOut, 
@@ -95,7 +94,6 @@ export default function Navbar() {
   const navLinks = [
     { name: 'Početna', path: '/', icon: Home },
     { name: 'Eventi', path: '/eventi', icon: Calendar },
-    { name: 'Blog', path: '/blog', icon: BookOpen },
     { name: 'Kontakt', path: '/kontakt', icon: Mail },
   ];
 
