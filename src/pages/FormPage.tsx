@@ -39,6 +39,7 @@ import { Link, useSearchParams } from 'react-router';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import SEO from '../components/SEO';
+import { formatPrice } from '../utils/formatters';
 
 export interface CustomField {
   id: string;
@@ -460,7 +461,7 @@ export default function FormPage() {
                       isCurrent ? 'border-white/15 text-white/90' : 'border-brand/10 text-brand/75'
                     }`}>
                       <span>{evt.dateStr}</span>
-                      <span className="font-bold">{evt.price}</span>
+                      <span className="font-bold">{formatPrice(evt.price)}</span>
                     </div>
                   </button>
                 );
@@ -504,7 +505,7 @@ export default function FormPage() {
               {activeEvent.price && (
                 <span className="flex items-center gap-1.5 bg-brand/5 px-3 py-1 rounded-full">
                   <CreditCard size={13} className="text-brand-light" />
-                  <span>{activeEvent.price}</span>
+                  <span>{formatPrice(activeEvent.price)}</span>
                 </span>
               )}
             </div>

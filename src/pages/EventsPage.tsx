@@ -21,6 +21,7 @@ import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import SEO from '../components/SEO';
 import FaqAccordion from '../components/FaqAccordion';
+import { formatPrice } from '../utils/formatters';
 
 interface ActiveEvent {
   id: string;
@@ -226,45 +227,46 @@ export default function EventsPage() {
                     {evt.title}
                   </h3>
 
-                  {/* Details items */}
-                  <div className="space-y-3 mb-6">
-                    <div className="flex items-center gap-3 text-sm text-brand/85 bg-white/60 p-2.5 rounded-xl border border-white/70">
-                      <Users size={16} className="text-brand-light shrink-0" />
-                      <div>
-                        <span className="text-[10px] text-brand/60 uppercase block leading-none">Dobna skupina</span>
-                        <strong className="text-brand">{evt.ageGroup}</strong>
+                  {/* Details items: compact 2-column on mobile */}
+                  <div className="grid grid-cols-2 gap-2 mb-6">
+                    {/* Datum i vrijeme combined */}
+                    <div className="col-span-2 flex items-center justify-between gap-2 text-xs sm:text-sm text-brand/85 bg-white/60 p-2.5 rounded-xl border border-white/70">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <Calendar size={15} className="text-brand-light shrink-0" />
+                        <div>
+                          <span className="text-[9px] sm:text-[10px] text-brand/60 uppercase block leading-none mb-0.5">Datum i vrijeme</span>
+                          <span className="font-medium text-brand">{evt.dateStr}</span>
+                        </div>
+                      </div>
+                      {evt.timeStr && (
+                        <span className="text-[11px] font-bold text-brand bg-brand/5 px-2 py-0.5 rounded-md flex items-center gap-1 shrink-0">
+                          <Clock size={11} className="text-brand-light" />
+                          {evt.timeStr}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2 text-xs sm:text-sm text-brand/85 bg-white/60 p-2.5 rounded-xl border border-white/70">
+                      <Users size={15} className="text-brand-light shrink-0" />
+                      <div className="min-w-0">
+                        <span className="text-[9px] sm:text-[10px] text-brand/60 uppercase block leading-none mb-0.5">Dobna skupina</span>
+                        <strong className="text-brand block truncate">{evt.ageGroup}</strong>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3 text-sm text-brand/85 bg-white/60 p-2.5 rounded-xl border border-white/70">
-                      <Calendar size={16} className="text-brand-light shrink-0" />
-                      <div>
-                        <span className="text-[10px] text-brand/60 uppercase block leading-none">Datum</span>
-                        <span className="font-medium text-brand">{evt.dateStr}</span>
+                    <div className="flex items-center gap-2 text-xs sm:text-sm text-brand/85 bg-white/60 p-2.5 rounded-xl border border-white/70">
+                      <CreditCard size={15} className="text-brand-light shrink-0" />
+                      <div className="min-w-0">
+                        <span className="text-[9px] sm:text-[10px] text-brand/60 uppercase block leading-none font-semibold mb-0.5">Kotizacija</span>
+                        <span className="font-bold text-brand block truncate">{formatPrice(evt.price)}</span>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3 text-sm text-brand/85 bg-white/60 p-2.5 rounded-xl border border-white/70">
-                      <Clock size={16} className="text-brand-light shrink-0" />
-                      <div>
-                        <span className="text-[10px] text-brand/60 uppercase block leading-none">Vrijeme početka</span>
-                        <span className="font-medium text-brand">{evt.timeStr}</span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-3 text-sm text-brand/85 bg-white/60 p-2.5 rounded-xl border border-white/70">
-                      <MapPin size={16} className="text-brand-light shrink-0" />
-                      <div>
-                        <span className="text-[10px] text-brand/60 uppercase block leading-none">Lokacija</span>
-                        <span className="font-medium text-brand">{evt.location}</span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-3 text-sm text-brand/85 bg-white/60 p-2.5 rounded-xl border border-white/70">
-                      <CreditCard size={16} className="text-brand-light shrink-0" />
-                      <div>
-                        <span className="text-[10px] text-brand/60 uppercase block leading-none font-semibold">Kotizacija</span>
-                        <span className="font-medium text-brand">{evt.price}</span>
+                    <div className="col-span-2 flex items-center gap-2 text-xs sm:text-sm text-brand/85 bg-white/60 p-2.5 rounded-xl border border-white/70">
+                      <MapPin size={15} className="text-brand-light shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <span className="text-[9px] sm:text-[10px] text-brand/60 uppercase block leading-none mb-0.5">Lokacija</span>
+                        <span className="font-medium text-brand truncate block">{evt.location}</span>
                       </div>
                     </div>
                   </div>
