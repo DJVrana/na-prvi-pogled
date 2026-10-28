@@ -145,9 +145,6 @@ export default function Footer() {
               Koncept susreta
             </h4>
             <ul className="space-y-2.5 text-sm text-peach-dark/80">
-              <li>🎯 Grupa Mladi: 20 – 30 godina</li>
-              <li>🥂 Grupa Zreli: 28 – 38 godina</li>
-              <li>✨ Grupa 35+: 35 – 48 godina</li>
               <li>⏱️ 4 – 6 minuta po spoju</li>
               <li>🍷 2 pića po izboru</li>
               <li>🔒 100% anonimni matching sustav</li>

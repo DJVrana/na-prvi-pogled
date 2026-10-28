@@ -431,7 +431,7 @@ export default function Home() {
                     </div>
                     <div className="flex items-center gap-1.5">
                       <CheckCircle2 size={13} className="text-brand shrink-0" />
-                      <span>15 do 20 spojeva</span>
+                      <span>10 do 15 spojeva</span>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <CheckCircle2 size={13} className="text-brand shrink-0" />
@@ -535,7 +535,7 @@ export default function Home() {
                 </div>
                 <h3 className="font-sans font-bold text-lg text-brand mb-2">Dolazak</h3>
                 <p className="text-sm text-brand/85 leading-relaxed font-normal">
-                  Dođite u bar 15-ak minuta prije početka događaja kako biste se smjestili
+                  Dođite u bar 15-ak minuta prije početka događaja kako biste se smjestili.
                 </p>
               </div>
               <div className="pt-3.5 border-t border-brand/10 mt-5 text-xs font-semibold text-brand/70">
@@ -781,7 +781,7 @@ export default function Home() {
                 Za sve ostalo pobrinut ćemo se mi.
               </p>
               <p className="text-xs sm:text-sm text-peach-dark/70 font-light max-w-md mx-auto">
-                Pridruži se sljedećoj večeri u Zagrebu i doživi nezaboravne susrete.
+                Pridruži se našem sljedećem događaju i upoznaj nekoga novog.
               </p>
               <div className="pt-4">
                 <a

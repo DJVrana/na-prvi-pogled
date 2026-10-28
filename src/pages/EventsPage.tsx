@@ -159,7 +159,7 @@ export default function EventsPage() {
               <div className="w-11 h-11 rounded-xl bg-brand/10 text-brand flex items-center justify-center shrink-0">
                 <Users size={20} className="text-brand-light" />
               </div>
-              <span className="text-sm font-semibold">15 do 20 spojeva po 4-6 min</span>
+              <span className="text-sm font-semibold">10 do 15 spojeva po 4-6 min</span>
             </div>
 
             <div className="flex items-center gap-3.5 bg-white/60 p-4 rounded-2xl border border-white/80 shadow-sm">
@@ -422,7 +422,7 @@ export default function EventsPage() {
                 Za sve ostalo pobrinut ćemo se mi.
               </p>
               <p className="text-xs sm:text-sm text-peach-dark/70 font-light max-w-md mx-auto">
-                Pridruži se sljedećoj večeri u Zagrebu i doživi nezaboravne susrete.
+                Pridruži se našem sljedećem događaju i upoznaj nekoga novog.
               </p>
               <div className="pt-4">
                 <a

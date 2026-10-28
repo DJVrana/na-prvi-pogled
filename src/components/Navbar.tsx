@@ -9,7 +9,8 @@ import {
   LogOut, 
   ShieldAlert, 
   Flame,
-  ChevronRight
+  ChevronRight,
+  Sparkles
 } from 'lucide-react';
 import { FaGoogle, FaInstagram, FaTiktok, FaFacebook } from 'react-icons/fa';
 import { onAuthStateChanged, signInWithPopup } from 'firebase/auth';
