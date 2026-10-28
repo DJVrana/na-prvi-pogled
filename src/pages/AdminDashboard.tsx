@@ -40,6 +40,7 @@ export interface EventData {
   timeStr: string;
   location: string;
   price: string;
+  coreEventUrl?: string;
   isActive: boolean;
   isMatchingActive?: boolean;
   matchingPhase?: 'live' | 'post_event' | 'closed';
@@ -178,6 +179,7 @@ export default function AdminDashboard() {
     timeStr: '',
     location: '',
     price: '',
+    coreEventUrl: '',
     maxRegistrations: '',
     introTextM: 'Hvala ti što si nam ukazao povjerenje i odlučio biti dio prvog "Na prvi pogled" speed dating eventa!',
     introTextZ: 'Hvala ti što si nam ukazala povjerenje i odlučila biti dio prvog "Na prvi pogled" speed dating eventa!',
@@ -610,6 +612,7 @@ export default function AdminDashboard() {
       timeStr: eventToEdit.timeStr,
       location: eventToEdit.location,
       price: eventToEdit.price,
+      coreEventUrl: eventToEdit.coreEventUrl || '',
       maxRegistrations: eventToEdit.maxRegistrations ? String(eventToEdit.maxRegistrations) : '',
       introTextM: eventToEdit.introTextM || eventToEdit.introText || 'Hvala ti što si nam ukazao povjerenje i odlučio biti dio prvog "Na prvi pogled" speed dating eventa!',
       introTextZ: eventToEdit.introTextZ || eventToEdit.introText || 'Hvala ti što si nam ukazala povjerenje i odlučila biti dio prvog "Na prvi pogled" speed dating eventa!',
@@ -633,7 +636,7 @@ export default function AdminDashboard() {
   const handleCancelEdit = () => {
     setShowNewEventForm(false);
     setEditingEventId(null);
-    setNewEvent({ title: '', ageGroup: '', dateStr: '', timeStr: '', location: '', price: '', maxRegistrations: '', introTextM: 'Hvala ti što si nam ukazao povjerenje i odlučio biti dio prvog "Na prvi pogled" speed dating eventa!', introTextZ: 'Hvala ti što si nam ukazala povjerenje i odlučila biti dio prvog "Na prvi pogled" speed dating eventa!', middleTextM: 'Mi ćemo se pobrinuti za organizaciju i tvoje iskustvo, a na tebi je samo da dođeš, opustiš se i budeš svoj.', middleTextZ: 'Mi ćemo se pobrinuti za organizaciju i tvoje iskustvo, a na tebi je samo da dođeš, opustiš se i budeš svoja.', noteTextM: 'Napomena: Ako ti se ipak dogodi da iz nekog razloga ne možeš doći, molimo te da nam to javiš najkasnije do 14. rujna, kako bismo tvoje mjesto mogli ponuditi nekome drugome.', noteTextZ: 'Napomena: Ako ti se ipak dogodi da iz nekog razloga ne možeš doći, molimo te da nam to javiš najkasnije do 14. rujna, kako bismo tvoje mjesto mogli ponuditi nekome drugome.', closingTextM: 'Kotizaciju od 10 € plaćaš prilikom evidencije sudionika prije početka događaja.\n\nProgram završavamo oko 22:00, a nakon toga ostavljamo vrijeme za neformalno druženje.', closingTextZ: 'Kotizaciju od 10 € plaćaš prilikom evidencije sudionika prije početka događaja.\n\nProgram završavamo oko 22:00, a nakon toga ostavljamo vrijeme za neformalno druženje.', timeNoteM: 'Molimo te da dođeš 15 minuta ranije (18:45), radi evidencije.', timeNoteZ: 'Molimo te da dođeš 15 minuta ranije (18:45), radi evidencije.' });
+    setNewEvent({ title: '', ageGroup: '', dateStr: '', timeStr: '', location: '', price: '', coreEventUrl: '', maxRegistrations: '', introTextM: 'Hvala ti što si nam ukazao povjerenje i odlučio biti dio prvog "Na prvi pogled" speed dating eventa!', introTextZ: 'Hvala ti što si nam ukazala povjerenje i odlučila biti dio prvog "Na prvi pogled" speed dating eventa!', middleTextM: 'Mi ćemo se pobrinuti za organizaciju i tvoje iskustvo, a na tebi je samo da dođeš, opustiš se i budeš svoj.', middleTextZ: 'Mi ćemo se pobrinuti za organizaciju i tvoje iskustvo, a na tebi je samo da dođeš, opustiš se i budeš svoja.', noteTextM: 'Napomena: Ako ti se ipak dogodi da iz nekog razloga ne možeš doći, molimo te da nam to javiš najkasnije do 14. rujna, kako bismo tvoje mjesto mogli ponuditi nekome drugome.', noteTextZ: 'Napomena: Ako ti se ipak dogodi da iz nekog razloga ne možeš doći, molimo te da nam to javiš najkasnije do 14. rujna, kako bismo tvoje mjesto mogli ponuditi nekome drugome.', closingTextM: 'Kotizaciju od 10 € plaćaš prilikom evidencije sudionika prije početka događaja.\n\nProgram završavamo oko 22:00, a nakon toga ostavljamo vrijeme za neformalno druženje.', closingTextZ: 'Kotizaciju od 10 € plaćaš prilikom evidencije sudionika prije početka događaja.\n\nProgram završavamo oko 22:00, a nakon toga ostavljamo vrijeme za neformalno druženje.', timeNoteM: 'Molimo te da dođeš 15 minuta ranije (18:45), radi evidencije.', timeNoteZ: 'Molimo te da dođeš 15 minuta ranije (18:45), radi evidencije.' });
     setNewCustomFields([]);
     setOpenFieldDropdownIndex(null);
   };
@@ -1642,6 +1645,21 @@ export default function AdminDashboard() {
                       <label className="block text-xs font-semibold text-gray-600 mb-1">Maksimalan broj prijava (ostavi prazno za neograničeno)</label>
                       <input type="number" min="1" value={newEvent.maxRegistrations} onChange={e => setNewEvent({ ...newEvent, maxRegistrations: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-gray-300" placeholder="Npr. 40" />
                     </div>
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs font-semibold text-gray-600 mb-1">
+                        CoreEvent link za kupnju ulaznica (opcionalno)
+                      </label>
+                      <input 
+                        type="url" 
+                        value={newEvent.coreEventUrl || ''} 
+                        onChange={e => setNewEvent({ ...newEvent, coreEventUrl: e.target.value })} 
+                        className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:border-brand focus:ring-1 focus:ring-brand outline-none" 
+                        placeholder="https://core-event.co/events/..." 
+                      />
+                      <p className="text-[11px] text-gray-500 mt-1">
+                        🎟️ <strong>Napomena:</strong> Ako unesete CoreEvent link, korisnicima se odmah nakon prijave nudi kupnja ulaznice (broj mjesta je ograničen kvotama na CoreEventu). Ako ostavite prazno, prijave idu po starom principu bez online naplate.
+                      </p>
+                    </div>
                   </div>
 
                   {/* Custom Fields Section */}
@@ -1890,6 +1908,11 @@ export default function AdminDashboard() {
                           {event.isMatchingActive && !event.matchingPhase && (
                             <span className="bg-rose-600 text-white text-[10px] uppercase font-bold px-2 py-0.5 rounded-full flex items-center gap-1 animate-pulse shadow-xs">
                               <Flame size={12} /> Matching Aktivan
+                            </span>
+                          )}
+                          {event.coreEventUrl && (
+                            <span className="bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow-xs" title={event.coreEventUrl}>
+                              <CreditCard size={11} className="text-emerald-600" /> CoreEvent Plaćanje
                             </span>
                           )}
                         </div>

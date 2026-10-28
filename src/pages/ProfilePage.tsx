@@ -62,6 +62,7 @@ interface UserRegistration {
     isMatchingActive?: boolean;
     matchingPhase?: 'live' | 'post_event' | 'closed';
     isActive?: boolean;
+    coreEventUrl?: string;
   };
 }
 
@@ -171,7 +172,8 @@ export default function ProfilePage() {
                 ageGroup: evt.ageGroup || '',
                 isMatchingActive: !!evt.isMatchingActive,
                 matchingPhase: evt.matchingPhase,
-                isActive: !!evt.isActive
+                isActive: !!evt.isActive,
+                coreEventUrl: evt.coreEventUrl || ''
               };
             }
           }
@@ -717,14 +719,40 @@ export default function ProfilePage() {
                         )}
 
                         {/* Status Explanations */}
-                        {status === 'pending' && (
+                        {status === 'pending' && eventInfo?.coreEventUrl ? (
+                          <div className="space-y-3">
+                            <div className="text-xs text-amber-950 bg-amber-50/90 border border-amber-200 rounded-2xl p-4 space-y-2.5 shadow-2xs leading-relaxed">
+                              <div className="flex items-center gap-2 font-bold text-amber-900 text-sm">
+                                <CreditCard size={16} className="text-amber-700 shrink-0" />
+                                <span>Korak do potvrde: Kupnja ulaznice na CoreEventu</span>
+                              </div>
+                              <p>
+                                Broj mjesta za ovaj događaj je ograničen radi balansa sudionika i osigurava se kupnjom ulaznice po principu najbrže prijave.
+                              </p>
+                              <div className="pt-2 flex flex-col gap-1.5 text-[11px] text-amber-900/90 border-t border-amber-200/60">
+                                <p>
+                                  🔒 <strong>Potvrda s CoreEventa je 100% važeća:</strong> Ako si već kupio/la ulaznicu na CoreEventu, tvoje mjesto je sigurno i upad ti je zajamčen!
+                                </p>
+                                <p>
+                                  ⏳ <strong>Ljudska provjera (rok do 24h):</strong> U našem sustavu kupnja postaje vidljiva tek nakon ljudske provjere (unutar 24 sata), kada status prelazi u "Prijava potvrđena". Do tada, tvoja karta s CoreEventa je tvoje 100% osiguranje.
+                                </p>
+                                <p>
+                                  ℹ️ <strong>Već imaš ulaznicu?</strong> Ako si već obavio/la kupnju na CoreEventu, slobodno zanemari ovaj gumb za plaćanje i primljene e-mailove s pozivom na kupnju.
+                                </p>
+                                <p>
+                                  📬 <strong>Spam mapa:</strong> Obavezno provjeri mapu <strong>Spam / Promocije</strong> i označi poruke kao "Nije neželjena pošta" kako bi sigurno primao/la sve buduće obavijesti.
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ) : status === 'pending' ? (
                           <div className="text-xs text-amber-900 bg-amber-50/90 border border-amber-200/80 rounded-2xl p-3.5 flex items-start gap-2.5 leading-relaxed">
                             <Clock3 size={16} className="text-amber-600 mt-0.5 shrink-0" />
                             <span>
                               Prijava je zaprimljena i čeka na pregled organizatora. Obavijest o potvrdi primit ćeš na e-mail unutar <strong>24 sata</strong>. Ako je ne vidiš u pristigloj pošti, svakako provjeri mapu <strong>Spam / Neželjena pošta</strong>.
                             </span>
                           </div>
-                        )}
+                        ) : null}
 
                         {status === 'waiting_list' && (
                           <div className="text-xs text-amber-900 bg-amber-50/90 border border-amber-200/80 rounded-2xl p-3.5 flex items-start gap-2.5 leading-relaxed">
@@ -738,6 +766,21 @@ export default function ProfilePage() {
 
                       {/* Action buttons */}
                       <div className="flex flex-wrap lg:flex-col gap-2 pt-2 lg:pt-0 shrink-0">
+                        {/* CoreEvent Payment Button while pending */}
+                        {status === 'pending' && eventInfo?.coreEventUrl && (
+                          <a
+                            href={eventInfo.coreEventUrl.startsWith('http') ? eventInfo.coreEventUrl : `https://${eventInfo.coreEventUrl}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center justify-center gap-2 bg-brand hover:bg-brand-light text-white px-5 py-3 rounded-2xl text-xs font-bold shadow-md shadow-brand/20 hover:scale-[1.02] transition-all"
+                            title="Kupi ulaznicu na CoreEventu"
+                          >
+                            <CreditCard size={15} />
+                            <span>Kupi ulaznicu na CoreEventu</span>
+                            <ExternalLink size={13} />
+                          </a>
+                        )}
+
                         {/* Matching Button if enabled and user was accepted */}
                         {isMatchingActive && status === 'accepted' && (
                           <Link

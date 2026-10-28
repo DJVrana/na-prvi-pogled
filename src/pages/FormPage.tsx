@@ -32,8 +32,12 @@ import {
   MapPin,
   CreditCard,
   Check,
-  AlertCircle
+  AlertCircle,
+  ExternalLink,
+  ShieldCheck,
+  Ticket
 } from 'lucide-react';
+import emailjs from '@emailjs/browser';
 import { FaGoogle } from 'react-icons/fa';
 import { Link, useSearchParams } from 'react-router';
 import Navbar from '../components/Navbar';
@@ -64,6 +68,7 @@ interface ActiveEvent {
   location?: string;
   ageGroup?: string;
   price?: string;
+  coreEventUrl?: string;
 }
 
 export default function FormPage() {
@@ -96,6 +101,87 @@ export default function FormPage() {
 
   const [existingRegistration, setExistingRegistration] = useState<any | null>(null);
   const [checkRegistrationLoading, setCheckRegistrationLoading] = useState(false);
+
+  const sendPaymentEmail = async (evt: ActiveEvent, recipientName: string, recipientEmail: string, gender: string) => {
+    if (!evt.coreEventUrl || !evt.coreEventUrl.trim() || !recipientEmail) {
+      console.warn("[EmailJS] coreEventUrl ili email adresa nedostaje:", { coreEventUrl: evt.coreEventUrl, recipientEmail });
+      return false;
+    }
+
+    const userFirstName = recipientName.trim().split(' ')[0] || 'Korisniče';
+    const isMale = gender === 'M' || gender.toLowerCase() === 'muško';
+    const emailSubject = "Prijava zaprimljena – osiguraj svoje mjesto kupnjom ulaznice! 🎟️";
+    const coreUrl = evt.coreEventUrl.trim().startsWith('http') ? evt.coreEventUrl.trim() : `https://${evt.coreEventUrl.trim()}`;
+
+    const paymentHtmlMessage = `
+<div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333333; line-height: 1.6; padding: 24px; background-color: #ffffff; border: 1px solid #eeeeee; border-radius: 16px;">
+  <div style="text-align: center; margin-bottom: 25px; padding-bottom: 20px; border-bottom: 1px solid #eeeeee;">
+    <h1 style="color: #7B1D29; margin: 0; font-size: 26px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">Na prvi pogled</h1>
+    <p style="color: #888888; font-size: 14px; margin-top: 5px;">Speed Dating Zagreb • Prijava zaprimljena</p>
+  </div>
+  
+  <p style="font-size: 16px;">${isMale ? 'Dragi' : 'Draga'} <strong>${userFirstName}</strong>,</p>
+  
+  <p style="font-size: 15px; color: #444444;">
+    Tvoja prijava za speed dating susret <strong>${evt.title}</strong> je uspješno zaprimljena!
+  </p>
+
+  <div style="background-color: #FFF6F6; border: 1px solid #F5C6CB; border-radius: 12px; padding: 20px; margin: 25px 0; text-align: center;">
+    <p style="margin: 0 0 10px 0; font-size: 15px; font-weight: bold; color: #7B1D29;">
+      🎟️ Završni korak: Osiguraj svoje mjesto kupnjom ulaznice
+    </p>
+    <p style="margin: 0 0 18px 0; font-size: 13px; color: #666666; line-height: 1.5;">
+      Broj mjesta je ograničen radi balansa sudionika i popunjava se po principu najbrže kupnje.
+    </p>
+    <a href="${coreUrl}" target="_blank" style="display: inline-block; background-color: #7B1D29; color: #ffffff; text-decoration: none; font-weight: bold; font-size: 15px; padding: 14px 28px; border-radius: 50px; box-shadow: 0 4px 10px rgba(123, 29, 41, 0.25);">
+      Kupi ulaznicu na CoreEventu &rarr;
+    </a>
+  </div>
+
+  <div style="margin: 25px 0; padding: 16px 20px; background-color: #FAFAFA; border-radius: 12px; border: 1px solid #EAEAEA;">
+    <h3 style="margin-top: 0; margin-bottom: 12px; color: #7B1D29; font-size: 15px; text-transform: uppercase; letter-spacing: 0.5px;">Podaci o susretu:</h3>
+    <table style="width: 100%; font-size: 14px; border-collapse: collapse;">
+      <tr><td style="padding: 6px 0; width: 30px;">📅</td><td style="padding: 6px 0;"><strong>${evt.dateStr || ''}</strong></td></tr>
+      <tr><td style="padding: 6px 0;">🕖</td><td style="padding: 6px 0;"><strong>${evt.timeStr ? evt.timeStr + ' h' : ''}</strong></td></tr>
+      <tr><td style="padding: 6px 0;">📍</td><td style="padding: 6px 0;"><strong>${evt.location || ''}</strong></td></tr>
+      <tr><td style="padding: 6px 0;">🎂</td><td style="padding: 6px 0;">Dobna skupina: <strong>${evt.ageGroup || ''}</strong></td></tr>
+      <tr><td style="padding: 6px 0;">💳</td><td style="padding: 6px 0;">Kotizacija: <strong>${evt.price || ''}</strong></td></tr>
+    </table>
+  </div>
+
+  <div style="margin: 25px 0; padding: 15px 18px; background-color: #FEF9C3; border: 1px solid #FDE047; border-radius: 10px; font-size: 13px; color: #713F12; line-height: 1.5;">
+    <p style="margin: 0 0 8px 0;"><strong>⚠️ Važne napomene:</strong></p>
+    <ul style="margin: 0; padding-left: 18px;">
+      <li style="margin-bottom: 6px;"><strong>Već si kupio/la ulaznicu?</strong> Ako si već obavio/la kupnju na CoreEventu, slobodno zanemari ovaj poziv na kupnju! U našem sustavu evidentiranje kupnje vidljivo je tek u roku od 24 sata nakon ljudske provjere. Do tada, tvoja potvrda i karta s CoreEventa su tvoje 100% jamstvo da je mjesto osigurano.</li>
+      <li style="margin-bottom: 6px;"><strong>Potvrda CoreEventa je 100% važeća:</strong> Čim kupiš ulaznicu na CoreEventu, tvoj upad je siguran.</li>
+      <li style="margin-bottom: 6px;"><strong>Ljudska provjera statusa:</strong> Naš sustav na stranici ne bilježi uplatu istog trena, već ćemo status u tvom profilu ažurirati u <em>"Prijava potvrđena"</em> nakon što organizator ručno evidentira uplate.</li>
+      <li><strong>Provjera neželjene pošte:</strong> Ako ti je ovaj mail završio u <strong>Spam / Promocije</strong> mapi, molimo te označi ga kao <em>"Nije neželjena pošta"</em> kako bi sigurno primio/la sve buduće obavijesti i kontakte nakon događaja.</li>
+    </ul>
+  </div>
+
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eeeeee;">
+    <p style="font-size: 14px; margin: 0; color: #777777;">
+      Veselimo se tvom dolasku!<br>
+      <strong style="color: #7B1D29;">Tim Na prvi pogled</strong><br>
+      <a href="https://naprvipogled.com" style="color: #7B1D29; text-decoration: underline; font-size: 12px;">naprvipogled.com</a>
+    </p>
+  </div>
+</div>
+    `;
+
+    await emailjs.send(
+      'default_service',
+      'template_uuvkcp3',
+      {
+        name: userFirstName,
+        email: recipientEmail,
+        subject: emailSubject,
+        html_message: paymentHtmlMessage
+      },
+      import.meta.env.VITE_EMAILJS_PUBLIC_KEY
+    );
+    return true;
+  };
 
   useEffect(() => {
     const checkRegistration = async () => {
@@ -167,7 +253,8 @@ export default function FormPage() {
               timeStr: data.timeStr || '',
               location: data.location || '',
               ageGroup: data.ageGroup || '',
-              price: data.price || ''
+              price: data.price || '',
+              coreEventUrl: data.coreEventUrl || ''
             };
           });
 
@@ -192,7 +279,8 @@ export default function FormPage() {
                 timeStr: data.timeStr || '',
                 location: data.location || '',
                 ageGroup: data.ageGroup || '',
-                price: data.price || ''
+                price: data.price || '',
+                coreEventUrl: data.coreEventUrl || ''
               };
             }
           }
@@ -336,6 +424,16 @@ export default function FormPage() {
       await updateDoc(doc(db, 'events', activeEvent.id), {
         registrationCount: increment(1)
       });
+
+      // Send CoreEvent payment email if event has online ticket sales configured
+      if (activeEvent.coreEventUrl && activeEvent.coreEventUrl.trim() !== '') {
+        try {
+          const recipientEmail = formData.email?.trim() || user.email || '';
+          await sendPaymentEmail(activeEvent, formData.imePrezime, recipientEmail, formData.spol);
+        } catch (emailErr) {
+          console.warn("[EmailJS] Slanje emaila za plaćanje nije uspjelo (korisnik i dalje vidi gumb na webu):", emailErr);
+        }
+      }
 
       setExistingRegistration({
         status: 'pending',
@@ -581,45 +679,120 @@ export default function FormPage() {
               )}
 
               {existingRegistration.status === 'pending' && (
-                <>
-                  <div className="w-16 h-16 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center mx-auto mb-4 border border-amber-200">
-                    <Clock3 size={32} className="animate-pulse" />
-                  </div>
-                  <h3 className="text-2xl sm:text-3xl font-serif font-bold mb-2 text-brand">Prijava je zaprimljena</h3>
-                  <p className="text-brand/80 mb-6 font-light leading-relaxed max-w-md mx-auto">
-                    Tvoja prijava je uspješno poslana i trenutačno čeka na pregled i odobrenje organizatora radi balansa sudionika.
-                  </p>
+                activeEvent.coreEventUrl ? (
+                  <>
+                    <div className="w-16 h-16 rounded-2xl bg-brand/10 text-brand flex items-center justify-center mx-auto mb-4 border border-brand/20 shadow-sm">
+                      <Ticket size={34} className="text-brand" />
+                    </div>
+                    <h3 className="text-2xl sm:text-3xl font-serif font-bold mb-2 text-brand">Prijava je zaprimljena!</h3>
+                    <p className="text-brand/80 mb-6 font-light leading-relaxed max-w-md mx-auto">
+                      Još samo jedan korak dijeli te od susreta. Broj mjesta je ograničen radi jednakog omjera sudionika te se popunjavaju <strong>po principu najbrže kupnje ulaznice</strong>.
+                    </p>
 
-                  <div className="bg-amber-50/90 border border-amber-200 rounded-2xl p-5 sm:p-6 mb-8 text-left shadow-xs">
-                    <div className="flex items-center gap-2.5 text-amber-950 font-bold text-base mb-3 border-b border-amber-200 pb-2.5">
-                      <Mail size={18} className="text-amber-700 shrink-0" />
-                      <span>Važne napomene o potvrdi prijave</span>
+                    {/* Primary CoreEvent Payment Card */}
+                    <div className="bg-gradient-to-br from-brand/5 via-brand/10 to-amber-50/50 border-2 border-brand/25 rounded-3xl p-6 sm:p-7 mb-7 text-center shadow-lg">
+                      <div className="inline-flex items-center gap-1.5 bg-brand text-white px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider mb-4 shadow-sm">
+                        <Sparkles size={12} className="text-amber-300" />
+                        <span>Kupnja ulaznice</span>
+                      </div>
+                      <h4 className="font-serif text-xl sm:text-2xl font-bold text-brand mb-2">
+                        Dovrši prijavu i osiguraj upad
+                      </h4>
+                      <p className="text-xs sm:text-sm text-brand/80 mb-5 max-w-md mx-auto font-light">
+                        Klikni na gumb ispod za siguran prelazak na CoreEvent sustav za prodaju ulaznica:
+                      </p>
+                      <a
+                        href={activeEvent.coreEventUrl.startsWith('http') ? activeEvent.coreEventUrl : `https://${activeEvent.coreEventUrl}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center justify-center gap-2.5 bg-brand hover:bg-brand-light text-white font-bold py-4 px-8 rounded-full shadow-xl shadow-brand/25 transition-all transform hover:scale-[1.03] text-sm sm:text-base cursor-pointer"
+                      >
+                        <CreditCard size={18} />
+                        <span>Kupi ulaznicu na CoreEventu</span>
+                        <ExternalLink size={16} />
+                      </a>
                     </div>
 
-                    <div className="space-y-3 text-xs sm:text-sm text-brand/90 leading-relaxed">
-                      <div className="flex items-start gap-2.5">
-                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-500/20 text-amber-950 text-xs font-bold mt-0.5">1</span>
-                        <p>
-                          <strong>Obavijest putem e-maila kroz 24 sata:</strong> Organizator će pregledati tvoju prijavu te ćeš potvrdu primiti na e-mail u roku od <strong>24 sata</strong>.
-                        </p>
+                    {/* Explanatory Notices Box */}
+                    <div className="bg-white/80 border border-brand/15 rounded-2xl p-5 sm:p-6 mb-8 text-left shadow-xs space-y-4">
+                      <div className="flex items-center gap-2 text-brand font-bold text-sm border-b border-brand/10 pb-2.5">
+                        <ShieldCheck size={18} className="text-brand-light shrink-0" />
+                        <span>Važne informacije o ulaznici i potvrdi</span>
                       </div>
 
-                      <div className="flex items-start gap-2.5">
-                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-500/20 text-amber-950 text-xs font-bold mt-0.5">2</span>
-                        <p>
-                          <strong>Provjeri neželjenu poštu (Spam / Promocije):</strong> Ako ne vidiš e-mail, <strong>obavezno provjeri Spam mapu</strong> i označi poruku da nije neželjena pošta.
-                        </p>
-                      </div>
+                      <div className="space-y-3 text-xs sm:text-sm text-brand/90 leading-relaxed">
+                        <div className="flex items-start gap-2.5">
+                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-900 text-xs font-bold mt-0.5">1</span>
+                          <p>
+                            <strong>Potvrda s CoreEventa je 100% važeća:</strong> Čim kupiš ulaznicu na CoreEventu, tvoje mjesto je sigurno i upad ti je zajamčen!
+                          </p>
+                        </div>
 
-                      <div className="flex items-start gap-2.5">
-                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-500/20 text-amber-950 text-xs font-bold mt-0.5">3</span>
-                        <p>
-                          <strong>Provjera statusa:</strong> Status svoje prijave možeš u svakom trenutku provjeriti na svom <Link to="/profil" className="text-brand font-bold underline hover:text-brand-light">korisničkom profilu</Link>.
-                        </p>
+                        <div className="flex items-start gap-2.5">
+                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-900 text-xs font-bold mt-0.5">2</span>
+                          <p>
+                            <strong>Već imaš kupljenu ulaznicu?</strong> Ako si već obavio/la kupnju na CoreEventu, slobodno zanemari poziv na kupnju i poslane e-mailove! U našem sustavu kupnja postaje vidljiva tek u roku od 24 sata nakon ljudske provjere. Do tada, tvoja karta i potvrda s CoreEventa su ti 100% jamstvo i osiguranje.
+                          </p>
+                        </div>
+
+                        <div className="flex items-start gap-2.5">
+                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-900 text-xs font-bold mt-0.5">3</span>
+                          <p>
+                            <strong>Ljudska provjera uplate:</strong> Naša stranica ne bilježi uplatu iste sekunde – status u tvom profilu promijenit će se u <em>"Prijava potvrđena"</em> nakon što organizator ručno evidentira uplate (kroz nekoliko sati do maksimalno 24h).
+                          </p>
+                        </div>
+
+                        <div className="flex items-start gap-2.5">
+                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-rose-100 text-rose-900 text-xs font-bold mt-0.5">4</span>
+                          <p>
+                            <strong>Provjeri neželjenu poštu (Spam / Promocije):</strong> Link za plaćanje poslali smo ti i na e-mail. Ako poruku ne vidiš u pristigloj pošti, <strong>obavezno provjeri Spam mapu</strong> i označi je kao <em>"Nije neželjena pošta"</em> kako bi primao/la sve buduće obavijesti o događaju.
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </>
+                  </>
+                ) : (
+                  /* Legacy Pending Screen (preserved 100% for events without coreEventUrl) */
+                  <>
+                    <div className="w-16 h-16 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center mx-auto mb-4 border border-amber-200">
+                      <Clock3 size={32} className="animate-pulse" />
+                    </div>
+                    <h3 className="text-2xl sm:text-3xl font-serif font-bold mb-2 text-brand">Prijava je zaprimljena</h3>
+                    <p className="text-brand/80 mb-6 font-light leading-relaxed max-w-md mx-auto">
+                      Tvoja prijava je uspješno poslana i trenutačno čeka na pregled i odobrenje organizatora radi balansa sudionika.
+                    </p>
+
+                    <div className="bg-amber-50/90 border border-amber-200 rounded-2xl p-5 sm:p-6 mb-8 text-left shadow-xs">
+                      <div className="flex items-center gap-2.5 text-amber-950 font-bold text-base mb-3 border-b border-amber-200 pb-2.5">
+                        <Mail size={18} className="text-amber-700 shrink-0" />
+                        <span>Važne napomene o potvrdi prijave</span>
+                      </div>
+
+                      <div className="space-y-3 text-xs sm:text-sm text-brand/90 leading-relaxed">
+                        <div className="flex items-start gap-2.5">
+                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-500/20 text-amber-950 text-xs font-bold mt-0.5">1</span>
+                          <p>
+                            <strong>Obavijest putem e-maila kroz 24 sata:</strong> Organizator će pregledati tvoju prijavu te ćeš potvrdu primiti na e-mail u roku od <strong>24 sata</strong>.
+                          </p>
+                        </div>
+
+                        <div className="flex items-start gap-2.5">
+                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-500/20 text-amber-950 text-xs font-bold mt-0.5">2</span>
+                          <p>
+                            <strong>Provjeri neželjenu poštu (Spam / Promocije):</strong> Ako ne vidiš e-mail, <strong>obavezno provjeri Spam mapu</strong> i označi poruku da nije neželjena pošta.
+                          </p>
+                        </div>
+
+                        <div className="flex items-start gap-2.5">
+                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-500/20 text-amber-950 text-xs font-bold mt-0.5">3</span>
+                          <p>
+                            <strong>Provjera statusa:</strong> Status svoje prijave možeš u svakom trenutku provjeriti na svom <Link to="/profil" className="text-brand font-bold underline hover:text-brand-light">korisničkom profilu</Link>.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )
               )}
 
               {existingRegistration.status === 'waiting_list' && (
