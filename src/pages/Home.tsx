@@ -1,20 +1,20 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router';
-import { 
-  Calendar, 
-  Clock, 
-  MapPin, 
-  Heart, 
-  Wine, 
-  Loader2, 
-  Users, 
-  Sparkles, 
-  Music, 
-  CheckCircle2, 
-  ChevronRight, 
-  Star, 
-  ArrowRight, 
-  ChevronDown 
+import {
+  Calendar,
+  Clock,
+  MapPin,
+  Heart,
+  Wine,
+  Loader2,
+  Users,
+  Sparkles,
+  Music,
+  CheckCircle2,
+  ChevronRight,
+  Star,
+  ArrowRight,
+  ChevronDown
 } from 'lucide-react';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -105,11 +105,11 @@ export default function Home() {
   };
 
   return (
-    <div 
+    <div
       onMouseMove={handleMouseMove}
       className="min-h-screen w-full flex flex-col relative overflow-x-hidden bg-peach selection:bg-brand selection:text-white"
     >
-      <SEO 
+      <SEO
         title="Na prvi pogled 💞 Speed dating u Hrvatskoj – susreti i eventi za samce uživo"
         description="Upoznaj nove ljude uživo kroz kratke 1 na 1 razgovore u ugodnoj atmosferi. Zaboravi aplikacije i dopisivanje – doživi stvarni prvi pogled. Najpopularniji speed dating eventi i susreti za samce u Hrvatskoj. Prijavi se!"
         canonical="https://naprvipogled.com/"
@@ -121,7 +121,7 @@ export default function Home() {
       {/* ========================================================================= */}
       {/* 1. DYNAMIC INTERACTIVE MOUSE SPOTLIGHT (Ambient glow)                      */}
       {/* ========================================================================= */}
-      <div 
+      <div
         className="pointer-events-none fixed inset-0 z-0 transition-opacity duration-300"
         style={{
           background: `radial-gradient(800px circle at ${mousePos.x}px ${mousePos.y}px, rgba(123, 29, 41, 0.07), transparent 75%)`
@@ -170,10 +170,10 @@ export default function Home() {
         {/* ========================================================================= */}
         <section className="pt-32 sm:pt-36 lg:pt-40 pb-8 sm:pb-12 lg:pb-14 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
-            
+
             {/* Left Column: Hero Text & Call to Action */}
             <div className="lg:col-span-7 space-y-6 text-center lg:text-left animate-fade-in-up">
-              
+
               {/* Badge */}
               <div className="inline-flex items-center gap-2 bg-white/70 backdrop-blur-md px-4 py-1.5 rounded-full border border-white/80 shadow-sm text-brand text-xs font-bold uppercase tracking-wider">
                 <span className="relative flex h-2 w-2">
@@ -237,7 +237,7 @@ export default function Home() {
             {/* Right Column: Hero Visual Card with Glass Floating Accents */}
             <div className="lg:col-span-5 relative">
               <div className="relative mx-auto max-w-md lg:max-w-none">
-                
+
                 {/* Main Card with Generated High-End Image */}
                 <div className="relative rounded-3xl overflow-hidden shadow-2xl shadow-brand/20 border-4 border-white/80 bg-brand/5 group">
                   <img
@@ -246,10 +246,10 @@ export default function Home() {
                     className="w-full h-[400px] sm:h-[480px] object-cover group-hover:scale-105 transition-transform duration-700"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-brand/80 via-brand/20 to-transparent pointer-events-none" />
-                  
+
                   <div className="absolute bottom-6 left-6 right-6 text-white pointer-events-none">
                     <p className="text-xs uppercase tracking-widest text-amber-300 font-bold mb-1">
-                      Daj priliku nečem novom
+                      Daj priliku nečemu novom
                     </p>
                     <p className="font-serif text-xl sm:text-2xl font-bold leading-tight">
                       Upoznaj nekoga onako kako se nekad upoznavalo. Uživo.
@@ -293,7 +293,7 @@ export default function Home() {
         {/* 5. INTERACTIVE EVENTS SECTION (Sekcija za prikaz događaja)                */}
         {/* ========================================================================= */}
         <section id="dogadaji-sekcija" className="pt-2 pb-14 sm:pt-4 sm:pb-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto scroll-mt-24">
-          
+
           <div className="text-center max-w-2xl mx-auto mb-6 sm:mb-8">
             <div className="inline-flex items-center gap-2 bg-brand/10 text-brand px-3.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider mb-3">
               <Calendar size={13} className="text-brand-light" />
@@ -314,7 +314,7 @@ export default function Home() {
             </div>
           ) : activeEvents.length > 0 && currentEvent ? (
             <div className="max-w-xl sm:max-w-2xl mx-auto">
-              
+
               {/* Event selector pills if multiple events */}
               {activeEvents.length > 1 && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 mb-5">
@@ -325,11 +325,10 @@ export default function Home() {
                         key={evt.id}
                         type="button"
                         onClick={() => setSelectedEventId(evt.id)}
-                        className={`p-3 rounded-xl text-left transition-all duration-300 border flex flex-col justify-between cursor-pointer ${
-                          isSelected
+                        className={`p-3 rounded-xl text-left transition-all duration-300 border flex flex-col justify-between cursor-pointer ${isSelected
                             ? 'bg-white/95 border-brand shadow-md ring-2 ring-brand/30 scale-[1.01]'
                             : 'bg-white/60 hover:bg-white/80 border-white/80'
-                        }`}
+                          }`}
                       >
                         <div>
                           <div className="flex items-center justify-between gap-1 mb-1">
@@ -350,7 +349,7 @@ export default function Home() {
 
               {/* Active Selected Event Showcase Card */}
               <div className="bg-white/75 backdrop-blur-2xl p-4 sm:p-7 md:p-8 rounded-3xl border border-white/90 shadow-xl shadow-brand/10 relative overflow-hidden">
-                
+
                 {/* Header */}
                 <div className="pb-2.5 sm:pb-3.5 mb-3.5 sm:mb-5 border-b border-brand/10">
                   <div className="inline-flex items-center gap-1.5 sm:gap-2 bg-brand/10 text-brand text-[10px] sm:text-[11px] font-bold uppercase tracking-wider px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full mb-1.5 sm:mb-2">
@@ -367,7 +366,7 @@ export default function Home() {
 
                 {/* Details Grid: Merged Date & Time, 2-column compact on mobile */}
                 <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-3.5 sm:mb-5">
-                  
+
                   {/* Datum i vrijeme - full width, seamless */}
                   <div className="col-span-2 bg-white/70 p-2 sm:p-2.5 rounded-xl border border-white/80 shadow-2xs flex items-center gap-2.5">
                     <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-brand/10 text-brand flex items-center justify-center shrink-0">
@@ -481,8 +480,8 @@ export default function Home() {
               <p className="text-sm text-brand/80 mb-6">
                 Sva mjesta za trenutne termine su popunjena. Uskoro objavljujemo nove datume!
               </p>
-              <Link 
-                to="/kontakt" 
+              <Link
+                to="/kontakt"
                 className="inline-flex items-center gap-2 bg-brand text-white px-6 py-2.5 rounded-full text-xs font-bold hover:bg-brand-light transition-all"
               >
                 Obavijesti me o novim datumima
@@ -510,7 +509,7 @@ export default function Home() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            
+
             {/* Step 1 */}
             <div className="bg-white/70 backdrop-blur-md p-6 sm:p-7 rounded-3xl border border-white/80 shadow-md shadow-brand/5 flex flex-col justify-between group hover:shadow-xl transition-all">
               <div>
@@ -584,7 +583,7 @@ export default function Home() {
         <section className="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
           <div className="bg-white/70 backdrop-blur-xl rounded-3xl border border-white/90 p-8 sm:p-12 lg:p-16 shadow-xl shadow-brand/10">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
-              
+
               <div className="lg:col-span-6 space-y-6">
                 <div className="inline-flex items-center gap-2 bg-brand/10 text-brand px-3.5 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider">
                   <Sparkles size={14} className="text-brand-light" />
@@ -632,9 +631,9 @@ export default function Home() {
 
               <div className="lg:col-span-6">
                 <div className="rounded-3xl overflow-hidden shadow-xl border-2 border-white/90">
-                  <img 
-                    src={`${import.meta.env.BASE_URL}images/event-wine-cheers.jpg`} 
-                    alt="Sretan par koji razgovara uz čašu vina na speed datingu" 
+                  <img
+                    src={`${import.meta.env.BASE_URL}images/event-wine-cheers.jpg`}
+                    alt="Sretan par koji razgovara uz čašu vina na speed datingu"
                     className="w-full h-80 sm:h-96 object-cover"
                   />
                 </div>
