@@ -346,7 +346,7 @@ export default function EventsPage() {
               <div className="w-12 h-12 rounded-2xl bg-brand text-white font-serif font-bold text-xl flex items-center justify-center mx-auto mb-4 shadow-md">
                 1
               </div>
-              <h3 className="font-bold text-brand text-base mb-2">Dolazak & Piće</h3>
+              <h3 className="font-bold text-brand text-base mb-2">Dolazak i Piće</h3>
               <p className="text-xs text-brand/75 leading-relaxed font-light">
                 Dođi 15 minuta ranije. Domaćin te dočekuje, preuzimaš svoja 2 pića po izboru i svoj osobni broj stola.
               </p>
@@ -376,7 +376,7 @@ export default function EventsPage() {
               <div className="w-12 h-12 rounded-2xl bg-brand text-white font-serif font-bold text-xl flex items-center justify-center mx-auto mb-4 shadow-md">
                 4
               </div>
-              <h3 className="font-bold text-brand text-base mb-2">Match & Spoj</h3>
+              <h3 className="font-bold text-brand text-base mb-2">Match i Spoj</h3>
               <p className="text-xs text-brand/75 leading-relaxed font-light">
                 U roku 24h dobivaš obavijest o obostranim simpatijama i kontakte za dogovor pravog drugog spoja.
               </p>
