@@ -1,4 +1,5 @@
 import emailjs from '@emailjs/browser';
+import { getEmailSocialFooterHtml } from './formatters';
 
 export interface ReminderRecipient {
   id: string;
@@ -241,15 +242,8 @@ export function buildReminderHtml(formattedBodyText: string, eventInfo?: Partial
 
     ${eventDetailsBox}
 
-    <!-- Odjava / Napomena -->
-    <div style="margin-top: 25px; padding-top: 20px; border-top: 1px solid #eeeeee;">
-      <p style="font-size: 14px; margin: 0; color: #666666; line-height: 1.6;">
-        Srdačan pozdrav,<br/>
-        <strong style="color: #333333; font-size: 16px;">Ivan</strong><br/>
-        <span style="color: #E85D75; font-weight: 600;">Na prvi pogled</span><br/>
-        <span style="font-size: 12px; color: #999999; font-style: italic;">Upoznaj nekoga, kao nekad.</span>
-      </p>
-    </div>
+    <!-- Odjava / Napomena & Društvene mreže -->
+    ${getEmailSocialFooterHtml()}
   </div>
 
   <!-- Podnožje -->

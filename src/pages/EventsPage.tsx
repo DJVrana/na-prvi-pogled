@@ -22,6 +22,7 @@ import Footer from '../components/Footer';
 import SEO from '../components/SEO';
 import FaqAccordion from '../components/FaqAccordion';
 import { formatPrice } from '../utils/formatters';
+import { isEventRegistrationOpen, syncEventLifecycle } from '../utils/eventLifecycle';
 import { matchesAgeFilter, getAvailableAgeCategories, type AgeCategoryOption } from '../utils/ageFilter';
 
 interface ActiveEvent {
@@ -36,6 +37,9 @@ interface ActiveEvent {
   registrationCount?: number;
   isMatchingActive?: boolean;
   matchingPhase?: 'live' | 'post_event' | 'closed';
+  closeRegistrationsM?: boolean;
+  closeRegistrationsZ?: boolean;
+  isActive?: boolean;
   createdAt?: any;
 }
 
@@ -50,11 +54,13 @@ export default function EventsPage() {
         const q = query(collection(db, 'events'), where('isActive', '==', true));
         const snapshot = await getDocs(q);
         if (!snapshot.empty) {
-          const list: ActiveEvent[] = snapshot.docs.map(docData => ({
-            id: docData.id,
-            ...(docData.data() as any)
-          }));
-          setEvents(list);
+          const list: ActiveEvent[] = snapshot.docs.map(docData => {
+            const item = { id: docData.id, ...(docData.data() as any) };
+            syncEventLifecycle(db, item);
+            return item;
+          });
+          const openList = list.filter(evt => isEventRegistrationOpen(evt));
+          setEvents(openList);
         } else {
           setEvents([]);
         }
@@ -171,9 +177,9 @@ export default function EventsPage() {
 
             <div className="flex items-center gap-3.5 bg-white/60 p-4 rounded-2xl border border-white/80 shadow-sm">
               <div className="w-11 h-11 rounded-xl bg-brand/10 text-brand flex items-center justify-center shrink-0">
-                <Music size={20} className="text-brand-light" />
+                <Sparkles size={20} className="text-brand-light" />
               </div>
-              <span className="text-sm font-semibold">Opuštena atmosfera i dobra glazba</span>
+              <span className="text-sm font-semibold">Ugodna atmosfera</span>
             </div>
 
             <div className="flex items-center gap-3.5 bg-white/60 p-4 rounded-2xl border border-white/80 shadow-sm">
@@ -223,14 +229,28 @@ export default function EventsPage() {
               >
                 <div>
                   {/* Status pill */}
-                  <div className="flex items-center justify-between mb-4 pb-3 border-b border-brand/10">
-                    <span className="inline-flex items-center gap-2 bg-brand/10 text-brand text-[11px] font-bold uppercase tracking-wider px-3 py-1 rounded-full">
-                      <span className="relative flex h-2 w-2">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-brand"></span>
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-4 pb-3 border-b border-brand/10">
+                    {evt.closeRegistrationsM && !evt.closeRegistrationsZ ? (
+                      <span className="inline-flex items-center gap-1.5 bg-amber-100 text-amber-900 text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full border border-amber-200">
+                        Muški: Popunjeno • Žene: Otvoreno
                       </span>
-                      Prijave su u tijeku
-                    </span>
+                    ) : evt.closeRegistrationsZ && !evt.closeRegistrationsM ? (
+                      <span className="inline-flex items-center gap-1.5 bg-amber-100 text-amber-900 text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full border border-amber-200">
+                        Žene: Popunjeno • Muški: Otvoreno
+                      </span>
+                    ) : evt.closeRegistrationsM && evt.closeRegistrationsZ ? (
+                      <span className="inline-flex items-center gap-1.5 bg-red-100 text-red-800 text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full border border-red-200">
+                        Prijave su popunjene
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-2 bg-brand/10 text-brand text-[11px] font-bold uppercase tracking-wider px-3 py-1 rounded-full">
+                        <span className="relative flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-brand"></span>
+                        </span>
+                        Prijave su u tijeku
+                      </span>
+                    )}
                   </div>
 
                   <h3 className="font-serif text-2xl font-bold text-brand group-hover:text-brand-light transition-colors mb-4">

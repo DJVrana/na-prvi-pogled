@@ -38,12 +38,14 @@ import {
   Ticket
 } from 'lucide-react';
 import emailjs from '@emailjs/browser';
+import { getEmailSocialFooterHtml } from '../utils/formatters';
 import { FaGoogle } from 'react-icons/fa';
 import { Link, useSearchParams } from 'react-router';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import SEO from '../components/SEO';
 import { formatPrice } from '../utils/formatters';
+import { isEventRegistrationOpen, syncEventLifecycle } from '../utils/eventLifecycle';
 
 export interface CustomField {
   id: string;
@@ -69,6 +71,9 @@ interface ActiveEvent {
   ageGroup?: string;
   price?: string;
   coreEventUrl?: string;
+  isActive?: boolean;
+  closeRegistrationsM?: boolean;
+  closeRegistrationsZ?: boolean;
 }
 
 export default function FormPage() {
@@ -159,13 +164,9 @@ export default function FormPage() {
     </ul>
   </div>
 
-  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eeeeee;">
-    <p style="font-size: 14px; margin: 0; color: #777777;">
-      Veselimo se tvom dolasku!<br>
-      <strong style="color: #7B1D29;">Tim Na prvi pogled</strong><br>
-      <a href="https://naprvipogled.com" style="color: #7B1D29; text-decoration: underline; font-size: 12px;">naprvipogled.com</a>
-    </p>
-  </div>
+  ${getEmailSocialFooterHtml({
+    signOffText: 'Veselimo se tvom dolasku!<br/><strong style="color: #7B1D29; font-size: 15px;">Tim Na prvi pogled</strong>'
+  })}
 </div>
     `;
 
@@ -254,11 +255,17 @@ export default function FormPage() {
               location: data.location || '',
               ageGroup: data.ageGroup || '',
               price: data.price || '',
-              coreEventUrl: data.coreEventUrl || ''
+              coreEventUrl: data.coreEventUrl || '',
+              isActive: data.isActive !== false,
+              closeRegistrationsM: !!data.closeRegistrationsM,
+              closeRegistrationsZ: !!data.closeRegistrationsZ
             };
           });
 
-          setActiveEvents(list);
+          // Sync expired events and filter
+          list.forEach(evt => syncEventLifecycle(db, evt as any));
+          const openList = list.filter(evt => isEventRegistrationOpen(evt));
+          setActiveEvents(openList);
 
           let target = list.find(e => e.id === eventIdFromUrl) || null;
           if (!target && eventIdFromUrl) {
@@ -361,13 +368,23 @@ export default function FormPage() {
       setError("Morate biti prijavljeni da biste poslali prijavu.");
       return;
     }
-    if (!activeEvent) {
-      setError("Prijave su trenutno zatvorene.");
+    if (!activeEvent || !isEventRegistrationOpen(activeEvent)) {
+      setError("Prijave za ovaj događaj su zatvorene.");
       return;
     }
 
     if (!formData.spol) {
       setError("Molimo odaberite spol (M ili Ž).");
+      return;
+    }
+
+    if (formData.spol === 'M' && activeEvent.closeRegistrationsM) {
+      setError("Prijave za muške sudionike za ovaj termin su popunjene.");
+      return;
+    }
+
+    if (formData.spol === 'Ž' && activeEvent.closeRegistrationsZ) {
+      setError("Prijave za ženske sudionike za ovaj termin su popunjene.");
       return;
     }
 
@@ -909,28 +926,56 @@ export default function FormPage() {
                   <div className="grid grid-cols-2 gap-3">
                     <button
                       type="button"
-                      onClick={() => setFormData(prev => ({ ...prev, spol: 'M' }))}
-                      className={`py-3 px-4 rounded-2xl border font-bold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                        formData.spol === 'M'
-                          ? 'bg-brand text-white border-brand shadow-md shadow-brand/20 ring-2 ring-brand/30'
-                          : 'bg-white/80 hover:bg-white text-brand border-brand/15 hover:border-brand/30 shadow-xs'
+                      disabled={activeEvent?.closeRegistrationsM}
+                      onClick={() => {
+                        if (activeEvent?.closeRegistrationsM) {
+                          setError("Prijave za muške sudionike za ovaj termin su popunjene.");
+                          return;
+                        }
+                        setError(null);
+                        setFormData(prev => ({ ...prev, spol: 'M' }));
+                      }}
+                      className={`py-3 px-4 rounded-2xl border font-bold text-sm transition-all flex items-center justify-center gap-2 ${
+                        activeEvent?.closeRegistrationsM
+                          ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed opacity-80'
+                          : formData.spol === 'M'
+                            ? 'bg-brand text-white border-brand shadow-md shadow-brand/20 ring-2 ring-brand/30 cursor-pointer'
+                            : 'bg-white/80 hover:bg-white text-brand border-brand/15 hover:border-brand/30 shadow-xs cursor-pointer'
                       }`}
                     >
                       <span>Muški (M)</span>
-                      {formData.spol === 'M' && <Check size={16} />}
+                      {activeEvent?.closeRegistrationsM ? (
+                        <span className="text-[10px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-bold uppercase">Popunjeno</span>
+                      ) : (
+                        formData.spol === 'M' && <Check size={16} />
+                      )}
                     </button>
 
                     <button
                       type="button"
-                      onClick={() => setFormData(prev => ({ ...prev, spol: 'Ž' }))}
-                      className={`py-3 px-4 rounded-2xl border font-bold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                        formData.spol === 'Ž'
-                          ? 'bg-brand text-white border-brand shadow-md shadow-brand/20 ring-2 ring-brand/30'
-                          : 'bg-white/80 hover:bg-white text-brand border-brand/15 hover:border-brand/30 shadow-xs'
+                      disabled={activeEvent?.closeRegistrationsZ}
+                      onClick={() => {
+                        if (activeEvent?.closeRegistrationsZ) {
+                          setError("Prijave za ženske sudionike za ovaj termin su popunjene.");
+                          return;
+                        }
+                        setError(null);
+                        setFormData(prev => ({ ...prev, spol: 'Ž' }));
+                      }}
+                      className={`py-3 px-4 rounded-2xl border font-bold text-sm transition-all flex items-center justify-center gap-2 ${
+                        activeEvent?.closeRegistrationsZ
+                          ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed opacity-80'
+                          : formData.spol === 'Ž'
+                            ? 'bg-brand text-white border-brand shadow-md shadow-brand/20 ring-2 ring-brand/30 cursor-pointer'
+                            : 'bg-white/80 hover:bg-white text-brand border-brand/15 hover:border-brand/30 shadow-xs cursor-pointer'
                       }`}
                     >
                       <span>Ženski (Ž)</span>
-                      {formData.spol === 'Ž' && <Check size={16} />}
+                      {activeEvent?.closeRegistrationsZ ? (
+                        <span className="text-[10px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-bold uppercase">Popunjeno</span>
+                      ) : (
+                        formData.spol === 'Ž' && <Check size={16} />
+                      )}
                     </button>
                   </div>
                 </div>

@@ -11,6 +11,8 @@ import { EventCheckInModal } from '../components/EventCheckInModal';
 import { EventMatchesModal } from '../components/EventMatchesModal';
 import { EventFeedbackModal } from '../components/EventFeedbackModal';
 import { sendMatchEmail, sendFemaleMatchEmail } from '../utils/matchingEmails';
+import { calculateThreeDaysBefore, getDefaultCancelNote, getEmailSocialFooterHtml } from '../utils/formatters';
+import { isEventRegistrationOpen, isEventMatchingActive, syncEventLifecycle } from '../utils/eventLifecycle';
 import {
   REMINDER_TEMPLATES,
   type ReminderTemplate,
@@ -142,12 +144,7 @@ function buildWaitlistHtml(
   </div>
   ` : ''}
   
-  <div style="margin-top: 30px; border-top: 1px solid #eeeeee; padding-top: 20px;">
-    <p style="font-size: 15px; margin: 0; color: #666666;">
-      Srdačan pozdrav,<br>
-      <strong style="color: #333333; font-size: 16px;">Ivan</strong><br/>Na prvi pogled<br/>Upoznaj nekoga, kao nekad.
-    </p>
-  </div>
+  ${getEmailSocialFooterHtml()}
 </div>
   `;
 }
@@ -181,14 +178,16 @@ export default function AdminDashboard() {
     price: '',
     coreEventUrl: '',
     maxRegistrations: '',
-    introTextM: 'Hvala ti što si nam ukazao povjerenje i odlučio biti dio prvog "Na prvi pogled" speed dating eventa!',
-    introTextZ: 'Hvala ti što si nam ukazala povjerenje i odlučila biti dio prvog "Na prvi pogled" speed dating eventa!',
+    closeRegistrationsM: false,
+    closeRegistrationsZ: false,
+    introTextM: 'Hvala ti što si nam ukazao povjerenje i odlučio biti dio "Na prvi pogled" speed dating eventa!',
+    introTextZ: 'Hvala ti što si nam ukazala povjerenje i odlučila biti dio "Na prvi pogled" speed dating eventa!',
     middleTextM: 'Mi ćemo se pobrinuti za organizaciju i tvoje iskustvo, a na tebi je samo da dođeš, opustiš se i budeš svoj.',
     middleTextZ: 'Mi ćemo se pobrinuti za organizaciju i tvoje iskustvo, a na tebi je samo da dođeš, opustiš se i budeš svoja.',
-    noteTextM: 'Napomena: Ako ti se ipak dogodi da iz nekog razloga ne možeš doći, molimo te da nam to javiš najkasnije do 14. rujna, kako bismo tvoje mjesto mogli ponuditi nekome drugome.',
-    noteTextZ: 'Napomena: Ako ti se ipak dogodi da iz nekog razloga ne možeš doći, molimo te da nam to javiš najkasnije do 14. rujna, kako bismo tvoje mjesto mogli ponuditi nekome drugome.',
-    closingTextM: 'Kotizaciju od 10 € plaćaš prilikom evidencije sudionika prije početka događaja.\n\nProgram završavamo oko 22:00, a nakon toga ostavljamo vrijeme za neformalno druženje.',
-    closingTextZ: 'Kotizaciju od 10 € plaćaš prilikom evidencije sudionika prije početka događaja.\n\nProgram završavamo oko 22:00, a nakon toga ostavljamo vrijeme za neformalno druženje.',
+    noteTextM: getDefaultCancelNote(''),
+    noteTextZ: getDefaultCancelNote(''),
+    closingTextM: 'Program završavamo oko 21:00, a nakon toga ostavljamo vrijeme za neformalno druženje.',
+    closingTextZ: 'Program završavamo oko 21:00, a nakon toga ostavljamo vrijeme za neformalno druženje.',
     timeNoteM: 'Molimo te da dođeš 15 minuta ranije (18:45), radi evidencije.',
     timeNoteZ: 'Molimo te da dođeš 15 minuta ranije (18:45), radi evidencije.'
   });
@@ -605,6 +604,42 @@ export default function AdminDashboard() {
 
   const openEditEvent = (eventToEdit: EventData) => {
     setEditingEventId(eventToEdit.id);
+    const threeDays = calculateThreeDaysBefore(eventToEdit.dateStr);
+    const defaultNote = getDefaultCancelNote(eventToEdit.dateStr);
+
+    let noteM = eventToEdit.noteTextM || eventToEdit.noteText || defaultNote;
+    let noteZ = eventToEdit.noteTextZ || eventToEdit.noteText || defaultNote;
+
+    if (threeDays && noteM.includes('14. rujna') && !eventToEdit.dateStr?.toLowerCase().includes('rujn')) {
+      noteM = noteM.replace(/14\.\s*rujna/gi, threeDays);
+    }
+    if (threeDays && noteZ.includes('14. rujna') && !eventToEdit.dateStr?.toLowerCase().includes('rujn')) {
+      noteZ = noteZ.replace(/14\.\s*rujna/gi, threeDays);
+    }
+
+    const defaultIntroM = 'Hvala ti što si nam ukazao povjerenje i odlučio biti dio "Na prvi pogled" speed dating eventa!';
+    const defaultIntroZ = 'Hvala ti što si nam ukazala povjerenje i odlučila biti dio "Na prvi pogled" speed dating eventa!';
+    let introM = (eventToEdit.introTextM || eventToEdit.introText || defaultIntroM)
+      .replace(/dio prvog "Na prvi pogled"/g, 'dio "Na prvi pogled"');
+    let introZ = (eventToEdit.introTextZ || eventToEdit.introText || defaultIntroZ)
+      .replace(/dio prvog "Na prvi pogled"/g, 'dio "Na prvi pogled"');
+
+    const defaultClosing = 'Program završavamo oko 21:00, a nakon toga ostavljamo vrijeme za neformalno druženje.';
+    let closingM = eventToEdit.closingTextM || eventToEdit.closingText || defaultClosing;
+    let closingZ = eventToEdit.closingTextZ || eventToEdit.closingText || defaultClosing;
+
+    if (closingM.includes('Kotizaciju od 10 € plaćaš prilikom evidencije sudionika prije početka događaja.')) {
+      closingM = defaultClosing;
+    } else if (closingM.includes('Program završavamo oko 22:00')) {
+      closingM = closingM.replace('Program završavamo oko 22:00', 'Program završavamo oko 21:00');
+    }
+
+    if (closingZ.includes('Kotizaciju od 10 € plaćaš prilikom evidencije sudionika prije početka događaja.')) {
+      closingZ = defaultClosing;
+    } else if (closingZ.includes('Program završavamo oko 22:00')) {
+      closingZ = closingZ.replace('Program završavamo oko 22:00', 'Program završavamo oko 21:00');
+    }
+
     setNewEvent({
       title: eventToEdit.title,
       ageGroup: eventToEdit.ageGroup,
@@ -614,14 +649,16 @@ export default function AdminDashboard() {
       price: eventToEdit.price,
       coreEventUrl: eventToEdit.coreEventUrl || '',
       maxRegistrations: eventToEdit.maxRegistrations ? String(eventToEdit.maxRegistrations) : '',
-      introTextM: eventToEdit.introTextM || eventToEdit.introText || 'Hvala ti što si nam ukazao povjerenje i odlučio biti dio prvog "Na prvi pogled" speed dating eventa!',
-      introTextZ: eventToEdit.introTextZ || eventToEdit.introText || 'Hvala ti što si nam ukazala povjerenje i odlučila biti dio prvog "Na prvi pogled" speed dating eventa!',
+      closeRegistrationsM: !!eventToEdit.closeRegistrationsM,
+      closeRegistrationsZ: !!eventToEdit.closeRegistrationsZ,
+      introTextM: introM,
+      introTextZ: introZ,
       middleTextM: eventToEdit.middleTextM || eventToEdit.middleText || 'Mi ćemo se pobrinuti za organizaciju i tvoje iskustvo, a na tebi je samo da dođeš, opustiš se i budeš svoj.',
       middleTextZ: eventToEdit.middleTextZ || eventToEdit.middleText || 'Mi ćemo se pobrinuti za organizaciju i tvoje iskustvo, a na tebi je samo da dođeš, opustiš se i budeš svoja.',
-      noteTextM: eventToEdit.noteTextM || eventToEdit.noteText || 'Napomena: Ako ti se ipak dogodi da iz nekog razloga ne možeš doći, molimo te da nam to javiš najkasnije do 14. rujna, kako bismo tvoje mjesto mogli ponuditi nekome drugome.',
-      noteTextZ: eventToEdit.noteTextZ || eventToEdit.noteText || 'Napomena: Ako ti se ipak dogodi da iz nekog razloga ne možeš doći, molimo te da nam to javiš najkasnije do 14. rujna, kako bismo tvoje mjesto mogli ponuditi nekome drugome.',
-      closingTextM: eventToEdit.closingTextM || eventToEdit.closingText || 'Kotizaciju od 10 € plaćaš prilikom evidencije sudionika prije početka događaja.\n\nProgram završavamo oko 22:00, a nakon toga ostavljamo vrijeme za neformalno druženje.',
-      closingTextZ: eventToEdit.closingTextZ || eventToEdit.closingText || 'Kotizaciju od 10 € plaćaš prilikom evidencije sudionika prije početka događaja.\n\nProgram završavamo oko 22:00, a nakon toga ostavljamo vrijeme za neformalno druženje.',
+      noteTextM: noteM,
+      noteTextZ: noteZ,
+      closingTextM: closingM,
+      closingTextZ: closingZ,
       timeNoteM: eventToEdit.timeNoteM || eventToEdit.timeNote || 'Molimo te da dođeš 15 minuta ranije (18:45), radi evidencije.',
       timeNoteZ: eventToEdit.timeNoteZ || eventToEdit.timeNote || 'Molimo te da dođeš 15 minuta ranije (18:45), radi evidencije.'
     });
@@ -636,7 +673,28 @@ export default function AdminDashboard() {
   const handleCancelEdit = () => {
     setShowNewEventForm(false);
     setEditingEventId(null);
-    setNewEvent({ title: '', ageGroup: '', dateStr: '', timeStr: '', location: '', price: '', coreEventUrl: '', maxRegistrations: '', introTextM: 'Hvala ti što si nam ukazao povjerenje i odlučio biti dio prvog "Na prvi pogled" speed dating eventa!', introTextZ: 'Hvala ti što si nam ukazala povjerenje i odlučila biti dio prvog "Na prvi pogled" speed dating eventa!', middleTextM: 'Mi ćemo se pobrinuti za organizaciju i tvoje iskustvo, a na tebi je samo da dođeš, opustiš se i budeš svoj.', middleTextZ: 'Mi ćemo se pobrinuti za organizaciju i tvoje iskustvo, a na tebi je samo da dođeš, opustiš se i budeš svoja.', noteTextM: 'Napomena: Ako ti se ipak dogodi da iz nekog razloga ne možeš doći, molimo te da nam to javiš najkasnije do 14. rujna, kako bismo tvoje mjesto mogli ponuditi nekome drugome.', noteTextZ: 'Napomena: Ako ti se ipak dogodi da iz nekog razloga ne možeš doći, molimo te da nam to javiš najkasnije do 14. rujna, kako bismo tvoje mjesto mogli ponuditi nekome drugome.', closingTextM: 'Kotizaciju od 10 € plaćaš prilikom evidencije sudionika prije početka događaja.\n\nProgram završavamo oko 22:00, a nakon toga ostavljamo vrijeme za neformalno druženje.', closingTextZ: 'Kotizaciju od 10 € plaćaš prilikom evidencije sudionika prije početka događaja.\n\nProgram završavamo oko 22:00, a nakon toga ostavljamo vrijeme za neformalno druženje.', timeNoteM: 'Molimo te da dođeš 15 minuta ranije (18:45), radi evidencije.', timeNoteZ: 'Molimo te da dođeš 15 minuta ranije (18:45), radi evidencije.' });
+    setNewEvent({
+      title: '',
+      ageGroup: '',
+      dateStr: '',
+      timeStr: '',
+      location: '',
+      price: '',
+      coreEventUrl: '',
+      maxRegistrations: '',
+      closeRegistrationsM: false,
+      closeRegistrationsZ: false,
+      introTextM: 'Hvala ti što si nam ukazao povjerenje i odlučio biti dio "Na prvi pogled" speed dating eventa!',
+      introTextZ: 'Hvala ti što si nam ukazala povjerenje i odlučila biti dio "Na prvi pogled" speed dating eventa!',
+      middleTextM: 'Mi ćemo se pobrinuti za organizaciju i tvoje iskustvo, a na tebi je samo da dođeš, opustiš se i budeš svoj.',
+      middleTextZ: 'Mi ćemo se pobrinuti za organizaciju i tvoje iskustvo, a na tebi je samo da dođeš, opustiš se i budeš svoja.',
+      noteTextM: getDefaultCancelNote(''),
+      noteTextZ: getDefaultCancelNote(''),
+      closingTextM: 'Program završavamo oko 21:00, a nakon toga ostavljamo vrijeme za neformalno druženje.',
+      closingTextZ: 'Program završavamo oko 21:00, a nakon toga ostavljamo vrijeme za neformalno druženje.',
+      timeNoteM: 'Molimo te da dođeš 15 minuta ranije (18:45), radi evidencije.',
+      timeNoteZ: 'Molimo te da dođeš 15 minuta ranije (18:45), radi evidencije.'
+    });
     setNewCustomFields([]);
     setOpenFieldDropdownIndex(null);
   };
@@ -656,6 +714,8 @@ export default function AdminDashboard() {
         await updateDoc(doc(db, 'events', editingEventId), {
           ...newEvent,
           maxRegistrations: newEvent.maxRegistrations ? Number(newEvent.maxRegistrations) : null,
+          closeRegistrationsM: !!newEvent.closeRegistrationsM,
+          closeRegistrationsZ: !!newEvent.closeRegistrationsZ,
           customFields: mappedCustomFields,
           // ne mijenjamo createdAt ni isActive prilikom uređivanja
         });
@@ -759,10 +819,39 @@ export default function AdminDashboard() {
       }
 
       const isMale = prijava.spol === 'M' || prijava.spol.toLowerCase() === 'muško';
-      const introText = isMale ? (activeEvent.introTextM || activeEvent.introText || '') : (activeEvent.introTextZ || activeEvent.introText || '');
-      const middleText = isMale ? (activeEvent.middleTextM || activeEvent.middleText || 'Mi ćemo se pobrinuti za organizaciju i tvoje iskustvo, a na tebi je samo da dođeš, opustiš se i budeš svoj.') : (activeEvent.middleTextZ || activeEvent.middleText || 'Mi ćemo se pobrinuti za organizaciju i tvoje iskustvo, a na tebi je samo da dođeš, opustiš se i budeš svoja.');
-      const noteText = isMale ? (activeEvent.noteTextM || activeEvent.noteText || '') : (activeEvent.noteTextZ || activeEvent.noteText || '');
-      const closingText = isMale ? (activeEvent.closingTextM || activeEvent.closingText || '') : (activeEvent.closingTextZ || activeEvent.closingText || '');
+      const threeDays = calculateThreeDaysBefore(activeEvent.dateStr);
+
+      let introText = isMale
+        ? (activeEvent.introTextM || activeEvent.introText || 'Hvala ti što si nam ukazao povjerenje i odlučio biti dio "Na prvi pogled" speed dating eventa!')
+        : (activeEvent.introTextZ || activeEvent.introText || 'Hvala ti što si nam ukazala povjerenje i odlučila biti dio "Na prvi pogled" speed dating eventa!');
+      introText = introText.replace(/dio prvog "Na prvi pogled"/g, 'dio "Na prvi pogled"');
+
+      const middleText = isMale
+        ? (activeEvent.middleTextM || activeEvent.middleText || 'Mi ćemo se pobrinuti za organizaciju i tvoje iskustvo, a na tebi je samo da dođeš, opustiš se i budeš svoj.')
+        : (activeEvent.middleTextZ || activeEvent.middleText || 'Mi ćemo se pobrinuti za organizaciju i tvoje iskustvo, a na tebi je samo da dođeš, opustiš se i budeš svoja.');
+
+      let noteText = isMale
+        ? (activeEvent.noteTextM || activeEvent.noteText || '')
+        : (activeEvent.noteTextZ || activeEvent.noteText || '');
+
+      if (!noteText.trim()) {
+        noteText = getDefaultCancelNote(activeEvent.dateStr);
+      } else if (threeDays && noteText.includes('14. rujna') && !activeEvent.dateStr?.toLowerCase().includes('rujn')) {
+        noteText = noteText.replace(/14\.\s*rujna/gi, threeDays);
+      } else if (threeDays && (noteText.includes('[datum]') || noteText.includes('3 dana prije eventa'))) {
+        noteText = noteText.replace(/\[datum\]/gi, threeDays).replace(/3 dana prije eventa/gi, threeDays);
+      }
+
+      let closingText = isMale
+        ? (activeEvent.closingTextM || activeEvent.closingText || 'Program završavamo oko 21:00, a nakon toga ostavljamo vrijeme za neformalno druženje.')
+        : (activeEvent.closingTextZ || activeEvent.closingText || 'Program završavamo oko 21:00, a nakon toga ostavljamo vrijeme za neformalno druženje.');
+
+      if (closingText.includes('Kotizaciju od 10 € plaćaš prilikom evidencije sudionika prije početka događaja.')) {
+        closingText = 'Program završavamo oko 21:00, a nakon toga ostavljamo vrijeme za neformalno druženje.';
+      } else if (closingText.includes('Program završavamo oko 22:00')) {
+        closingText = closingText.replace('Program završavamo oko 22:00', 'Program završavamo oko 21:00');
+      }
+
       const timeNote = isMale ? (activeEvent.timeNoteM || activeEvent.timeNote || '') : (activeEvent.timeNoteZ || activeEvent.timeNote || '');
 
       const acceptHtmlMessage = `
@@ -804,12 +893,7 @@ export default function AdminDashboard() {
     <p style="font-size: 20px; font-weight: bold; color: #E85D75;">Vidimo se uskoro! ✨</p>
   </div>
   
-  <div style="margin-top: 30px; border-top: 1px solid #eeeeee; padding-top: 20px;">
-    <p style="font-size: 15px; margin: 0; color: #666666;">
-      Srdačan pozdrav,<br>
-      <strong style="color: #333333; font-size: 16px;">Ivan</strong><br/>Na prvi pogled<br/>Upoznaj nekoga, kao nekad.
-    </p>
-  </div>
+  ${getEmailSocialFooterHtml()}
 </div>
       `;
 
@@ -868,9 +952,7 @@ export default function AdminDashboard() {
             <p style="margin: 0;">${rejectReason}</p>
           </div>
           <p>Iskreno se nadamo da ćeš nam se pridružiti na nekom od sljedećih događaja. Prati nas i dalje za nove najave!</p>
-          <div style="margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px;">
-            <p style="color: #555; font-size: 14px; margin: 0; line-height: 1.5;">Srdačan pozdrav,<br/><strong style="color: #333;">Ivan</strong><br/>Na prvi pogled<br/>Upoznaj nekoga, kao nekad.</p>
-          </div>
+          ${getEmailSocialFooterHtml()}
         </div>
         `;
 
@@ -1153,6 +1235,21 @@ export default function AdminDashboard() {
     }
   };
 
+  const toggleEventGenderRegistration = async (eventItem: EventData, gender: 'M' | 'Ž') => {
+    try {
+      const targetRef = doc(db, 'events', eventItem.id);
+      if (gender === 'M') {
+        await updateDoc(targetRef, { closeRegistrationsM: !eventItem.closeRegistrationsM });
+      } else {
+        await updateDoc(targetRef, { closeRegistrationsZ: !eventItem.closeRegistrationsZ });
+      }
+      fetchEvents();
+    } catch (err) {
+      console.error("Greška pri promjeni statusa prijave po spolu:", err);
+      setError("Greška pri promjeni statusa prijave po spolu.");
+    }
+  };
+
   const toggleEventActive = async (eventToToggle: EventData) => {
     try {
       const targetRef = doc(db, 'events', eventToToggle.id);
@@ -1175,7 +1272,8 @@ export default function AdminDashboard() {
       } else {
         await updateDoc(targetRef, {
           isMatchingActive: true,
-          matchingPhase: phase
+          matchingPhase: phase,
+          matchingStartedAt: eventToUpdate.matchingStartedAt || serverTimestamp()
         });
       }
       fetchEvents();
@@ -1627,7 +1725,30 @@ export default function AdminDashboard() {
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-gray-600 mb-1">Datum (npr. 17. rujna 2026.)</label>
-                      <input required type="text" value={newEvent.dateStr} onChange={e => setNewEvent({ ...newEvent, dateStr: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-gray-300" />
+                      <input
+                        required
+                        type="text"
+                        value={newEvent.dateStr}
+                        onChange={e => {
+                          const val = e.target.value;
+                          const threeDays = calculateThreeDaysBefore(val);
+                          setNewEvent(prev => {
+                            const updated = { ...prev, dateStr: val };
+                            if (threeDays) {
+                              const noteRegex = /Napomena: Ako ti se ipak dogodi da iz nekog razloga ne možeš doći, molimo te da nam to javiš najkasnije do [^,]+, kako bismo tvoje mjesto mogli ponuditi nekome drugome\./i;
+                              const newNote = `Napomena: Ako ti se ipak dogodi da iz nekog razloga ne možeš doći, molimo te da nam to javiš najkasnije do ${threeDays}, kako bismo tvoje mjesto mogli ponuditi nekome drugome.`;
+                              if (!prev.noteTextM || noteRegex.test(prev.noteTextM) || prev.noteTextM.includes('14. rujna') || prev.noteTextM.includes('3 dana prije eventa')) {
+                                updated.noteTextM = newNote;
+                              }
+                              if (!prev.noteTextZ || noteRegex.test(prev.noteTextZ) || prev.noteTextZ.includes('14. rujna') || prev.noteTextZ.includes('3 dana prije eventa')) {
+                                updated.noteTextZ = newNote;
+                              }
+                            }
+                            return updated;
+                          });
+                        }}
+                        className="w-full px-3 py-2 rounded-lg border border-gray-300"
+                      />
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-gray-600 mb-1">Vrijeme (npr. 19:00)</label>
@@ -1644,6 +1765,29 @@ export default function AdminDashboard() {
                     <div>
                       <label className="block text-xs font-semibold text-gray-600 mb-1">Maksimalan broj prijava (ostavi prazno za neograničeno)</label>
                       <input type="number" min="1" value={newEvent.maxRegistrations} onChange={e => setNewEvent({ ...newEvent, maxRegistrations: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-gray-300" placeholder="Npr. 40" />
+                    </div>
+                    <div className="flex flex-col gap-2 justify-center p-3 rounded-lg bg-white border border-gray-200">
+                      <span className="text-xs font-semibold text-gray-700">Ručno zatvaranje prijava po spolu:</span>
+                      <div className="flex items-center gap-4">
+                        <label className="inline-flex items-center gap-1.5 text-xs text-gray-700 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={!!newEvent.closeRegistrationsM}
+                            onChange={e => setNewEvent({ ...newEvent, closeRegistrationsM: e.target.checked })}
+                            className="rounded text-brand focus:ring-brand"
+                          />
+                          <span>Zatvori muške prijave (rasprodano)</span>
+                        </label>
+                        <label className="inline-flex items-center gap-1.5 text-xs text-gray-700 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={!!newEvent.closeRegistrationsZ}
+                            onChange={e => setNewEvent({ ...newEvent, closeRegistrationsZ: e.target.checked })}
+                            className="rounded text-brand focus:ring-brand"
+                          />
+                          <span>Zatvori ženske prijave (rasprodano)</span>
+                        </label>
+                      </div>
                     </div>
                     <div className="sm:col-span-2">
                       <label className="block text-xs font-semibold text-gray-600 mb-1">
@@ -1864,14 +2008,28 @@ export default function AdminDashboard() {
                         value={previewGender === 'M' ? (newEvent.closingTextM ?? '') : (newEvent.closingTextZ ?? '')}
                         onChange={e => previewGender === 'M' ? setNewEvent({ ...newEvent, closingTextM: e.target.value }) : setNewEvent({ ...newEvent, closingTextZ: e.target.value })}
                         className="w-full px-3 py-2 rounded border border-dashed border-gray-300 bg-[#fafafa] text-gray-700 text-center resize-none hover:bg-white focus:bg-white focus:ring-1 focus:ring-brand mb-8 text-sm"
-                        rows={4}
+                        rows={2}
                       />
 
                       <div className="text-center mt-10 mb-5">
                         <p className="text-lg font-bold text-[#E85D75]">Vidimo se uskoro! ✨</p>
                       </div>
-                      <div className="mt-8 border-t border-gray-100 pt-5">
-                        <p className="text-sm text-gray-500 m-0 leading-relaxed">Srdačan pozdrav,<br /><strong className="text-gray-700">Ivan</strong><br />Na prvi pogled<br />Upoznaj nekoga, kao nekad.</p>
+                      <div className="mt-8 border-t border-gray-100 pt-5 text-center">
+                        <p className="text-sm text-gray-500 m-0 leading-relaxed mb-2">
+                          Srdačan pozdrav,<br />
+                          <strong className="text-gray-700">Ivan</strong><br />
+                          Na prvi pogled • Upoznaj nekoga, kao nekad.
+                        </p>
+                        <p className="m-0 mb-2">
+                          <a href="https://naprvipogled.com" target="_blank" rel="noreferrer" className="text-brand font-bold text-sm underline">naprvipogled.com</a>
+                        </p>
+                        <div className="flex items-center justify-center gap-3 text-xs font-semibold">
+                          <a href="https://instagram.com/na.prvi.pogled" target="_blank" rel="noreferrer" className="text-pink-600 hover:underline">Instagram</a>
+                          <span className="text-gray-300">•</span>
+                          <a href="https://web.facebook.com/profile.php?id=61594619954084" target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">Facebook</a>
+                          <span className="text-gray-300">•</span>
+                          <a href="https://www.tiktok.com/@na.prvi.pogled" target="_blank" rel="noreferrer" className="text-gray-900 hover:underline">TikTok</a>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1913,6 +2071,16 @@ export default function AdminDashboard() {
                           {event.coreEventUrl && (
                             <span className="bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow-xs" title={event.coreEventUrl}>
                               <CreditCard size={11} className="text-emerald-600" /> CoreEvent Plaćanje
+                            </span>
+                          )}
+                          {event.closeRegistrationsM && (
+                            <span className="bg-blue-100 text-blue-800 border border-blue-200 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full">
+                              Muški: Popunjeno
+                            </span>
+                          )}
+                          {event.closeRegistrationsZ && (
+                            <span className="bg-pink-100 text-pink-800 border border-pink-200 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full">
+                              Žene: Popunjeno
                             </span>
                           )}
                         </div>
@@ -2040,6 +2208,24 @@ export default function AdminDashboard() {
                         >
                           {event.isActive ? <><StopCircle size={16} /> Završi prijave</> : <><PlayCircle size={16} /> Otvori prijave</>}
                         </button>
+                        <div className="flex items-center gap-1 bg-gray-50 p-1 rounded-lg border border-gray-200 text-xs">
+                          <button
+                            type="button"
+                            onClick={() => toggleEventGenderRegistration(event, 'M')}
+                            className={`px-2 py-1 rounded font-semibold cursor-pointer transition-colors ${event.closeRegistrationsM ? 'bg-red-600 text-white' : 'bg-blue-100 text-blue-800 hover:bg-blue-200'}`}
+                            title={event.closeRegistrationsM ? 'Prijave za muškarce su zatvorene. Klikni za otvaranje.' : 'Prijave za muškarce su otvorene. Klikni za zatvaranje (rasprodano).'}
+                          >
+                            M: {event.closeRegistrationsM ? 'Zatvoreno' : 'Otvoreno'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => toggleEventGenderRegistration(event, 'Ž')}
+                            className={`px-2 py-1 rounded font-semibold cursor-pointer transition-colors ${event.closeRegistrationsZ ? 'bg-red-600 text-white' : 'bg-pink-100 text-pink-800 hover:bg-pink-200'}`}
+                            title={event.closeRegistrationsZ ? 'Prijave za žene su zatvorene. Klikni za otvaranje.' : 'Prijave za žene su otvorene. Klikni za zatvaranje (rasprodano).'}
+                          >
+                            Ž: {event.closeRegistrationsZ ? 'Zatvoreno' : 'Otvoreno'}
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ))

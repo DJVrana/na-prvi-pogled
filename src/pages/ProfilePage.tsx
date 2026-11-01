@@ -8,6 +8,7 @@ import {
   getDoc, 
   setDoc, 
   updateDoc, 
+  deleteDoc,
   increment 
 } from 'firebase/firestore';
 import { db, auth, provider } from '../firebase';
@@ -277,17 +278,14 @@ export default function ProfilePage() {
     }
   };
 
-  // Handle Cancel Registration Confirmation
+  // Handle Cancel Registration Confirmation - completely deletes from system
   const handleConfirmCancelRegistration = async () => {
     if (!cancellingRegistration || !user) return;
 
     setCancelLoading(true);
     try {
-      // 1. Update status to 'cancelled'
-      await updateDoc(doc(db, 'prijave', cancellingRegistration.id), {
-        status: 'cancelled',
-        cancelledAt: new Date()
-      });
+      // 1. Delete completely from Firestore
+      await deleteDoc(doc(db, 'prijave', cancellingRegistration.id));
 
       // 2. Decrement event registrationCount if the registration was previously active
       if (cancellingRegistration.eventId && cancellingRegistration.status !== 'rejected' && cancellingRegistration.status !== 'cancelled' && cancellingRegistration.status !== 'waiting_list') {
@@ -300,19 +298,14 @@ export default function ProfilePage() {
         }
       }
 
-      // 3. Update local state
-      setRegistrations(prev => prev.map(reg => {
-        if (reg.id === cancellingRegistration.id) {
-          return { ...reg, status: 'cancelled' };
-        }
-        return reg;
-      }));
+      // 3. Update local state by removing it completely
+      setRegistrations(prev => prev.filter(reg => reg.id !== cancellingRegistration.id));
 
-      setCancelSuccessMsg(`Uspješno ste otkazali prijavu za "${cancellingRegistration.eventDetails?.title || 'događaj'}".`);
+      setCancelSuccessMsg(`Tvoja prijava za "${cancellingRegistration.eventDetails?.title || 'događaj'}" je uspješno obrisana.`);
       setTimeout(() => setCancelSuccessMsg(''), 4000);
       setCancellingRegistration(null);
     } catch (err) {
-      console.error("Greška pri otkazivanju prijave:", err);
+      console.error("Greška pri brisanju prijave:", err);
       alert("Došlo je do greške prilikom otkazivanja prijave. Molimo pokušajte ponovno.");
     } finally {
       setCancelLoading(false);

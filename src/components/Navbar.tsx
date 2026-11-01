@@ -63,7 +63,13 @@ export default function Navbar() {
         const q = query(collection(db, 'events'), where('isMatchingActive', '==', true));
         const snap = await getDocs(q);
         if (!snap.empty) {
-          setMatchingEvent({ id: snap.docs[0].id, ...(snap.docs[0].data() as any) });
+          const evt = { id: snap.docs[0].id, ...(snap.docs[0].data() as any) };
+          syncEventLifecycle(db, evt);
+          if (isEventMatchingActive(evt)) {
+            setMatchingEvent(evt);
+          } else {
+            setMatchingEvent(null);
+          }
         } else {
           setMatchingEvent(null);
         }
@@ -233,15 +239,20 @@ export default function Navbar() {
               </Link>
             </div>
 
-            {/* Mobile Hamburger Button */}
+            {/* Mobile Actions: Matching Pill & Hamburger */}
             <div className="flex md:hidden items-center gap-2">
               {matchingEvent && (
                 <Link
                   to={`/matching?eventId=${matchingEvent.id}`}
-                  className="p-1.5 rounded-full bg-rose-500 text-white text-xs font-bold"
-                  title="Matching je aktivan"
+                  className="relative inline-flex items-center gap-1.5 bg-gradient-to-r from-rose-500 via-pink-600 to-brand text-white text-[11px] font-extrabold px-3 py-1.5 rounded-full shadow-md shadow-rose-500/30 border border-white/50 animate-pulse hover:scale-105 transition-all"
+                  title="Matching je u tijeku - otvori!"
                 >
-                  <Flame size={16} className="animate-pulse" />
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-300 opacity-90"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-300"></span>
+                  </span>
+                  <Flame size={13} className="text-amber-300 fill-amber-300 shrink-0" />
+                  <span className="whitespace-nowrap tracking-wide uppercase text-[10px] drop-shadow-xs font-bold">Matching u tijeku</span>
                 </Link>
               )}
               <button

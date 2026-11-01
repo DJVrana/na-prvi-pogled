@@ -1,4 +1,5 @@
 import emailjs from '@emailjs/browser';
+import { getEmailSocialFooterHtml } from './formatters';
 
 export interface SendMatchEmailParams {
   eventTitle: string;
@@ -68,9 +69,7 @@ export async function sendMatchEmail(params: SendMatchEmailParams): Promise<any>
   <p style="font-size: 15px;">Uskoro ti se može javiti, a slobodno i ti napravi prvi korak, pošalji poruku i dogovorite kavu ili piće! 😉</p>
   <p style="font-size: 13px; color: #777777;">Sve svoje matcheve također možeš u svakom trenutku pregledati i na svom korisničkom profilu na našoj web stranici.</p>
 
-  <div style="margin-top: 30px; border-top: 1px solid #eeeeee; padding-top: 20px;">
-    <p style="color: #555555; font-size: 14px; margin: 0; line-height: 1.5;">Srdačan pozdrav,<br/><strong style="color: #333333;">Ivan</strong><br/>Na prvi pogled<br/>Upoznaj nekoga, kao nekad.</p>
-  </div>
+  ${getEmailSocialFooterHtml()}
 </div>
     `
     : `
@@ -101,9 +100,7 @@ export async function sendMatchEmail(params: SendMatchEmailParams): Promise<any>
   <p style="font-size: 15px;">Vrijeme je da napraviš prvi korak, pošalješ poruku i dogovorite kavu ili piće! 😉</p>
   <p style="font-size: 13px; color: #777777;">Sve svoje matcheve također možeš u svakom trenutku pregledati i na svom korisničkom profilu na našoj web stranici.</p>
 
-  <div style="margin-top: 30px; border-top: 1px solid #eeeeee; padding-top: 20px;">
-    <p style="color: #555555; font-size: 14px; margin: 0; line-height: 1.5;">Srdačan pozdrav,<br/><strong style="color: #333333;">Ivan</strong><br/>Na prvi pogled<br/>Upoznaj nekoga, kao nekad.</p>
-  </div>
+  ${getEmailSocialFooterHtml()}
 </div>
     `;
 

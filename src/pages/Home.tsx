@@ -186,8 +186,8 @@ export default function Home() {
 
               {/* Main Headline */}
               <h1 className="font-serif text-5xl sm:text-6xl lg:text-7xl font-bold text-brand tracking-tight leading-[1.08]">
-                Manje ekrana.<br />
-                <span className="italic font-normal text-brand-light">Više stvarnih susreta.</span>
+                Upoznaj nekoga.<br />
+                <span className="italic font-normal text-brand-light">Kao nekad.</span>
               </h1>
 
               {/* Tagline / Subtitle */}
@@ -434,15 +434,11 @@ export default function Home() {
                     </div>
                     <div className="flex items-center gap-1.5">
                       <CheckCircle2 size={13} className="text-brand shrink-0" />
-                      <span>Dobra glazba</span>
+                      <span>Ugodna atmosfera</span>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <CheckCircle2 size={13} className="text-brand shrink-0" />
                       <span className="truncate">100% diskretno</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 col-span-2 pt-1 border-t border-brand/5">
-                      <CheckCircle2 size={13} className="text-brand shrink-0" />
-                      <span>Rezultati u roku 24 sata</span>
                     </div>
                   </div>
                 </div>
@@ -745,20 +741,16 @@ export default function Home() {
           <FaqAccordion
             items={[
               {
-                question: 'Što ako mi bude neugodno ili ostanem bez teksta?',
-                answer: 'Četiri do šest minuta prođe u trenu! Osim toga, na svakom stolu se nalaze diskretne kartice sa zabavnim i neobičnim pitanjima za razbijanje leda, tako da nikad ne morate brinuti o čemu pričati.'
+                question: 'Postoji li dress code?',
+                answer: 'Ne, dođi odjeven/a kako se najugodnije osjećaš.'
               },
               {
-                question: 'Kako funkcionira razmjena kontakata?',
-                answer: 'Nitko ne daje svoj kontakt za stolom uživo. Nakon svakog spoja u listić ili online profil zabilježiš je li ti se osoba svidjela. Ako ste oboje označili potvrdno, unutar 24h na e-mail i u profil dobivate kontakt jedno drugoga.'
+                question: 'Kako funkcionira matching?',
+                answer: 'Nakon ili tijekom eventa označi tko ti se svidio te, ukoliko je osjećaj obostran, poslat će vam se poruka elektroničke pošte s kontaktima.'
               },
               {
-                question: 'Tko su ostali sudionici?',
-                answer: 'Naši sudionici su zaposleni, urbani samci iz Zagreba i okolice koji žele proširiti krug poznanstava i kojima je dosta površnih aplikacija. Svi sudionici su u istoj dobnoj skupini koju si odabrao/la.'
-              },
-              {
-                question: 'Što ako moram otkazati?',
-                answer: 'Ako nas obavijestiš najmanje 48 sati prije početka, tvoju kotizaciju prebacujemo na sljedeći odgovarajući termin.'
+                question: 'Kakvo piće imam u izboru?',
+                answer: 'Imaš puno pića iz svih kategorija u izboru, gazirane i negazirane sokove, vodu, vino, pivo...'
               }
             ]}
           />
