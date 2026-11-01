@@ -1,0 +1,15 @@
+function e(e){if(e==null)return``;let t=String(e).trim();return t?/€|eur/i.test(t)?t:/^\d+\s*e$/i.test(t)?t.replace(/e$/i,``).trim()+` €`:/^\d+([.,]\d+)?$/.test(t)||/\d+$/.test(t)?`${t} €`:t:``}var t=[{name:`siječnja`,aliases:[`sijec`,`siječ`]},{name:`veljače`,aliases:[`veljac`,`veljač`]},{name:`ožujka`,aliases:[`ozuj`,`ožuj`]},{name:`travnja`,aliases:[`trav`]},{name:`svibnja`,aliases:[`svib`]},{name:`lipnja`,aliases:[`lip`]},{name:`srpnja`,aliases:[`srp`]},{name:`kolovoza`,aliases:[`kolov`]},{name:`rujna`,aliases:[`ruj`]},{name:`listopada`,aliases:[`list`]},{name:`studenoga`,aliases:[`studen`]},{name:`prosinca`,aliases:[`prosin`]}];function n(e){if(!e||typeof e!=`string`)return null;let n=e.trim().toLowerCase();if(!n)return null;let r,i,a,o=n.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);if(o)a=parseInt(o[1],10),i=parseInt(o[2],10)-1,r=parseInt(o[3],10);else{let e=n.match(/\b(20\d\d)\b/);a=e?parseInt(e[1],10):new Date().getFullYear();let o=n.match(/(\d{1,2})\.?\s*([a-čćžšđ]+)/i);if(o){let e=parseInt(o[1],10),n=o[2],a=t.findIndex(e=>e.aliases.some(e=>n.includes(e)));a!==-1&&e>=1&&e<=31&&(r=e,i=a)}if(r===void 0){let e=n.match(/(\d{1,2})\s*\.\s*(\d{1,2})\.?/);if(e){let t=parseInt(e[1],10),n=parseInt(e[2],10)-1;t>=1&&t<=31&&n>=0&&n<=11&&(r=t,i=n)}}}if(r===void 0||i===void 0||isNaN(r)||isNaN(i))return null;let s=new Date(a,i,r);return s.setDate(s.getDate()-3),`${s.getDate()}. ${t[s.getMonth()].name}`}function r(e){return`Napomena: Ako ti se ipak dogodi da iz nekog razloga ne možeš doći, molimo te da nam to javiš najkasnije do ${n(e)||`3 dana prije eventa`}, kako bismo tvoje mjesto mogli ponuditi nekome drugome.`}function i(e){let t=e?.signOffText??`Srdačan pozdrav,<br/><strong style="color: #333333; font-size: 15px;">Ivan</strong><br/><span style="color: #7B1D29; font-weight: 600;">Na prvi pogled</span><br/><span style="font-size: 12px; color: #888888; font-style: italic;">Upoznaj nekoga, kao nekad.</span>`;return`
+  <div style="margin-top: 30px; border-top: 1px solid #eeeeee; padding-top: 20px; text-align: center;">
+    ${t?`<p style="font-size: 14px; margin: 0 0 12px 0; color: #555555; line-height: 1.5;">${t}</p>`:``}
+    <p style="margin: 0 0 10px 0;">
+      <a href="https://naprvipogled.com" target="_blank" style="color: #7B1D29; text-decoration: underline; font-weight: bold; font-size: 14px;">naprvipogled.com</a>
+    </p>
+    <div style="text-align: center; margin: 10px 0 0 0; font-size: 13px;">
+      <a href="https://instagram.com/na.prvi.pogled" target="_blank" style="display: inline-block; margin: 0 8px; color: #E1306C; text-decoration: none; font-weight: bold;">Instagram</a>
+      <span style="color: #cccccc;">•</span>
+      <a href="https://web.facebook.com/profile.php?id=61594619954084" target="_blank" style="display: inline-block; margin: 0 8px; color: #1877F2; text-decoration: none; font-weight: bold;">Facebook</a>
+      <span style="color: #cccccc;">•</span>
+      <a href="https://www.tiktok.com/@na.prvi.pogled" target="_blank" style="display: inline-block; margin: 0 8px; color: #111111; text-decoration: none; font-weight: bold;">TikTok</a>
+    </div>
+  </div>
+  `.trim()}export{i,e as n,r,n as t};
