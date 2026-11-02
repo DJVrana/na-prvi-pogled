@@ -115,31 +115,31 @@ export default function FormPage() {
 
     const userFirstName = recipientName.trim().split(' ')[0] || 'Korisniče';
     const isMale = gender === 'M' || gender.toLowerCase() === 'muško';
-    const emailSubject = "Prijava zaprimljena – osiguraj svoje mjesto kupnjom ulaznice! 🎟️";
+    const emailSubject = "⚠️ Prijava NIJE dovršena – osiguraj svoje mjesto kupnjom ulaznice! 🎟️";
     const coreUrl = evt.coreEventUrl.trim().startsWith('http') ? evt.coreEventUrl.trim() : `https://${evt.coreEventUrl.trim()}`;
 
     const paymentHtmlMessage = `
 <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333333; line-height: 1.6; padding: 24px; background-color: #ffffff; border: 1px solid #eeeeee; border-radius: 16px;">
   <div style="text-align: center; margin-bottom: 25px; padding-bottom: 20px; border-bottom: 1px solid #eeeeee;">
     <h1 style="color: #7B1D29; margin: 0; font-size: 26px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">Na prvi pogled</h1>
-    <p style="color: #888888; font-size: 14px; margin-top: 5px;">Speed Dating Zagreb • Prijava zaprimljena</p>
+    <p style="color: #c92a2a; font-size: 14px; font-weight: bold; margin-top: 5px;">Speed Dating Zagreb • Prijava NIJE dovršena</p>
   </div>
   
   <p style="font-size: 16px;">${isMale ? 'Dragi' : 'Draga'} <strong>${userFirstName}</strong>,</p>
   
   <p style="font-size: 15px; color: #444444;">
-    Tvoja prijava za speed dating susret <strong>${evt.title}</strong> je uspješno zaprimljena!
+    Tvoja prijava za speed dating susret <strong>${evt.title}</strong> je zaprimljena, ali <strong style="color: #c92a2a; text-decoration: underline;">još NIJE dovršena!</strong>
   </p>
 
-  <div style="background-color: #FFF6F6; border: 1px solid #F5C6CB; border-radius: 12px; padding: 20px; margin: 25px 0; text-align: center;">
-    <p style="margin: 0 0 10px 0; font-size: 15px; font-weight: bold; color: #7B1D29;">
-      🎟️ Završni korak: Osiguraj svoje mjesto kupnjom ulaznice
+  <div style="background-color: #FFF5F5; border: 2px solid #E03131; border-radius: 12px; padding: 22px 20px; margin: 25px 0; text-align: center;">
+    <p style="margin: 0 0 10px 0; font-size: 16px; font-weight: bold; color: #C92A2A;">
+      ⚠️ Prijava nije dovršena – kupi ulaznicu za potvrdu mjesta
     </p>
-    <p style="margin: 0 0 18px 0; font-size: 13px; color: #666666; line-height: 1.5;">
-      Broj mjesta je ograničen radi balansa sudionika i popunjava se po principu najbrže kupnje.
+    <p style="margin: 0 0 18px 0; font-size: 13px; color: #495057; line-height: 1.5;">
+      Kako bi tvoje mjesto bilo sigurno rezervirano, potrebno je dovršiti prijavu kupnjom ulaznice. Broj mjesta je ograničen radi balansa sudionika i popunjava se po redoslijedu kupnje ulaznice.
     </p>
     <a href="${coreUrl}" target="_blank" style="display: inline-block; background-color: #7B1D29; color: #ffffff; text-decoration: none; font-weight: bold; font-size: 15px; padding: 14px 28px; border-radius: 50px; box-shadow: 0 4px 10px rgba(123, 29, 41, 0.25);">
-      Kupi ulaznicu na CoreEventu &rarr;
+      Dovrši prijavu i kupi ulaznicu na CoreEventu &rarr;
     </a>
   </div>
 
@@ -701,9 +701,9 @@ export default function FormPage() {
                     <div className="w-16 h-16 rounded-2xl bg-brand/10 text-brand flex items-center justify-center mx-auto mb-4 border border-brand/20 shadow-sm">
                       <Ticket size={34} className="text-brand" />
                     </div>
-                    <h3 className="text-2xl sm:text-3xl font-serif font-bold mb-2 text-brand">Prijava je zaprimljena!</h3>
+                    <h3 className="text-2xl sm:text-3xl font-serif font-bold mb-2 text-brand">Prijava je zaprimljena, no <span className="text-rose-600 underline">još nije dovršena!</span></h3>
                     <p className="text-brand/80 mb-6 font-light leading-relaxed max-w-md mx-auto">
-                      Još samo jedan korak dijeli te od susreta. Broj mjesta je ograničen radi jednakog omjera sudionika te se popunjavaju <strong>po principu najbrže kupnje ulaznice</strong>.
+                      Još samo jedan korak dijeli te od susreta. Kako bi tvoje mjesto bilo sigurno rezervirano, potrebno je dovršiti prijavu kupnjom ulaznice na CoreEventu jer se mjesta popunjavaju <strong>po principu najbrže kupnje ulaznice</strong>.
                     </p>
 
                     {/* Primary CoreEvent Payment Card */}

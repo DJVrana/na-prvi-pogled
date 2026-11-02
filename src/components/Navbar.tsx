@@ -10,20 +10,24 @@ import {
   ShieldAlert, 
   Flame,
   ChevronRight,
-  Sparkles
+  Sparkles,
+  ArrowUpRight
 } from 'lucide-react';
 import { FaGoogle, FaInstagram, FaTiktok, FaFacebook } from 'react-icons/fa';
 import { onAuthStateChanged, signInWithPopup } from 'firebase/auth';
 import type { User } from 'firebase/auth';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { auth, provider, db } from '../firebase';
+import { isEventMatchingActive, syncEventLifecycle, isEventDay } from '../utils/eventLifecycle';
 
 const ADMIN_UIDS = ['iKe7lzl7Msf7hd3kWyHC1ysyS3C3', 'Izt37mNGtpY82AKZTbyYsnctoxJ2', 'JRms1cPi2Bc513TOW0WBEFZMzrC3'];
 
 interface ActiveMatchingEvent {
   id: string;
   title: string;
+  dateStr?: string;
   matchingPhase?: 'live' | 'post_event' | 'closed';
+  isMatchingActive?: boolean;
 }
 
 export default function Navbar() {
@@ -31,6 +35,7 @@ export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [matchingEvent, setMatchingEvent] = useState<ActiveMatchingEvent | null>(null);
+  const [showLiveModal, setShowLiveModal] = useState(false);
   const location = useLocation();
 
   useEffect(() => {
@@ -79,6 +84,62 @@ export default function Navbar() {
     };
     checkMatching();
   }, []);
+
+  // Check whether to show the live matching modal (specifically on event day for registered attendees)
+  useEffect(() => {
+    const checkLiveModal = async () => {
+      if (!user || !matchingEvent || location.pathname === '/matching') {
+        setShowLiveModal(false);
+        return;
+      }
+
+      // Only show popup modal ON the day of the event
+      if (!isEventDay(matchingEvent.dateStr)) {
+        setShowLiveModal(false);
+        return;
+      }
+
+      // Check if dismissed in this browser session
+      try {
+        if (sessionStorage.getItem('dismissed_matching_live_' + matchingEvent.id) === 'true') {
+          setShowLiveModal(false);
+          return;
+        }
+      } catch {
+        // ignore storage errors
+      }
+
+      // Verify the user is registered for this event
+      try {
+        const regQ = query(
+          collection(db, 'prijave'),
+          where('uid', '==', user.uid),
+          where('eventId', '==', matchingEvent.id)
+        );
+        const regSnap = await getDocs(regQ);
+        const isRegistered = !regSnap.empty && regSnap.docs.some(d => {
+          const data = d.data();
+          return data.status !== 'cancelled' && data.status !== 'rejected';
+        });
+
+        setShowLiveModal(isRegistered);
+      } catch (err) {
+        console.warn('Navbar checkLiveModal error:', err);
+      }
+    };
+
+    checkLiveModal();
+  }, [user, matchingEvent, location.pathname]);
+
+  const handleDismissLiveModal = (eventId: string) => {
+    try {
+      sessionStorage.setItem('dismissed_matching_live_' + eventId, 'true');
+    } catch {
+      // ignore
+    }
+    setShowLiveModal(false);
+  };
+
 
   const handleGoogleLogin = async () => {
     try {
@@ -170,10 +231,16 @@ export default function Navbar() {
               {matchingEvent && (
                 <Link
                   to={`/matching?eventId=${matchingEvent.id}`}
-                  className="flex items-center gap-1.5 bg-gradient-to-r from-rose-500 to-brand text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-sm shadow-rose-500/20 hover:scale-105 transition-transform"
+                  className="relative group inline-flex items-center gap-2 bg-gradient-to-r from-rose-600 via-pink-600 to-brand hover:from-rose-500 hover:to-brand-light text-white text-xs font-bold px-3.5 py-1.5 rounded-full shadow-md shadow-rose-500/25 ring-2 ring-rose-400/50 hover:ring-rose-400 hover:scale-105 transition-all animate-pulse"
+                  title="Matching je u tijeku – otvori i označi favorite!"
                 >
-                  <Flame size={14} className="animate-pulse text-amber-300" />
-                  <span>Matching</span>
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-300 opacity-90"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-300"></span>
+                  </span>
+                  <Flame size={14} className="text-amber-300 fill-amber-300 shrink-0" />
+                  <span className="tracking-wide">Matching u tijeku</span>
+                  <ArrowUpRight size={14} className="text-amber-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
                 </Link>
               )}
 
@@ -244,7 +311,7 @@ export default function Navbar() {
               {matchingEvent && (
                 <Link
                   to={`/matching?eventId=${matchingEvent.id}`}
-                  className="relative inline-flex items-center gap-1.5 bg-gradient-to-r from-rose-500 via-pink-600 to-brand text-white text-[11px] font-extrabold px-3 py-1.5 rounded-full shadow-md shadow-rose-500/30 border border-white/50 animate-pulse hover:scale-105 transition-all"
+                  className="relative inline-flex items-center gap-1.5 bg-gradient-to-r from-rose-600 via-pink-600 to-brand text-white text-[11px] font-extrabold px-3 py-1.5 rounded-full shadow-md shadow-rose-500/30 border border-white/50 animate-pulse hover:scale-105 transition-all"
                   title="Matching je u tijeku - otvori!"
                 >
                   <span className="relative flex h-2 w-2">
@@ -252,7 +319,8 @@ export default function Navbar() {
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-300"></span>
                   </span>
                   <Flame size={13} className="text-amber-300 fill-amber-300 shrink-0" />
-                  <span className="whitespace-nowrap tracking-wide uppercase text-[10px] drop-shadow-xs font-bold">Matching u tijeku</span>
+                  <span className="whitespace-nowrap tracking-wide uppercase text-[10px] drop-shadow-xs font-bold">Matching</span>
+                  <ArrowUpRight size={13} className="text-amber-200 shrink-0" />
                 </Link>
               )}
               <button
@@ -269,6 +337,69 @@ export default function Navbar() {
           </div>
         </div>
       </header>
+      {/* Event-Day Live Matching Modal */}
+      {showLiveModal && matchingEvent && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in"
+          onClick={() => handleDismissLiveModal(matchingEvent.id)}
+        >
+          <div 
+            className="bg-white/95 backdrop-blur-xl border border-rose-200/90 rounded-3xl shadow-2xl p-6 sm:p-8 max-w-md w-full text-center relative animate-fade-in-up"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close button */}
+            <button
+              onClick={() => handleDismissLiveModal(matchingEvent.id)}
+              className="absolute top-4 right-4 p-2 text-brand/50 hover:text-brand hover:bg-brand/5 rounded-full transition-colors cursor-pointer"
+              aria-label="Zatvori"
+            >
+              <X size={20} />
+            </button>
+
+            {/* Glowing animated Flame icon */}
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-rose-500 via-pink-500 to-amber-400 text-white flex items-center justify-center mx-auto mb-4 shadow-lg shadow-rose-500/30">
+              <Flame size={32} className="fill-white animate-pulse" />
+            </div>
+
+            <div className="inline-flex items-center gap-1.5 bg-rose-100 text-rose-800 text-[11px] font-extrabold uppercase tracking-wider px-3.5 py-1 rounded-full mb-3">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-500 opacity-90"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+              </span>
+              <span>Matching Uživo je u tijeku</span>
+            </div>
+
+            <h3 className="font-serif text-2xl font-bold text-brand mb-2">
+              Večerašnji matching je otvoren!
+            </h3>
+
+            <p className="text-xs sm:text-sm text-brand/80 mb-6 leading-relaxed font-light">
+              Prijavljen/a si na susret <strong>{matchingEvent.title}</strong> koji se održava danas! Uđi i označi osobe koje su ti se svidjele kako biste saznali je li kemija obostrana.
+            </p>
+
+            <div className="flex flex-col gap-2.5">
+              <Link
+                to={`/matching?eventId=${matchingEvent.id}`}
+                onClick={() => handleDismissLiveModal(matchingEvent.id)}
+                className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-rose-600 via-pink-600 to-brand hover:from-rose-500 hover:to-brand-light text-white font-bold py-3.5 px-6 rounded-2xl text-sm shadow-xl shadow-rose-500/25 transition-all hover:scale-[1.02] cursor-pointer"
+              >
+                <Flame size={16} className="text-amber-300 fill-amber-300 animate-pulse" />
+                <span>Uđi u matching uživo</span>
+                <ArrowUpRight size={18} />
+              </Link>
+
+              <button
+                type="button"
+                onClick={() => handleDismissLiveModal(matchingEvent.id)}
+                className="text-xs text-brand/60 hover:text-brand font-medium py-2 transition-colors cursor-pointer"
+              >
+                Možda kasnije
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
 
       {/* Mobile Drawer Navigation Menu */}
       {mobileMenuOpen && (

@@ -66,6 +66,30 @@ export function parseEventDate(dateStr?: string | null): Date | null {
 }
 
 /**
+ * Checks if today is the day of the event.
+ */
+export function isEventDay(dateStr?: string | null): boolean {
+  const d = parseEventDate(dateStr);
+  if (!d) return false;
+  const now = new Date();
+  return (
+    now.getFullYear() === d.getFullYear() &&
+    now.getMonth() === d.getMonth() &&
+    now.getDate() === d.getDate()
+  );
+}
+
+/**
+ * Checks if the event day has already passed (now >= end of event day midnight).
+ */
+export function isEventDayPassed(dateStr?: string | null): boolean {
+  const d = parseEventDate(dateStr);
+  if (!d) return false;
+  const endOfDay = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1, 0, 0, 0, 0);
+  return new Date() >= endOfDay;
+}
+
+/**
  * Returns registration closure time: midnight at the end of the event day (i.e. day + 1 at 00:00:00).
  * Example: Event on 11.12. closes on 12.12. at 00:00:00.
  */

@@ -209,9 +209,6 @@ export default function TermsOfService() {
               <p>
                 <strong>Pravovremeno otkazivanje:</strong> Ako ste spriječeni doći, obvezni ste obavijestiti Organizatora najkasnije <strong>24 do 48 sati prije početka susreta</strong> (putem e-maila ili Instagram poruke), kako bismo mogli ponuditi mjesto osobi s liste čekanja.
               </p>
-              <p>
-                <strong>Neopravdani nedolazak:</strong> Osobe koje potvrde dolazak, a ne pojave se na događaju bez prethodne najave, gube mogućnost sudjelovanja na budućim susretima Organizatora.
-              </p>
             </div>
           </section>
 

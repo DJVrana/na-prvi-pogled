@@ -159,7 +159,7 @@ export default function Footer() {
             <div className="space-y-3 text-sm">
               <div className="flex items-start gap-2.5 text-peach-dark/80">
                 <MapPin size={18} className="text-amber-400 shrink-0 mt-0.5" />
-                <span>Zagreb, Hrvatska (Ugodni barovi u centru grada)</span>
+                <span>Zagreb, Hrvatska</span>
               </div>
               <div className="flex items-center gap-2.5 text-peach-dark/80">
                 <Mail size={18} className="text-amber-400 shrink-0" />
@@ -194,7 +194,7 @@ export default function Footer() {
             </Link>
           </div>
           <p className="flex items-center gap-1.5">
-            Stvoreno s <Heart size={13} className="text-rose-400 fill-rose-400" /> za iskrene i nezaboravne susrete
+            Stvoreno sa <Heart size={13} className="text-rose-400 fill-rose-400" /> za iskrene i nezaboravne susrete
           </p>
         </div>
 

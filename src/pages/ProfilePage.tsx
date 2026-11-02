@@ -36,12 +36,14 @@ import {
   ShieldCheck,
   Check,
   CreditCard,
-  ChevronRight
+  ChevronRight,
+  ArrowUpRight
 } from 'lucide-react';
 import { FaGoogle, FaInstagram } from 'react-icons/fa';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import SEO from '../components/SEO';
+import { isEventMatchingActive } from '../utils/eventLifecycle';
 
 interface UserRegistration {
   id: string;
@@ -595,6 +597,46 @@ export default function ProfilePage() {
         {/* TAB 1: REGISTRATIONS */}
         {activeTab === 'registrations' && (
           <section className="space-y-4">
+            {/* Prominent Active Matching Banner on Profile */}
+            {(() => {
+              const activeMatchingReg = registrations.find(r => 
+                r.eventDetails && 
+                isEventMatchingActive(r.eventDetails) && 
+                r.status !== 'cancelled' && 
+                r.status !== 'rejected'
+              );
+              if (!activeMatchingReg) return null;
+              return (
+                <div className="p-6 sm:p-7 rounded-3xl bg-gradient-to-r from-rose-600 via-pink-600 to-brand text-white shadow-xl shadow-rose-500/25 border border-white/30 relative overflow-hidden">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5 relative z-10">
+                    <div className="space-y-1.5">
+                      <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider text-amber-200">
+                        <span className="relative flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-300 opacity-90"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-300"></span>
+                        </span>
+                        <Flame size={14} className="text-amber-300 fill-amber-300" />
+                        <span>Matching je u tijeku!</span>
+                      </div>
+                      <h3 className="text-xl sm:text-2xl font-serif font-bold text-white">
+                        Označi osobe koje su ti se svidjele
+                      </h3>
+                      <p className="text-xs sm:text-sm text-white/90 max-w-xl leading-relaxed">
+                        Matching za susret <strong>{activeMatchingReg.eventDetails?.title}</strong> ({activeMatchingReg.eventDetails?.dateStr}) je trenutno aktivan. Uđi i odaberi svoje favorite!
+                      </p>
+                    </div>
+                    <Link
+                      to={`/matching?eventId=${activeMatchingReg.eventId}`}
+                      className="inline-flex items-center justify-center gap-2 bg-white hover:bg-peach text-brand font-bold text-sm px-6 py-3.5 rounded-full shadow-lg hover:scale-105 transition-all shrink-0 animate-pulse"
+                    >
+                      <Flame size={16} className="text-brand fill-brand" />
+                      <span>Otvori Matching</span>
+                      <ArrowUpRight size={18} />
+                    </Link>
+                  </div>
+                </div>
+              );
+            })()}
             {loadingData ? (
               <div className="bg-white/60 backdrop-blur-md rounded-3xl p-12 text-center text-brand/60 flex flex-col items-center justify-center border border-white/80">
                 <Loader2 size={32} className="animate-spin mb-3 text-brand/50" />
@@ -774,18 +816,15 @@ export default function ProfilePage() {
                           </a>
                         )}
 
-                        {/* Matching Button if enabled and user was accepted */}
-                        {isMatchingActive && status === 'accepted' && (
+                        {/* Matching Button if enabled */}
+                        {isMatchingActive && (status === 'accepted' || status === 'pending') && (
                           <Link
                             to={`/matching?eventId=${reg.eventId}`}
-                            className={`inline-flex items-center justify-center gap-2 text-white px-5 py-3 rounded-2xl text-xs font-bold shadow-md hover:scale-[1.02] transition-all ${
-                              eventInfo?.matchingPhase === 'live'
-                                ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-500/20'
-                                : 'bg-gradient-to-r from-rose-500 to-brand hover:shadow-rose-500/20'
-                            }`}
+                            className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-rose-600 via-pink-600 to-brand hover:from-rose-500 hover:to-brand-light text-white px-5 py-3 rounded-2xl text-xs font-bold shadow-md shadow-rose-500/25 hover:scale-[1.02] transition-all animate-pulse"
                           >
-                            <Flame size={15} className={eventInfo?.matchingPhase === 'live' ? 'animate-pulse' : ''} />
-                            <span>{eventInfo?.matchingPhase === 'live' ? 'Matching Uživo 🔴' : 'Speed Dating Matching 💖'}</span>
+                            <Flame size={15} className="text-amber-300 fill-amber-300 shrink-0" />
+                            <span>{eventInfo?.matchingPhase === 'live' ? 'Matching Uživo 🔴' : 'Uđi u Matching'}</span>
+                            <ArrowUpRight size={14} className="text-amber-200" />
                           </Link>
                         )}
 
