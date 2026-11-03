@@ -481,21 +481,32 @@ export default function ContactPage() {
                   question: 'Kako se prijaviti na nadolazeći event?',
                   answer: (
                     <span>
-                      Prijave se vrše direktno na stranici{' '}
-                      <a href="/eventi" className="font-semibold underline text-brand">
+                      Prijaviti se možete putem naše stranice{' '}
+                      <Link to="/eventi" className="font-semibold underline text-brand hover:text-brand-light">
                         Eventi
-                      </a>{' '}
-                      ili na početnoj stranici klikom na željeni termin. Dovoljno je odabrati dobnu skupinu i ispuniti kratku prijavnicu.
+                      </Link>{' '}
+                      ili na početnoj stranici klikom na termin eventa koji vam odgovara. Nakon odabira termina potrebno je ispuniti prijavnicu s traženim podacima. Po završetku prijave prikazat će vam se poveznica na CoreEvent, putem kojeg možete kupiti ulaznicu za odabrani event.
+                      <span className="block mt-2 font-medium">
+                        <strong className="text-brand font-bold">VAŽNO:</strong> Ispunjavanje prijavnice samo po sebi ne osigurava mjesto na eventu. Vaša prijava smatra se potvrđenom tek nakon uspješne kupnje ulaznice putem CoreEventa i zaprimanja ulaznice. Tek tada imate osigurano mjesto na odabranom događaju.
+                      </span>
                     </span>
                   )
                 },
                 {
                   question: 'Što ako moram otkazati dolazak?',
-                  answer: 'Radi balansa sudionika molimo te da nas obavijestiš barem 48 sati unaprijed putem stranice gdje si se prijavio/la (preko svog profila ili prijavnice) kako bismo tvoje mjesto ponudili osobi s liste čekanja.'
+                  answer: 'Ako ste spriječeni doći na event, molimo vas da nam otkazivanje javite najmanje 48 sati prije početka događaja. Tako ćemo imati dovoljno vremena ponuditi vaše mjesto drugoj zainteresiranoj osobi. Važno nam je da nas o promjeni planova obavijestite na vrijeme kako bismo mogli što bolje organizirati event.'
                 },
                 {
                   question: 'Održavaju li se događaji i u drugim gradovima u Hrvatskoj?',
                   answer: 'Za sada organiziramo speed dating događaje isključivo u Zagrebu, no uskoro dolazimo i u ostale gradove diljem Hrvatske! Ako želiš da speed dating dođe u tvoj grad, slobodno nam pošalji poruku putem kontakt obrasca.'
+                },
+                {
+                  question: 'Kako vas mogu kontaktirati?',
+                  answer: 'Možete nam se javiti putem bilo kojeg od naših dostupnih kanala – e-maila, kontakt obrasca na web stranici ili društvenih mreža (Instagram, Facebook i TikTok). Sve navedene kanale redovito pratimo, stoga odaberite onaj koji vam najviše odgovara, a mi ćemo vam odgovoriti u najkraćem mogućem roku.'
+                },
+                {
+                  question: 'Što ako mi ne stigne vaš e-mail nakon ispunjavanja obrasca?',
+                  answer: 'Ako nakon ispunjavanja obrasca ne dobijete naš e-mail, prvo provjerite mapu neželjene pošte (Spam), jer je moguće da je poruka automatski završila tamo. Ako e-mail nije ni u toj mapi, javite nam se putem nekog od naših kontakt kanala kako bismo provjerili je li sve prošlo u redu.'
                 }
               ]}
             />
