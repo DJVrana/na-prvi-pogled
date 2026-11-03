@@ -118,21 +118,72 @@ export default function ContactPage() {
 
   const contactStructuredData = {
     "@context": "https://schema.org",
-    "@type": "ContactPage",
-    "name": "Kontakt - Na prvi pogled",
-    "description": "Stupite u kontakt s timom Na prvi pogled speed dating susreta u Zagrebu.",
-    "url": "https://naprvipogled.com/kontakt",
-    "mainEntity": {
-      "@type": "Organization",
-      "name": "Na prvi pogled",
-      "email": "naprvipogled.events@gmail.com",
-      "areaServed": "Zagreb, Croatia",
-      "sameAs": [
-        "https://instagram.com/na.prvi.pogled",
-        "https://www.tiktok.com/@na.prvi.pogled",
-        "https://web.facebook.com/profile.php?id=61594619954084"
-      ]
-    }
+    "@graph": [
+      {
+        "@type": "ContactPage",
+        "@id": "https://naprvipogled.com/kontakt#webpage",
+        "name": "Kontakt - Na prvi pogled",
+        "description": "Stupite u kontakt s timom Na prvi pogled speed dating susreta u Zagrebu.",
+        "url": "https://naprvipogled.com/kontakt",
+        "mainEntity": {
+          "@type": "Organization",
+          "name": "Na prvi pogled",
+          "email": "naprvipogled.events@gmail.com",
+          "areaServed": "Zagreb, Croatia",
+          "sameAs": [
+            "https://instagram.com/na.prvi.pogled",
+            "https://www.tiktok.com/@na.prvi.pogled",
+            "https://web.facebook.com/profile.php?id=61594619954084"
+          ]
+        }
+      },
+      {
+        "@type": "FAQPage",
+        "@id": "https://naprvipogled.com/kontakt#faq",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Kako se prijaviti na nadolazeći event?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Prijaviti se možete putem naše stranice Eventi ili na početnoj stranici klikom na termin eventa koji vam odgovara. Nakon odabira termina potrebno je ispuniti prijavnicu s traženim podacima. Po završetku prijave prikazat će vam se poveznica na CoreEvent, putem kojeg možete kupiti ulaznicu za odabrani event. VAŽNO: Ispunjavanje prijavnice samo po sebi ne osigurava mjesto na eventu. Vaša prijava smatra se potvrđenom tek nakon uspješne kupnje ulaznice putem CoreEventa i zaprimanja ulaznice. Tek tada imate osigurano mjesto na odabranom događaju."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Što ako moram otkazati dolazak?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Ako ste spriječeni doći na event, molimo vas da nam otkazivanje javite najmanje 48 sati prije početka događaja. Tako ćemo imati dovoljno vremena ponuditi vaše mjesto drugoj zainteresiranoj osobi. Važno nam je da nas o promjeni planova obavijestite na vrijeme kako bismo mogli što bolje organizirati event."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Održavaju li se događaji i u drugim gradovima u Hrvatskoj?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Za sada organiziramo speed dating događaje isključivo u Zagrebu, no uskoro dolazimo i u ostale gradove diljem Hrvatske! Ako želiš da speed dating dođe u tvoj grad, slobodno nam pošalji poruku putem kontakt obrasca."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Kako vas mogu kontaktirati?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Možete nam se javiti putem bilo kojeg od naših dostupnih kanala – e-maila, kontakt obrasca na web stranici ili društvenih mreža (Instagram, Facebook i TikTok). Sve navedene kanale redovito pratimo, stoga odaberite onaj koji vam najviše odgovara, a mi ćemo vam odgovoriti u najkraćem mogućem roku."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Što ako mi ne stigne vaš e-mail nakon ispunjavanja obrasca?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Ako nakon ispunjavanja obrasca ne dobijete naš e-mail, prvo provjerite mapu neželjene pošte (Spam), jer je moguće da je poruka automatski završila tamo. Ako e-mail nije ni u toj mapi, javite nam se putem nekog od naših kontakt kanala kako bismo provjerili je li sve prošlo u redu."
+            }
+          }
+        ]
+      }
+    ]
   };
 
   return (

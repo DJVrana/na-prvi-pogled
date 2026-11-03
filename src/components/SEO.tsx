@@ -65,18 +65,18 @@ export default function SEO({
     }
     canonicalLink.setAttribute('href', canonical);
 
-    // Update or insert structured data JSON-LD
-    const existingScript = document.getElementById('json-ld-structured-data');
-    if (existingScript) {
-      existingScript.remove();
-    }
-
+    // Update or insert structured data JSON-LD in DOM
+    let script = document.getElementById('json-ld-structured-data') as HTMLScriptElement | null;
     if (structuredData) {
-      const script = document.createElement('script');
-      script.id = 'json-ld-structured-data';
-      script.type = 'application/ld+json';
-      script.text = JSON.stringify(structuredData);
-      document.head.appendChild(script);
+      if (!script) {
+        script = document.createElement('script');
+        script.id = 'json-ld-structured-data';
+        script.type = 'application/ld+json';
+        document.head.appendChild(script);
+      }
+      script.textContent = JSON.stringify(structuredData);
+    } else if (script) {
+      script.remove();
     }
 
     return () => {
@@ -85,5 +85,11 @@ export default function SEO({
     };
   }, [title, description, canonical, ogType, ogImage, structuredData, keywords]);
 
-  return null;
+  return structuredData ? (
+    <script
+      id="json-ld-structured-data"
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+    />
+  ) : null;
 }

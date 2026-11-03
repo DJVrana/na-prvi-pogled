@@ -93,15 +93,74 @@ export default function Home() {
 
   const homeStructuredData = {
     "@context": "https://schema.org",
-    "@type": "WebSite",
-    "name": "Na prvi pogled - Speed Dating u Hrvatskoj",
-    "url": "https://naprvipogled.com/",
-    "description": "Speed dating susreti i eventi za samce u Hrvatskoj. Upoznaj nekoga uživo kroz kratke razgovore u opuštenoj atmosferi bez aplikacija i dopisivanja.",
-    "potentialAction": {
-      "@type": "SearchAction",
-      "target": "https://naprvipogled.com/eventi?q={search_term_string}",
-      "query-input": "required name=search_term_string"
-    }
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://naprvipogled.com/#website",
+        "name": "Na prvi pogled - Speed Dating u Hrvatskoj",
+        "url": "https://naprvipogled.com/",
+        "description": "Speed dating susreti i eventi za samce u Hrvatskoj. Upoznaj nekoga uživo kroz kratke razgovore u opuštenoj atmosferi bez aplikacija i dopisivanja.",
+        "potentialAction": {
+          "@type": "SearchAction",
+          "target": "https://naprvipogled.com/eventi?q={search_term_string}",
+          "query-input": "required name=search_term_string"
+        }
+      },
+      {
+        "@type": "FAQPage",
+        "@id": "https://naprvipogled.com/#faq",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Kako se prijaviti na nadolazeći event?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Prijaviti se možete putem naše stranice Eventi ili na početnoj stranici klikom na termin eventa koji vam odgovara. Nakon odabira termina potrebno je ispuniti prijavnicu s traženim podacima. Po završetku prijave prikazat će vam se poveznica na CoreEvent, putem kojeg možete kupiti ulaznicu za odabrani event. VAŽNO: Ispunjavanje prijavnice samo po sebi ne osigurava mjesto na eventu. Vaša prijava smatra se potvrđenom tek nakon uspješne kupnje ulaznice putem CoreEventa i zaprimanja ulaznice. Tek tada imate osigurano mjesto na odabranom događaju."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Postoji li dress code?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Preporučujemo da na event dođete uredno i pristojno odjeveni, u odjeći u kojoj se osjećate ugodno i samopouzdano. Ne postoji strogi dress code niti je potrebno posebno svečano odijevanje – najvažnije je da odaberete odjeću primjerenu prigodi i u kojoj se osjećate najbolje."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Kako funkcionira matching sustav?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Matching sustav funkcionira na principu diskretnog dijeljenja kontaktnih podataka. Tijekom eventa, na svom profilu na našoj stranici možete označiti sudionike koji su vam se svidjeli. Ako je interes obostran, putem e-maila šaljemo vam međusobne kontaktne podatke kako biste mogli nastaviti komunikaciju. Na ovaj način osiguravamo da vaše kontaktne podatke dobije isključivo osoba kojoj ste ih i sami željeli podijeliti, uz obostrani interes."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Kakvo piće imam u izboru?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Na našim eventima očekuje vas širok izbor pića kako bi svatko mogao pronaći nešto po svom ukusu. U ponudi su gazirani i negazirani sokovi, pivo, vino i druga pića, tako da ćete bez problema pronaći nešto za sebe. Želimo da se tijekom cijelog druženja osjećate ugodno i opušteno!"
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Mogu li povesti nekoga kao podršku?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Naši eventi zamišljeni su kao druženja namijenjena isključivo prijavljenim sudionicima. Zbog ograničenog broja mjesta i želje da svima osiguramo ugodno iskustvo, nažalost nije moguće povesti dodatnu pratnju koja nije prijavljena na event. Želimo izbjeći nepotrebnu gužvu i osigurati dovoljno prostora za sve sudionike."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Što ako ne znam o čemu razgovarati s drugom osobom?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Nema problema. Tijekom eventa na ekranima se vrte dvije prezentacije s pitanjima i prijedlozima tema za razgovor koje vam mogu pomoći da lakše započnete razgovor i razbijete početnu tremu."
+            }
+          }
+        ]
+      }
+    ]
   };
 
   return (
