@@ -236,7 +236,7 @@ export default function AdminDashboard() {
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>(REMINDER_TEMPLATES[0].id);
   const [reminderSubject, setReminderSubject] = useState<string>(REMINDER_TEMPLATES[0].subject);
   const [reminderBody, setReminderBody] = useState<string>(REMINDER_TEMPLATES[0].body);
-  const [reminderRecipientsMode, setReminderRecipientsMode] = useState<'accepted' | 'all_active' | 'custom'>('accepted');
+  const [reminderRecipientsMode, setReminderRecipientsMode] = useState<'accepted' | 'not_accepted' | 'all_active' | 'custom'>('accepted');
   const [customSelectedRecipientIds, setCustomSelectedRecipientIds] = useState<string[]>([]);
   const [reminderPreviewGender, setReminderPreviewGender] = useState<'M' | 'Ž'>('M');
   const [reminderActiveTab, setReminderActiveTab] = useState<'edit' | 'preview'>('edit');
@@ -306,6 +306,8 @@ export default function AdminDashboard() {
     const relevantPrijave = reminderEvent ? prijave.filter(p => !p.eventId || p.eventId === reminderEvent.id) : prijave;
     if (reminderRecipientsMode === 'accepted') {
       return relevantPrijave.filter(p => p.status === 'accepted');
+    } else if (reminderRecipientsMode === 'not_accepted') {
+      return relevantPrijave.filter(p => p.status !== 'accepted' && p.status !== 'rejected' && p.status !== 'cancelled');
     } else if (reminderRecipientsMode === 'all_active') {
       return relevantPrijave.filter(p => p.status !== 'rejected' && p.status !== 'cancelled');
     } else {
@@ -2322,7 +2324,7 @@ export default function AdminDashboard() {
                     title="Pošalji e-mail podsjetnik prijavljenim sudionicima"
                   >
                     <Mail size={16} />
-                    <span>Pošalji podsjetnik ({approvedCount})</span>
+                    <span>Pošalji podsjetnik</span>
                   </button>
                 )}
                 {selectedEvent && (
@@ -3799,41 +3801,61 @@ export default function AdminDashboard() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3">
-                      <button
-                        type="button"
-                        onClick={() => setReminderRecipientsMode('accepted')}
-                        className={`p-2.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer text-left ${
-                          reminderRecipientsMode === 'accepted'
-                            ? 'bg-white border-brand text-brand shadow-xs ring-1 ring-brand'
-                            : 'bg-gray-100 border-transparent text-gray-600 hover:bg-white'
-                        }`}
-                      >
-                        ✓ Samo odobreni sudionici ({prijave.filter(p => p.status === 'accepted').length})
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setReminderRecipientsMode('all_active')}
-                        className={`p-2.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer text-left ${
-                          reminderRecipientsMode === 'all_active'
-                            ? 'bg-white border-brand text-brand shadow-xs ring-1 ring-brand'
-                            : 'bg-gray-100 border-transparent text-gray-600 hover:bg-white'
-                        }`}
-                      >
-                        Svi aktivni ({prijave.filter(p => p.status !== 'rejected' && p.status !== 'cancelled').length})
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setReminderRecipientsMode('custom')}
-                        className={`p-2.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer text-left ${
-                          reminderRecipientsMode === 'custom'
-                            ? 'bg-white border-brand text-brand shadow-xs ring-1 ring-brand'
-                            : 'bg-gray-100 border-transparent text-gray-600 hover:bg-white'
-                        }`}
-                      >
-                        Prilagođeni odabir ({customSelectedRecipientIds.length})
-                      </button>
-                    </div>
+                    {(() => {
+                      const modalPrijave = reminderEvent ? prijave.filter(p => !p.eventId || p.eventId === reminderEvent.id) : prijave;
+                      const acceptedCount = modalPrijave.filter(p => p.status === 'accepted').length;
+                      const notAcceptedCount = modalPrijave.filter(p => p.status !== 'accepted' && p.status !== 'rejected' && p.status !== 'cancelled').length;
+                      const allActiveCount = modalPrijave.filter(p => p.status !== 'rejected' && p.status !== 'cancelled').length;
+
+                      return (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 mb-3">
+                          <button
+                            type="button"
+                            onClick={() => setReminderRecipientsMode('accepted')}
+                            className={`p-2.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer text-left ${
+                              reminderRecipientsMode === 'accepted'
+                                ? 'bg-white border-brand text-brand shadow-xs ring-1 ring-brand'
+                                : 'bg-gray-100 border-transparent text-gray-600 hover:bg-white'
+                            }`}
+                          >
+                            ✓ Samo prihvaćeni ({acceptedCount})
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setReminderRecipientsMode('not_accepted')}
+                            className={`p-2.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer text-left ${
+                              reminderRecipientsMode === 'not_accepted'
+                                ? 'bg-white border-brand text-brand shadow-xs ring-1 ring-brand'
+                                : 'bg-gray-100 border-transparent text-gray-600 hover:bg-white'
+                            }`}
+                          >
+                            ⏳ Samo neprihvaćeni ({notAcceptedCount})
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setReminderRecipientsMode('all_active')}
+                            className={`p-2.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer text-left ${
+                              reminderRecipientsMode === 'all_active'
+                                ? 'bg-white border-brand text-brand shadow-xs ring-1 ring-brand'
+                                : 'bg-gray-100 border-transparent text-gray-600 hover:bg-white'
+                            }`}
+                          >
+                            👥 Svi aktivni ({allActiveCount})
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setReminderRecipientsMode('custom')}
+                            className={`p-2.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer text-left ${
+                              reminderRecipientsMode === 'custom'
+                                ? 'bg-white border-brand text-brand shadow-xs ring-1 ring-brand'
+                                : 'bg-gray-100 border-transparent text-gray-600 hover:bg-white'
+                            }`}
+                          >
+                            🎯 Prilagođeno ({customSelectedRecipientIds.length})
+                          </button>
+                        </div>
+                      );
+                    })()}
 
                     {reminderRecipientsMode === 'custom' && (
                       <div className="mt-3 pt-3 border-t border-gray-200">
@@ -3858,7 +3880,7 @@ export default function AdminDashboard() {
                           </div>
                         </div>
                         <div className="max-h-40 overflow-y-auto divide-y divide-gray-100 bg-white rounded-lg border border-gray-200 p-2">
-                          {prijave.map(p => {
+                          {(reminderEvent ? prijave.filter(p => !p.eventId || p.eventId === reminderEvent.id) : prijave).map(p => {
                             const isChecked = customSelectedRecipientIds.includes(p.id);
                             return (
                               <label

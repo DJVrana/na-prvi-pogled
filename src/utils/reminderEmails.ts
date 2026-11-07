@@ -92,6 +92,24 @@ Ivan
 Na prvi pogled`
   },
   {
+    id: 'dovrsi_prijavu_neprihvaceni',
+    title: 'Podsjetnik za neprihvaćene (Dovrši prijavu / Ulaznica)',
+    badge: 'Za neprihvaćene',
+    subject: 'Podsjetnik: Tvoja prijava još nije dovršena! 🎟️ | Na prvi pogled',
+    body: `Dragi/a [ime],
+
+samo kratki podsjetnik vezan uz tvoju prijavu za naš speed dating event „[naziv_eventa]“ koji se održava dana [datum] u [vrijeme].
+
+Tvoja prijava je zaprimljena, no kako bi tvoje mjesto bilo sigurno potvrđeno, potrebno je dovršiti prijavu kupnjom ulaznice putem CoreEventa jer se mjesta popunjavaju po redoslijedu kupnje ulaznica.
+
+Ako si ulaznicu već kupio/la, slobodno zanemari ovaj podsjetnik – evidenciju ručno provjeravamo i status u tvom profilu ažurirat ćemo u najkraćem roku!
+
+Vidimo se! 👋
+
+Ivan
+Na prvi pogled`
+  },
+  {
     id: 'custom_blank',
     title: 'Prilagođena poruka (Slobodan unos)',
     badge: 'Prilagođeno',
@@ -232,7 +250,7 @@ export function buildReminderHtml(formattedBodyText: string, eventInfo?: Partial
       Na prvi pogled
     </h1>
     <p style="margin: 6px 0 0 0; font-size: 14px; opacity: 0.95; letter-spacing: 0.3px; color: #ffffff;">
-      Speed Dating susreti u Zagrebu
+      Speed dating obavijest
     </p>
   </div>
 

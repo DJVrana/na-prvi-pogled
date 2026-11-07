@@ -20,6 +20,11 @@ type Pages = {
   "/blog": {
     params: {};
   };
+  "/blog/:slug": {
+    params: {
+      "slug": string;
+    };
+  };
   "/kontakt": {
     params: {};
   };
@@ -46,7 +51,7 @@ type Pages = {
 type RouteFiles = {
   "root.tsx": {
     id: "root";
-    page: "/" | "/eventi" | "/blog" | "/kontakt" | "/prijava" | "/admin" | "/profil" | "/matching" | "/pravila-privatnosti" | "/uvjeti-koristenja";
+    page: "/" | "/eventi" | "/blog" | "/blog/:slug" | "/kontakt" | "/prijava" | "/admin" | "/profil" | "/matching" | "/pravila-privatnosti" | "/uvjeti-koristenja";
   };
   "../pages/Home.tsx": {
     id: "../pages/Home";
@@ -59,6 +64,10 @@ type RouteFiles = {
   "../pages/BlogPage.tsx": {
     id: "../pages/BlogPage";
     page: "/blog";
+  };
+  "../pages/BlogPostPage.tsx": {
+    id: "../pages/BlogPostPage";
+    page: "/blog/:slug";
   };
   "../pages/ContactPage.tsx": {
     id: "../pages/ContactPage";
@@ -95,6 +104,7 @@ type RouteModules = {
   "../pages/Home": unknown;
   "../pages/EventsPage": unknown;
   "../pages/BlogPage": unknown;
+  "../pages/BlogPostPage": unknown;
   "../pages/ContactPage": unknown;
   "../pages/FormPage": unknown;
   "../pages/AdminDashboard": unknown;

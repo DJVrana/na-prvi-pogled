@@ -11,7 +11,8 @@ import {
   Flame,
   ChevronRight,
   Sparkles,
-  ArrowUpRight
+  ArrowUpRight,
+  BookOpen
 } from 'lucide-react';
 import { FaGoogle, FaInstagram, FaTiktok, FaFacebook } from 'react-icons/fa';
 import { onAuthStateChanged, signInWithPopup } from 'firebase/auth';
@@ -160,6 +161,7 @@ export default function Navbar() {
   const navLinks = [
     { name: 'Početna', path: '/', icon: Home },
     { name: 'Eventi', path: '/eventi', icon: Calendar },
+    { name: 'Blog', path: '/blog', icon: BookOpen },
     { name: 'Kontakt', path: '/kontakt', icon: Mail },
   ];
 

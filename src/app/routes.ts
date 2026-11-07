@@ -4,6 +4,7 @@ export default [
   index("../pages/Home.tsx"),
   route("eventi", "../pages/EventsPage.tsx"),
   route("blog", "../pages/BlogPage.tsx"),
+  route("blog/:slug", "../pages/BlogPostPage.tsx"),
   route("kontakt", "../pages/ContactPage.tsx"),
   route("prijava", "../pages/FormPage.tsx"),
   route("admin", "../pages/AdminDashboard.tsx"),
