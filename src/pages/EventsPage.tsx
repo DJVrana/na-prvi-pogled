@@ -21,6 +21,7 @@ import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import SEO from '../components/SEO';
 import FaqAccordion from '../components/FaqAccordion';
+import NewsletterSection from '../components/NewsletterSection';
 import { formatPrice } from '../utils/formatters';
 import { isEventRegistrationOpen, syncEventLifecycle } from '../utils/eventLifecycle';
 import { matchesAgeFilter, getAvailableAgeCategories, type AgeCategoryOption } from '../utils/ageFilter';
@@ -340,15 +341,20 @@ export default function EventsPage() {
               >
                 Prati najave na Instagramu
               </a>
-              <Link
-                to="/kontakt"
+              <a
+                href="#newsletter"
                 className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-white text-brand px-6 py-3 rounded-full text-xs font-bold border border-brand/20 hover:bg-white/80 transition-all"
               >
-                Pošalji upit za listu čekanja
-              </Link>
+                Prijavi se za obavijesti o novim terminima
+              </a>
             </div>
-          </div>
+                    </div>
         )}
+
+        {/* Newsletter subscription section */}
+        <section className="mt-16">
+          <NewsletterSection id="newsletter" />
+        </section>
 
         {/* How it works info section */}
         <section className="mt-24 pt-16 border-t border-brand/15">

@@ -4,7 +4,7 @@ import { db, auth } from '../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import type { User } from 'firebase/auth';
 import { Link, Navigate } from 'react-router';
-import { ArrowLeft, Users, UserRound, ArrowDown01, Loader2, Plus, Calendar as CalendarIcon, CheckCircle2, List, PlayCircle, StopCircle, Trash2, X, ChevronDown, Pencil, Clock, XCircle, Flame, Heart, UserX, Send, Sparkles, AlertCircle, Mail, Eye, FileText, UserCheck, Circle, CreditCard, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Users, Search, RefreshCw, UserRound, ArrowDown01, Loader2, Plus, Calendar as CalendarIcon, CheckCircle2, List, PlayCircle, StopCircle, Trash2, X, ChevronDown, Pencil, Clock, XCircle, Flame, Heart, UserX, Send, Sparkles, AlertCircle, Mail, Eye, FileText, UserCheck, Circle, CreditCard, MessageSquare } from 'lucide-react';
 import emailjs from '@emailjs/browser';
 import { EventAttendancePdfModal } from '../components/EventAttendancePdfModal';
 import { EventCheckInModal } from '../components/EventCheckInModal';
@@ -22,6 +22,13 @@ import {
   buildReminderHtml,
   isMaleGender
 } from '../utils/reminderEmails';
+import {
+  isSubscriberMatchingEvent,
+  buildNewsletterEventHtml,
+  buildCustomNewsletterHtml,
+  sendNewsletterBatch,
+  type NewsletterBatchProgress
+} from '../utils/newsletterEmails';
 
 const ADMIN_UIDS = ['iKe7lzl7Msf7hd3kWyHC1ysyS3C3', 'Izt37mNGtpY82AKZTbyYsnctoxJ2', 'JRms1cPi2Bc513TOW0WBEFZMzrC3'];
 
@@ -156,12 +163,32 @@ export default function AdminDashboard() {
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
 
-  const [activeTab, setActiveTab] = useState<'prijave' | 'events'>('prijave');
+  const [activeTab, setActiveTab] = useState<'prijave' | 'events' | 'newsletter'>('prijave');
 
   // Data states
   const [events, setEvents] = useState<EventData[]>([]);
   const [prijave, setPrijave] = useState<Prijava[]>([]);
   const [selectedEventId, setSelectedEventId] = useState<string>('');
+  // Newsletter subscribers state
+  const [newsletterSubscribers, setNewsletterSubscribers] = useState<any[]>([]);
+  const [newsletterLoading, setNewsletterLoading] = useState(false);
+  const [newsletterSearch, setNewsletterSearch] = useState('');
+  const [newsletterAgeFilter, setNewsletterAgeFilter] = useState('sve');
+  const [copiedNewsletter, setCopiedNewsletter] = useState(false);
+  const [selectedNewsletterSubIds, setSelectedNewsletterSubIds] = useState<string[]>([]);
+
+  // Newsletter broadcast modal state
+  const [sendNewsletterOnCreate, setSendNewsletterOnCreate] = useState(false);
+  const [broadcastModalOpen, setBroadcastModalOpen] = useState(false);
+  const [broadcastRecipientsMode, setBroadcastRecipientsMode] = useState<'filtered' | 'all' | 'selected'>('filtered');
+  const [broadcastTemplateType, setBroadcastTemplateType] = useState<'event' | 'custom'>('event');
+  const [broadcastSelectedEventId, setBroadcastSelectedEventId] = useState<string>('');
+  const [broadcastSubject, setBroadcastSubject] = useState('');
+  const [broadcastBody, setBroadcastBody] = useState('');
+  const [broadcastSending, setBroadcastSending] = useState(false);
+  const [broadcastProgress, setBroadcastProgress] = useState<NewsletterBatchProgress | null>(null);
+  const [broadcastResultNotice, setBroadcastResultNotice] = useState<string | null>(null);
+
 
   // Loading & Error
   const [dataLoading, setDataLoading] = useState(false);
@@ -528,10 +555,24 @@ export default function AdminDashboard() {
     return () => unsubscribe();
   }, []);
 
+  async function fetchNewsletterSubscribers() {
+    try {
+      setNewsletterLoading(true);
+      const snap = await getDocs(collection(db, 'newsletter_subscribers'));
+      const list = snap.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
+      setNewsletterSubscribers(list);
+    } catch (err) {
+      console.error("Greška pri dohvaćanju newsletter pretplatnika:", err);
+    } finally {
+      setNewsletterLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (user && ADMIN_UIDS.includes(user.uid)) {
       fetchEvents();
       fetchFeedbackCounts();
+      fetchNewsletterSubscribers();
     }
   }, [user]);
 
@@ -540,6 +581,165 @@ export default function AdminDashboard() {
       fetchPrijave(selectedEventId);
     }
   }, [selectedEventId, user]);
+
+  const handleDeleteNewsletterSubscriber = async (id: string) => {
+    if (!window.confirm('Sigurno želite ukloniti ovog pretplatnika s liste?')) return;
+    try {
+      await deleteDoc(doc(db, 'newsletter_subscribers', id));
+      setNewsletterSubscribers(prev => prev.filter(s => s.id !== id));
+    } catch (err) {
+      console.error("Greška pri brisanju pretplatnika:", err);
+      alert('Greška pri brisanju pretplatnika.');
+    }
+  };
+
+  const filteredNewsletterSubscribers = useMemo(() => {
+    return newsletterSubscribers.filter(sub => {
+      const q = newsletterSearch.toLowerCase().trim();
+      const matchesSearch = !q || 
+        (sub.email && sub.email.toLowerCase().includes(q)) ||
+        (sub.name && sub.name.toLowerCase().includes(q));
+
+      let matchesAge = true;
+      if (newsletterAgeFilter !== 'sve') {
+        const groups = Array.isArray(sub.ageGroups) ? sub.ageGroups : sub.ageGroup ? [sub.ageGroup] : [];
+        matchesAge = groups.some((g: string) => g.includes(newsletterAgeFilter) || g === 'Sve dobne skupine');
+      }
+
+      return matchesSearch && matchesAge;
+    });
+  }, [newsletterSubscribers, newsletterSearch, newsletterAgeFilter]);
+
+  const handleCopyAllNewsletterEmails = () => {
+    const emails = filteredNewsletterSubscribers
+      .map(s => s.email)
+      .filter(Boolean)
+      .join(', ');
+
+    if (!emails) return;
+
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(emails);
+      setCopiedNewsletter(true);
+      setTimeout(() => setCopiedNewsletter(false), 2500);
+    }
+  };
+
+  const matchingSubscribersForNewEvent = useMemo(() => {
+    if (!newEvent.ageGroup?.trim()) return [];
+    return newsletterSubscribers.filter(sub => isSubscriberMatchingEvent(sub, newEvent));
+  }, [newsletterSubscribers, newEvent]);
+
+  const handleOpenNewsletterEmailModal = (overrideEvent?: any, overrideRecipients?: any[]) => {
+    setBroadcastResultNotice(null);
+    setBroadcastProgress(null);
+    setBroadcastSending(false);
+
+    if (overrideEvent) {
+      setBroadcastTemplateType('event');
+      setBroadcastSelectedEventId(overrideEvent.id || '');
+      setBroadcastSubject(`💌 Otvorene prijave za novi Speed Dating (${overrideEvent.ageGroup || 'Zagreb'})!`);
+      if (overrideRecipients && overrideRecipients.length > 0) {
+        setSelectedNewsletterSubIds(overrideRecipients.map(r => r.id));
+        setBroadcastRecipientsMode('selected');
+      } else {
+        setBroadcastRecipientsMode('filtered');
+      }
+    } else {
+      const activeEvt = events.find(e => e.isActive) || events[0];
+      if (activeEvt) {
+        setBroadcastSelectedEventId(activeEvt.id);
+        setBroadcastSubject(`💌 Otvorene prijave za novi Speed Dating (${activeEvt.ageGroup || 'Zagreb'})!`);
+        setBroadcastTemplateType('event');
+      } else {
+        setBroadcastTemplateType('custom');
+        setBroadcastSubject('💌 Novosti s platforme Na prvi pogled');
+      }
+      setBroadcastBody('Pozdrav svima,\n\nDonosimo vam nove informacije i termine za nadolazeće Speed Dating susrete u Zagrebu!\n\nVidimo se uskoro!');
+      if (selectedNewsletterSubIds.length > 0) {
+        setBroadcastRecipientsMode('selected');
+      } else {
+        setBroadcastRecipientsMode('filtered');
+      }
+    }
+
+    setBroadcastModalOpen(true);
+  };
+
+  const broadcastRecipients = useMemo(() => {
+    if (broadcastRecipientsMode === 'selected') {
+      return newsletterSubscribers.filter(s => selectedNewsletterSubIds.includes(s.id));
+    }
+    if (broadcastRecipientsMode === 'all') {
+      return newsletterSubscribers;
+    }
+    return filteredNewsletterSubscribers;
+  }, [broadcastRecipientsMode, selectedNewsletterSubIds, newsletterSubscribers, filteredNewsletterSubscribers]);
+
+  const handleToggleSelectSubscriber = (id: string) => {
+    setSelectedNewsletterSubIds(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
+
+  const handleSelectAllFilteredSubscribers = () => {
+    if (selectedNewsletterSubIds.length === filteredNewsletterSubscribers.length) {
+      setSelectedNewsletterSubIds([]);
+    } else {
+      setSelectedNewsletterSubIds(filteredNewsletterSubscribers.map(s => s.id));
+    }
+  };
+
+  const handleStartNewsletterBroadcast = async () => {
+    if (broadcastRecipients.length === 0) {
+      alert('Nema primatelja za slanje.');
+      return;
+    }
+    if (!broadcastSubject.trim()) {
+      alert('Molimo unesite naslov e-maila.');
+      return;
+    }
+
+    const targetEvent = events.find(e => e.id === broadcastSelectedEventId);
+    if (broadcastTemplateType === 'event' && !targetEvent) {
+      alert('Molimo odaberite događaj za koji šaljete obavijest.');
+      return;
+    }
+
+    if (!window.confirm(`Jeste li sigurni da želite poslati newsletter na ${broadcastRecipients.length} e-mail adresa?`)) {
+      return;
+    }
+
+    setBroadcastSending(true);
+    setBroadcastResultNotice(null);
+
+    try {
+      const res = await sendNewsletterBatch(
+        broadcastRecipients,
+        broadcastSubject.trim(),
+        (sub) => {
+          if (broadcastTemplateType === 'event' && targetEvent) {
+            return buildNewsletterEventHtml(targetEvent, sub.name);
+          } else {
+            return buildCustomNewsletterHtml(broadcastSubject.trim(), broadcastBody, sub.name);
+          }
+        },
+        (progress) => {
+          setBroadcastProgress({ ...progress });
+        },
+        300
+      );
+
+      setBroadcastResultNotice(
+        `Slanje dovršeno! Uspješno poslano: ${res.success}, Neuspjelo: ${res.failed}.`
+      );
+    } catch (err: any) {
+      console.error('Greška pri slanju newslettera:', err);
+      setBroadcastResultNotice(`Došlo je do greške: ${err?.message || err}`);
+    } finally {
+      setBroadcastSending(false);
+    }
+  };
 
   const fetchFeedbackCounts = async () => {
     try {
@@ -702,6 +902,7 @@ export default function AdminDashboard() {
     });
     setNewCustomFields([]);
     setOpenFieldDropdownIndex(null);
+    setSendNewsletterOnCreate(false);
   };
 
   const handleSaveEvent = async (e: React.FormEvent) => {
@@ -715,6 +916,7 @@ export default function AdminDashboard() {
         };
       });
 
+      let savedDocId = editingEventId || '';
       if (editingEventId) {
         await updateDoc(doc(db, 'events', editingEventId), {
           ...newEvent,
@@ -725,7 +927,7 @@ export default function AdminDashboard() {
           // ne mijenjamo createdAt ni isActive prilikom uređivanja
         });
       } else {
-        await addDoc(collection(db, 'events'), {
+        const addedDoc = await addDoc(collection(db, 'events'), {
           ...newEvent,
           maxRegistrations: newEvent.maxRegistrations ? Number(newEvent.maxRegistrations) : null,
           customFields: mappedCustomFields,
@@ -733,9 +935,23 @@ export default function AdminDashboard() {
           isActive: false, // Default to inactive, admin must manually activate
           createdAt: serverTimestamp()
         });
+        savedDocId = addedDoc.id;
       }
+
+      const shouldBroadcast = !editingEventId && sendNewsletterOnCreate;
+      const createdEventData = { ...newEvent, id: savedDocId };
+
       handleCancelEdit();
       fetchEvents();
+
+      if (shouldBroadcast) {
+        const matched = newsletterSubscribers.filter(sub => isSubscriberMatchingEvent(sub, createdEventData));
+        if (matched.length > 0) {
+          handleOpenNewsletterEmailModal(createdEventData, matched);
+        } else {
+          alert(`Događaj je uspješno kreiran! Nije pronađen nijedan newsletter pretplatnik u dobnoj skupini "${newEvent.ageGroup}".`);
+        }
+      }
     } catch (err) {
       console.error("Error saving event:", err);
       setError("Greška pri spremanju događaja.");
@@ -1677,15 +1893,26 @@ export default function AdminDashboard() {
           <div className="flex bg-white rounded-lg p-1 shadow-sm border border-gray-200">
             <button
               onClick={() => setActiveTab('prijave')}
-              className={`px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2 transition-colors ${activeTab === 'prijave' ? 'bg-brand text-white' : 'text-gray-600 hover:bg-gray-50'}`}
+              className={`px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2 transition-colors cursor-pointer ${activeTab === 'prijave' ? 'bg-brand text-white shadow-xs' : 'text-gray-600 hover:bg-gray-50'}`}
             >
               <List size={16} /> Prijave
             </button>
             <button
               onClick={() => setActiveTab('events')}
-              className={`px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2 transition-colors ${activeTab === 'events' ? 'bg-brand text-white' : 'text-gray-600 hover:bg-gray-50'}`}
+              className={`px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2 transition-colors cursor-pointer ${activeTab === 'events' ? 'bg-brand text-white shadow-xs' : 'text-gray-600 hover:bg-gray-50'}`}
             >
               <CalendarIcon size={16} /> Događaji
+            </button>
+            <button
+              onClick={() => setActiveTab('newsletter')}
+              className={`px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2 transition-colors cursor-pointer ${activeTab === 'newsletter' ? 'bg-brand text-white shadow-xs' : 'text-gray-600 hover:bg-gray-50'}`}
+            >
+              <Mail size={16} /> Newsletter
+              {newsletterSubscribers.length > 0 && (
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${activeTab === 'newsletter' ? 'bg-white/20 text-white' : 'bg-brand/10 text-brand'}`}>
+                  {newsletterSubscribers.length}
+                </span>
+              )}
             </button>
           </div>
         </div>
@@ -1814,6 +2041,33 @@ export default function AdminDashboard() {
                         🎟️ <strong>Napomena:</strong> Ako unesete CoreEvent link, korisnicima se odmah nakon prijave nudi kupnja ulaznice (broj mjesta je ograničen kvotama na CoreEventu). Ako ostavite prazno, prijave idu po starom principu bez online naplate.
                       </p>
                     </div>
+
+                    {!editingEventId && (
+                      <div className="sm:col-span-2 bg-gradient-to-r from-rose-50 to-amber-50/60 border border-brand/20 rounded-xl p-4 mt-1">
+                        <label className="flex items-start gap-3 cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={sendNewsletterOnCreate}
+                            onChange={(e) => setSendNewsletterOnCreate(e.target.checked)}
+                            className="mt-1 h-4 w-4 rounded border-brand/30 text-brand focus:ring-brand cursor-pointer"
+                          />
+                          <div>
+                            <span className="font-bold text-xs sm:text-sm text-brand flex items-center gap-1.5">
+                              <Mail size={15} />
+                              Pošalji newsletter obavijest odgovarajućoj dobnoj skupini odmah po kreiranju
+                            </span>
+                            <p className="text-[11px] sm:text-xs text-gray-600 mt-1 leading-relaxed">
+                              Ako je označeno, po spremanju će se automatski otvoriti prozor za slanje newslettera s pripremljenom obavijesti za pretplatnike u dobnoj skupini <strong>{newEvent.ageGroup || 'ovog eventa'}</strong>.
+                            </p>
+                            {matchingSubscribersForNewEvent.length > 0 && (
+                              <span className="inline-flex items-center gap-1 mt-2 px-2.5 py-1 rounded-full bg-brand/10 text-brand text-[11px] font-bold">
+                                👥 Pronađeno pretplatnika: {matchingSubscribersForNewEvent.length}
+                              </span>
+                            )}
+                          </div>
+                        </label>
+                      </div>
+                    )}
                   </div>
 
                   {/* Custom Fields Section */}
@@ -2693,6 +2947,220 @@ export default function AdminDashboard() {
             </div>
           </>
         )}
+
+        {activeTab === 'newsletter' && (
+          <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm space-y-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-gray-100">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                  <Mail size={20} className="text-brand" />
+                  Newsletter pretplatnici ({filteredNewsletterSubscribers.length})
+                </h2>
+                <p className="text-xs text-gray-500 mt-1">
+                  Korisnici prijavljeni za obavijesti o novim terminima po dobnim skupinama
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleOpenNewsletterEmailModal()}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-brand text-white text-xs font-semibold rounded-lg hover:bg-brand-light transition-all shadow-xs cursor-pointer"
+                >
+                  <Send size={14} />
+                  <span>
+                    {selectedNewsletterSubIds.length > 0
+                      ? `Pošalji označenima (${selectedNewsletterSubIds.length})`
+                      : 'Pošalji e-mail pretplatnicima'}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCopyAllNewsletterEmails}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white text-gray-700 border border-gray-200 text-xs font-semibold rounded-lg hover:bg-gray-50 transition-all shadow-xs cursor-pointer"
+                >
+                  {copiedNewsletter ? <CheckCircle2 size={14} className="text-green-600" /> : <Mail size={14} />}
+                  <span>{copiedNewsletter ? 'Kopirano!' : `Kopiraj e-mailove (${filteredNewsletterSubscribers.length})`}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={fetchNewsletterSubscribers}
+                  disabled={newsletterLoading}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 bg-gray-100 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-200 transition-all cursor-pointer"
+                >
+                  <RefreshCw size={14} className={newsletterLoading ? 'animate-spin' : ''} />
+                  <span>Osvježi</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Filter and Search Bar */}
+            <div className="flex flex-col sm:flex-row items-center gap-3">
+              <div className="w-full sm:flex-1 relative">
+                <input
+                  type="text"
+                  value={newsletterSearch}
+                  onChange={(e) => setNewsletterSearch(e.target.value)}
+                  placeholder="Pretraži po e-mailu ili imenu..."
+                  className="w-full pl-9 pr-4 py-2 rounded-lg border border-gray-200 text-xs text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
+                />
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              </div>
+
+              <div className="w-full sm:w-auto flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+                <span className="text-[11px] font-semibold text-gray-500 whitespace-nowrap">Filter dobi:</span>
+                {['sve', '20 – 28', '25 – 35', '30 – 42', '40 – 55', '50+'].map((group) => (
+                  <button
+                    key={group}
+                    type="button"
+                    onClick={() => setNewsletterAgeFilter(group)}
+                    className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                      newsletterAgeFilter === group
+                        ? 'bg-brand text-white shadow-xs'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    {group === 'sve' ? 'Sve' : group}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {selectedNewsletterSubIds.length > 0 && (
+              <div className="flex items-center justify-between bg-brand/5 border border-brand/20 rounded-xl px-4 py-2.5 text-xs text-brand font-medium">
+                <span className="flex items-center gap-2">
+                  <UserCheck size={16} />
+                  Označeno <strong>{selectedNewsletterSubIds.length}</strong> od {newsletterSubscribers.length} pretplatnika
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleOpenNewsletterEmailModal()}
+                    className="px-3 py-1 bg-brand text-white rounded-lg font-semibold hover:bg-brand-light transition-all cursor-pointer"
+                  >
+                    Pošalji im e-mail
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedNewsletterSubIds([])}
+                    className="px-2 py-1 text-gray-500 hover:text-gray-700 hover:bg-gray-200/60 rounded-lg cursor-pointer"
+                  >
+                    Očisti odabir
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Subscribers Table */}
+            {newsletterLoading ? (
+              <div className="py-16 text-center text-gray-400">
+                <Loader2 size={28} className="animate-spin mx-auto mb-2 text-brand" />
+                <p className="text-xs">Učitavanje pretplatnika...</p>
+              </div>
+            ) : filteredNewsletterSubscribers.length === 0 ? (
+              <div className="py-12 text-center text-gray-500 bg-gray-50 rounded-xl border border-gray-100">
+                <Mail size={32} className="mx-auto text-gray-300 mb-2" />
+                <p className="text-sm font-semibold">Nema pronađenih pretplatnika</p>
+                <p className="text-xs text-gray-400 mt-0.5">Prijave na newsletter prikazat će se ovdje.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto rounded-xl border border-gray-200">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-gray-50 text-gray-600 font-semibold uppercase tracking-wider text-[10px] border-b border-gray-200">
+                    <tr>
+                      <th className="py-3 px-3 w-8 text-center">
+                        <input
+                          type="checkbox"
+                          checked={
+                            filteredNewsletterSubscribers.length > 0 &&
+                            filteredNewsletterSubscribers.every(s => selectedNewsletterSubIds.includes(s.id))
+                          }
+                          onChange={handleSelectAllFilteredSubscribers}
+                          className="rounded border-gray-300 text-brand focus:ring-brand cursor-pointer"
+                          title="Označi sve filtrirane"
+                        />
+                      </th>
+                      <th className="py-3 px-4">E-mail adresa</th>
+                      <th className="py-3 px-4">Ime</th>
+                      <th className="py-3 px-4">Dobne skupine / Godine</th>
+                      <th className="py-3 px-4">Spol</th>
+                      <th className="py-3 px-4">Datum prijave</th>
+                      <th className="py-3 px-4 text-right">Akcije</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {filteredNewsletterSubscribers.map((sub) => (
+                      <tr 
+                        key={sub.id} 
+                        className={`transition-colors ${
+                          selectedNewsletterSubIds.includes(sub.id) ? 'bg-brand/5' : 'hover:bg-gray-50/70'
+                        }`}
+                      >
+                        <td className="py-3 px-3 text-center">
+                          <input
+                            type="checkbox"
+                            checked={selectedNewsletterSubIds.includes(sub.id)}
+                            onChange={() => handleToggleSelectSubscriber(sub.id)}
+                            className="rounded border-gray-300 text-brand focus:ring-brand cursor-pointer"
+                          />
+                        </td>
+                        <td className="py-3 px-4 font-semibold text-gray-900">
+                          <a href={`mailto:${sub.email}`} className="text-brand hover:underline">
+                            {sub.email}
+                          </a>
+                        </td>
+                        <td className="py-3 px-4 text-gray-600">
+                          {sub.name || <span className="text-gray-300 italic">—</span>}
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="flex flex-wrap gap-1">
+                            {Array.isArray(sub.ageGroups) && sub.ageGroups.length > 0 ? (
+                              sub.ageGroups.map((g: string, i: number) => (
+                                <span key={i} className="inline-block px-2 py-0.5 rounded-full bg-brand/10 text-brand text-[10px] font-semibold">
+                                  {g}
+                                </span>
+                              ))
+                            ) : sub.ageGroup ? (
+                              <span className="inline-block px-2 py-0.5 rounded-full bg-brand/10 text-brand text-[10px] font-semibold">
+                                {sub.ageGroup}
+                              </span>
+                            ) : (
+                              <span className="text-gray-400">Sve</span>
+                            )}
+                            {sub.exactAge && (
+                              <span className="inline-block px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 text-[10px] font-semibold">
+                                {sub.exactAge} god.
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 text-gray-600">
+                          {sub.gender === 'M' ? 'Muško' : sub.gender === 'Ž' ? 'Žensko' : 'Svejedno'}
+                        </td>
+                        <td className="py-3 px-4 text-gray-500">
+                          {sub.updatedAt?.seconds
+                            ? new Date(sub.updatedAt.seconds * 1000).toLocaleDateString('hr-HR')
+                            : sub.subscribedAt ? new Date(sub.subscribedAt).toLocaleDateString('hr-HR') : '—'}
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteNewsletterSubscriber(sub.id)}
+                            className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                            title="Obriši pretplatnika"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
       </div>
 
       {/* Modal za prikaz detalja prijave */}
@@ -4187,6 +4655,266 @@ export default function AdminDashboard() {
             fetchFeedbackCounts();
           }}
         />
+      )}
+
+      {/* MODAL ZA SLANJE NEWSLETTER E-MAILA */}
+      {broadcastModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-white w-full max-w-3xl rounded-2xl shadow-2xl flex flex-col my-auto max-h-[92vh] overflow-hidden border border-gray-100 animate-in fade-in zoom-in-95 duration-150">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gray-50/50">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-brand/10 text-brand flex items-center justify-center">
+                  <Send size={18} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-gray-900 text-base">Slanje Newsletter e-maila</h3>
+                  <p className="text-xs text-gray-500">
+                    Slanje obavijesti pretplatnicima platforme "Na prvi pogled"
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => !broadcastSending && setBroadcastModalOpen(false)}
+                disabled={broadcastSending}
+                className="text-gray-400 hover:text-gray-600 p-2 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer disabled:opacity-30"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6 overflow-y-auto space-y-5">
+              {/* Odabir primatelja */}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">
+                  1. Odaberi primatelje:
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setBroadcastRecipientsMode('filtered')}
+                    className={`p-3 rounded-xl border text-left text-xs transition-all cursor-pointer ${
+                      broadcastRecipientsMode === 'filtered'
+                        ? 'border-brand bg-brand/5 ring-1 ring-brand text-brand font-bold'
+                        : 'border-gray-200 hover:border-gray-300 text-gray-700 bg-white'
+                    }`}
+                  >
+                    <div className="font-semibold">Filtrirani pretplatnici</div>
+                    <div className="text-[11px] opacity-75 mt-0.5">{filteredNewsletterSubscribers.length} primatelja</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setBroadcastRecipientsMode('all')}
+                    className={`p-3 rounded-xl border text-left text-xs transition-all cursor-pointer ${
+                      broadcastRecipientsMode === 'all'
+                        ? 'border-brand bg-brand/5 ring-1 ring-brand text-brand font-bold'
+                        : 'border-gray-200 hover:border-gray-300 text-gray-700 bg-white'
+                    }`}
+                  >
+                    <div className="font-semibold">Svi pretplatnici</div>
+                    <div className="text-[11px] opacity-75 mt-0.5">{newsletterSubscribers.length} primatelja</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setBroadcastRecipientsMode('selected')}
+                    className={`p-3 rounded-xl border text-left text-xs transition-all cursor-pointer ${
+                      broadcastRecipientsMode === 'selected'
+                        ? 'border-brand bg-brand/5 ring-1 ring-brand text-brand font-bold'
+                        : 'border-gray-200 hover:border-gray-300 text-gray-700 bg-white'
+                    }`}
+                  >
+                    <div className="font-semibold">Ručno označeni</div>
+                    <div className="text-[11px] opacity-75 mt-0.5">{selectedNewsletterSubIds.length} primatelja</div>
+                  </button>
+                </div>
+              </div>
+
+              {/* Tip poruke / predložak */}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">
+                  2. Tip poruke:
+                </label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setBroadcastTemplateType('event');
+                      const evt = events.find(e => e.id === broadcastSelectedEventId) || events[0];
+                      if (evt) {
+                        setBroadcastSubject(`💌 Otvorene prijave za novi Speed Dating (${evt.ageGroup || 'Zagreb'})!`);
+                      }
+                    }}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                      broadcastTemplateType === 'event'
+                        ? 'bg-brand text-white shadow-xs'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    <CalendarIcon size={14} /> Obavijest o susretu
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setBroadcastTemplateType('custom');
+                      setBroadcastSubject('💌 Novosti s platforme Na prvi pogled');
+                    }}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                      broadcastTemplateType === 'custom'
+                        ? 'bg-brand text-white shadow-xs'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    <Pencil size={14} /> Prilagođena poruka (Custom)
+                  </button>
+                </div>
+              </div>
+
+              {/* Ako je odabrana obavijest o susretu, biraj događaj */}
+              {broadcastTemplateType === 'event' && (
+                <div className="bg-amber-50/60 border border-amber-200/80 rounded-xl p-4 space-y-3">
+                  <label className="block text-xs font-bold text-amber-900">
+                    Odaberi događaj za najavu:
+                  </label>
+                  <select
+                    value={broadcastSelectedEventId}
+                    onChange={(e) => {
+                      const newId = e.target.value;
+                      setBroadcastSelectedEventId(newId);
+                      const evt = events.find(ev => ev.id === newId);
+                      if (evt) {
+                        setBroadcastSubject(`💌 Otvorene prijave za novi Speed Dating (${evt.ageGroup || 'Zagreb'})!`);
+                      }
+                    }}
+                    className="w-full px-3 py-2 bg-white rounded-lg border border-amber-300 text-xs text-gray-800 font-medium focus:ring-2 focus:ring-brand/20 outline-none"
+                  >
+                    {events.map((ev) => (
+                      <option key={ev.id} value={ev.id}>
+                        {ev.title} — {ev.dateStr} ({ev.ageGroup}) {ev.isActive ? '🟢 Aktivan' : '⚪ Neaktivan'}
+                      </option>
+                    ))}
+                  </select>
+
+                  {/* Detalji odabranog eventa */}
+                  {(() => {
+                    const evt = events.find(e => e.id === broadcastSelectedEventId);
+                    if (!evt) return null;
+                    return (
+                      <div className="text-xs text-amber-950/80 grid grid-cols-2 gap-2 bg-white/80 p-3 rounded-lg border border-amber-200/60">
+                        <div>📅 <strong>Datum:</strong> {evt.dateStr || 'Nije postavljen'}</div>
+                        <div>🕖 <strong>Vrijeme:</strong> {evt.timeStr || 'Nije postavljeno'}</div>
+                        <div>📍 <strong>Lokacija:</strong> {evt.location || 'Nije postavljena'}</div>
+                        <div>🎂 <strong>Dobna skupina:</strong> {evt.ageGroup || 'Nije postavljena'}</div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+
+              {/* Naslov poruke */}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+                  3. Predmet e-maila (Subject):
+                </label>
+                <input
+                  type="text"
+                  value={broadcastSubject}
+                  onChange={(e) => setBroadcastSubject(e.target.value)}
+                  placeholder="Unesite naslov e-maila..."
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand font-medium"
+                />
+              </div>
+
+              {/* Tekst prilagođene poruke */}
+              {broadcastTemplateType === 'custom' && (
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+                    4. Sadržaj e-mail poruke:
+                  </label>
+                  <textarea
+                    rows={6}
+                    value={broadcastBody}
+                    onChange={(e) => setBroadcastBody(e.target.value)}
+                    placeholder="Unesite tekst poruke..."
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand leading-relaxed"
+                  />
+                  <p className="text-[11px] text-gray-400 mt-1">
+                    Poruka se automatski omotava u službeni "Na prvi pogled" vizualni okvir sa zaglavljem, potpisom i poveznicama.
+                  </p>
+                </div>
+              )}
+
+              {/* Progress bar during sending */}
+              {broadcastProgress && (
+                <div className="bg-brand/5 border border-brand/20 rounded-xl p-4 space-y-2 animate-pulse">
+                  <div className="flex justify-between text-xs font-bold text-brand">
+                    <span>Šaljem e-mailove...</span>
+                    <span>{broadcastProgress.current} od {broadcastProgress.total}</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                    <div
+                      className="bg-brand h-2.5 rounded-full transition-all duration-200"
+                      style={{
+                        width: `${Math.round((broadcastProgress.current / broadcastProgress.total) * 100)}%`
+                      }}
+                    />
+                  </div>
+                  <div className="flex justify-between text-[11px] text-gray-500">
+                    <span>Poslano na: <em>{broadcastProgress.currentEmail}</em></span>
+                    <span>✓ {broadcastProgress.success} uspješno | ✗ {broadcastProgress.failed} neuspjelo</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Notice when done */}
+              {broadcastResultNotice && (
+                <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-semibold text-emerald-800 flex items-center gap-2">
+                  <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+                  <span>{broadcastResultNotice}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 bg-gray-50/50">
+              <span className="text-xs font-semibold text-gray-600">
+                Pripremljeno za slanje na: <strong className="text-brand">{broadcastRecipients.length}</strong> primatelja
+              </span>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setBroadcastModalOpen(false)}
+                  disabled={broadcastSending}
+                  className="px-4 py-2 text-xs font-medium text-gray-600 hover:bg-gray-200 rounded-xl transition-colors cursor-pointer disabled:opacity-40"
+                >
+                  {broadcastResultNotice ? 'Zatvori' : 'Odustani'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleStartNewsletterBroadcast}
+                  disabled={broadcastSending || broadcastRecipients.length === 0 || !broadcastSubject.trim()}
+                  className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-brand text-white text-xs font-bold rounded-xl hover:bg-brand-light transition-all shadow-md cursor-pointer disabled:opacity-40"
+                >
+                  {broadcastSending ? (
+                    <>
+                      <Loader2 size={14} className="animate-spin" />
+                      <span>Slanje u tijeku...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send size={14} />
+                      <span>Pošalji e-mailove ({broadcastRecipients.length})</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

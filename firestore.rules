@@ -93,6 +93,20 @@ service cloud.firestore {
       allow read, update, delete: if isAdmin();
     }
 
+    // NEWSLETTER PRETPLATNICI (Prijave na obavijesti po dobnim skupinama)
+    match /newsletter_subscribers/{subscriberId} {
+      // Svatko se može prijaviti ili ažurirati prijavu
+      allow create, update: if true;
+      // Admin može pregledavati i upravljati pretplatnicima; prijavljeni korisnici mogu čitati/odjaviti se
+      allow read, delete: if isAdmin() || request.auth != null;
+    }
+
+    // RECENZIJE I DOJMOVI SUDIONIKA NAKON EVENTA
+    match /event_feedbacks/{feedbackId} {
+      allow create: if request.auth != null;
+      allow read, delete: if isAdmin();
+    }
+
     // Sve ostalo je zaključano
     match /{document=**} {
       allow read, write: if false;

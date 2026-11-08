@@ -44,6 +44,7 @@ import { Link, useSearchParams } from 'react-router';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import SEO from '../components/SEO';
+import NewsletterModal from '../components/NewsletterModal';
 import { formatPrice } from '../utils/formatters';
 import { isEventRegistrationOpen, syncEventLifecycle } from '../utils/eventLifecycle';
 
@@ -106,6 +107,8 @@ export default function FormPage() {
 
   const [existingRegistration, setExistingRegistration] = useState<any | null>(null);
   const [checkRegistrationLoading, setCheckRegistrationLoading] = useState(false);
+  const [newsletterModalOpen, setNewsletterModalOpen] = useState(false);
+  const [newsletterSubscribedSuccess, setNewsletterSubscribedSuccess] = useState(false);
 
   const sendPaymentEmail = async (evt: ActiveEvent, recipientName: string, recipientEmail: string, gender: string) => {
     if (!evt.coreEventUrl || !evt.coreEventUrl.trim() || !recipientEmail) {
@@ -836,6 +839,41 @@ export default function FormPage() {
                 </>
               )}
 
+              {existingRegistration.status !== 'rejected' && (
+                <div className="bg-gradient-to-br from-rose-50 via-white to-amber-50/70 border-2 border-brand/15 rounded-3xl p-6 sm:p-7 mb-8 text-center sm:text-left flex flex-col sm:flex-row items-center justify-between gap-5 shadow-md shadow-brand/5">
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-brand/10 text-brand flex items-center justify-center shrink-0 mt-0.5 border border-brand/15">
+                      <Mail size={24} className="text-brand" />
+                    </div>
+                    <div>
+                      <div className="inline-flex items-center gap-1.5 bg-brand/10 text-brand px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider mb-1.5">
+                        <Sparkles size={12} className="text-brand-light" />
+                        <span>Budi u toku</span>
+                      </div>
+                      <h4 className="font-serif font-bold text-brand text-lg sm:text-xl">
+                        Želiš prvi/a saznati za iduće susrete?
+                      </h4>
+                      <p className="text-xs sm:text-sm text-brand/80 font-light mt-1 max-w-lg leading-relaxed">
+                        Prijavi se na besplatni newsletter i javit ćemo ti čim otvorimo nove termine za tvoju dobnu skupinu.
+                      </p>
+                      {newsletterSubscribedSuccess && (
+                        <p className="text-xs font-semibold text-emerald-700 mt-2 flex items-center gap-1.5 justify-center sm:justify-start">
+                          <CheckCircle2 size={14} className="text-emerald-600" /> Uspješno si prijavljen/a na newsletter obavijesti!
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setNewsletterModalOpen(true)}
+                    className="shrink-0 w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-brand hover:bg-brand-light text-white text-xs sm:text-sm font-bold px-6 py-3.5 rounded-full shadow-lg shadow-brand/20 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
+                  >
+                    <Mail size={16} />
+                    <span>Prijavi se na newsletter</span>
+                  </button>
+                </div>
+              )}
+
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
                 <Link to="/profil" className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-brand text-white px-6 py-3 rounded-full font-bold hover:bg-brand-light transition-all shadow-md text-xs sm:text-sm">
                   <UserRound size={16} /> Pregledaj u profilu
@@ -1032,7 +1070,7 @@ export default function FormPage() {
                     value={formData.napomena}
                     onChange={handleChange}
                     className="w-full px-4 py-3 rounded-2xl bg-white/90 border border-brand/15 focus:border-brand focus:ring-2 focus:ring-brand/15 text-sm font-medium outline-none transition-all placeholder:text-brand/35 text-brand shadow-xs resize-none"
-                    placeholder="Imaš li neku napomenu, prehrambeno ograničenje ili pitanje za nas?"
+                    placeholder="Imate li neku napomenu ili pitanje za nas?"
                   />
                 </div>
 
@@ -1237,6 +1275,19 @@ export default function FormPage() {
         </div>
 
       </main>
+
+      {/* Newsletter Modal */}
+      <NewsletterModal
+        isOpen={newsletterModalOpen}
+        onClose={() => setNewsletterModalOpen(false)}
+        initialEmail={user?.email || existingRegistration?.email || formData.email || ''}
+        initialName={user?.displayName || existingRegistration?.imePrezime || formData.imePrezime || ''}
+        initialAge={existingRegistration?.godine || formData.godine || ''}
+        initialGender={existingRegistration?.spol || formData.spol || ''}
+        onSuccess={() => {
+          setNewsletterSubscribedSuccess(true);
+        }}
+      />
 
       <Footer />
     </div>

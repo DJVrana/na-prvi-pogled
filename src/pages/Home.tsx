@@ -22,6 +22,7 @@ import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import SEO from '../components/SEO';
 import FaqAccordion from '../components/FaqAccordion';
+import NewsletterSection from '../components/NewsletterSection';
 import { formatPrice } from '../utils/formatters';
 
 interface ActiveEvent {
@@ -535,12 +536,12 @@ export default function Home() {
               <p className="text-sm text-brand/80 mb-6">
                 Sva mjesta za trenutne termine su popunjena. Uskoro objavljujemo nove datume!
               </p>
-              <Link
-                to="/kontakt"
+              <a
+                href="#newsletter"
                 className="inline-flex items-center gap-2 bg-brand text-white px-6 py-2.5 rounded-full text-xs font-bold hover:bg-brand-light transition-all"
               >
                 Obavijesti me o novim datumima
-              </Link>
+              </a>
             </div>
           )}
 
@@ -836,6 +837,13 @@ export default function Home() {
               }
             ]}
           />
+        </section>
+
+                {/* ========================================================================= */}
+        {/* 9.5 NEWSLETTER SECTION (Obavijesti po dobnim skupinama)                    */}
+        {/* ========================================================================= */}
+        <section className="py-12 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto">
+          <NewsletterSection id="newsletter" />
         </section>
 
         {/* ========================================================================= */}

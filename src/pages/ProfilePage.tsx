@@ -43,6 +43,7 @@ import { FaGoogle, FaInstagram } from 'react-icons/fa';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import SEO from '../components/SEO';
+import NewsletterModal from '../components/NewsletterModal';
 import { isEventMatchingActive } from '../utils/eventLifecycle';
 
 interface UserRegistration {
@@ -106,6 +107,14 @@ export default function ProfilePage() {
   const [cancellingRegistration, setCancellingRegistration] = useState<UserRegistration | null>(null);
   const [cancelLoading, setCancelLoading] = useState(false);
   const [cancelSuccessMsg, setCancelSuccessMsg] = useState('');
+  // Newsletter subscription state
+  const [newsletterSubscribed, setNewsletterSubscribed] = useState(false);
+  const [newsletterAgeGroups, setNewsletterAgeGroups] = useState<string[]>([]);
+  const [newsletterExactAge, setNewsletterExactAge] = useState<number | null>(null);
+  const [newsletterLoading, setNewsletterLoading] = useState(true);
+  const [newsletterModalOpen, setNewsletterModalOpen] = useState(false);
+  const [unsubscribingNewsletter, setUnsubscribingNewsletter] = useState(false);
+  const [newsletterNotice, setNewsletterNotice] = useState('');
 
   // 1. Auth Listener
   useEffect(() => {
@@ -114,6 +123,9 @@ export default function ProfilePage() {
       setAuthLoading(false);
 
       if (currentUser) {
+        if (currentUser.email) {
+          checkNewsletterStatus(currentUser.email);
+        }
         // Fetch saved user profile data if exists
         try {
           const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
@@ -314,6 +326,91 @@ export default function ProfilePage() {
     }
   };
 
+  // Check Newsletter status for current user email
+  const checkNewsletterStatus = async (userEmail: string) => {
+    try {
+      setNewsletterLoading(true);
+      const cleanEmail = userEmail.toLowerCase().trim();
+      const emailDocId = cleanEmail.replace(/[^a-zA-Z0-9_.-]/g, '_');
+
+      // Check direct document ID
+      const docRef = doc(db, 'newsletter_subscribers', emailDocId);
+      const docSnap = await getDoc(docRef);
+
+      if (docSnap.exists() && docSnap.data().active !== false) {
+        const d = docSnap.data();
+        setNewsletterSubscribed(true);
+        setNewsletterAgeGroups(Array.isArray(d.ageGroups) ? d.ageGroups : d.ageGroup ? [d.ageGroup] : []);
+        setNewsletterExactAge(d.exactAge || null);
+        return;
+      }
+
+      // Query in case stored with another ID
+      const q = query(collection(db, 'newsletter_subscribers'), where('email', '==', cleanEmail));
+      const qSnap = await getDocs(q);
+      const activeDoc = qSnap.docs.find(d => d.data().active !== false);
+
+      if (activeDoc) {
+        const d = activeDoc.data();
+        setNewsletterSubscribed(true);
+        setNewsletterAgeGroups(Array.isArray(d.ageGroups) ? d.ageGroups : d.ageGroup ? [d.ageGroup] : []);
+        setNewsletterExactAge(d.exactAge || null);
+      } else {
+        setNewsletterSubscribed(false);
+        setNewsletterAgeGroups([]);
+        setNewsletterExactAge(null);
+      }
+    } catch (err) {
+      console.error('Greška pri provjeri newsletter statusa:', err);
+      setNewsletterSubscribed(false);
+    } finally {
+      setNewsletterLoading(false);
+    }
+  };
+
+  // Handle Unsubscribe from Newsletter
+  const handleUnsubscribeNewsletter = async () => {
+    if (!user?.email) return;
+    if (!window.confirm(`Želiš li se odjaviti s primanja obavijesti za ${user.email}?`)) return;
+
+    setUnsubscribingNewsletter(true);
+    try {
+      const cleanEmail = user.email.toLowerCase().trim();
+      const emailDocId = cleanEmail.replace(/[^a-zA-Z0-9_.-]/g, '_');
+
+      // Delete primary doc
+      await deleteDoc(doc(db, 'newsletter_subscribers', emailDocId));
+
+      // Also clean up any other matching email docs
+      const q = query(collection(db, 'newsletter_subscribers'), where('email', '==', cleanEmail));
+      const qSnap = await getDocs(q);
+      for (const d of qSnap.docs) {
+        if (d.id !== emailDocId) {
+          await deleteDoc(d.ref);
+        }
+      }
+
+      setNewsletterSubscribed(false);
+      setNewsletterAgeGroups([]);
+      setNewsletterExactAge(null);
+      setNewsletterNotice('Uspješno si odjavljen/a s newslettera.');
+      setTimeout(() => setNewsletterNotice(''), 4000);
+    } catch (err) {
+      console.error('Greška pri odjavi s newslettera:', err);
+      alert('Došlo je do greške pri odjavi. Molimo pokušaj ponovno.');
+    } finally {
+      setUnsubscribingNewsletter(false);
+    }
+  };
+
+  const handleNewsletterSuccess = (ageGroups: string[], exactAge?: number | null) => {
+    setNewsletterSubscribed(true);
+    setNewsletterAgeGroups(ageGroups);
+    setNewsletterExactAge(exactAge || null);
+    setNewsletterNotice('Uspješno si prijavljen/a na newsletter! 🎉');
+    setTimeout(() => setNewsletterNotice(''), 4000);
+  };
+
   // Login handler
   const handleGoogleLogin = async () => {
     try {
@@ -418,6 +515,14 @@ export default function ProfilePage() {
         </section>
 
         {/* Success Alert Banner */}
+        {/* Newsletter Notice Alert Banner */}
+        {newsletterNotice && (
+          <div className="mb-6 p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-sm flex items-center gap-3 shadow-sm animate-fade-in">
+            <CheckCircle2 size={20} className="text-emerald-600 shrink-0" />
+            <span className="font-medium">{newsletterNotice}</span>
+          </div>
+        )}
+
         {cancelSuccessMsg && (
           <div className="mb-6 p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-sm flex items-center gap-3 shadow-sm animate-fade-in">
             <CheckCircle2 size={20} className="text-emerald-600 shrink-0" />
@@ -551,6 +656,70 @@ export default function ProfilePage() {
               </div>
             </form>
           </div>
+          {/* Newsletter / Obavijesti o novim terminima */}
+          <div className="mt-8 pt-6 border-t border-brand/10">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2 mb-1.5">
+                  <div className="w-7 h-7 rounded-lg bg-brand/10 text-brand flex items-center justify-center">
+                    <Mail size={14} className="text-brand-light" />
+                  </div>
+                  <h3 className="font-serif font-bold text-base text-brand">
+                    Newsletter & Obavijesti o terminima
+                  </h3>
+                  {newsletterLoading ? (
+                    <Loader2 size={14} className="animate-spin text-brand/40 ml-1.5" />
+                  ) : newsletterSubscribed ? (
+                    <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-800 border border-emerald-200 text-[11px] font-bold px-2.5 py-0.5 rounded-full">
+                      <Check size={12} className="text-emerald-600" /> Prijavljen/a
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 bg-gray-100 text-gray-600 border border-gray-200 text-[11px] font-bold px-2.5 py-0.5 rounded-full">
+                      Nisi prijavljen/a
+                    </span>
+                  )}
+                </div>
+
+                <p className="text-xs text-brand/70 font-light leading-relaxed max-w-xl">
+                  {newsletterSubscribed ? (
+                    <>
+                      Prijavljen/a si s e-mailom <strong className="font-semibold text-brand">{user.email}</strong> za obavijesti za:{' '}
+                      <strong className="font-semibold text-brand">
+                        {newsletterAgeGroups.length > 0 ? newsletterAgeGroups.join(', ') : 'Sve dobne skupine'}
+                        {newsletterExactAge ? ` (${newsletterExactAge} god.)` : ''}
+                      </strong>.
+                    </>
+                  ) : (
+                    'Prijavi se kako bi primao/la obavijesti čim objavimo nove termine speed datinga za tvoju dobnu skupinu.'
+                  )}
+                </p>
+              </div>
+
+              <div className="shrink-0 flex items-center gap-2">
+                {newsletterSubscribed ? (
+                  <button
+                    type="button"
+                    onClick={handleUnsubscribeNewsletter}
+                    disabled={unsubscribingNewsletter}
+                    className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    {unsubscribingNewsletter ? <Loader2 size={13} className="animate-spin" /> : <XCircle size={13} />}
+                    <span>{unsubscribingNewsletter ? 'Odjavljivanje...' : 'Odjavi se s newslettera'}</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setNewsletterModalOpen(true)}
+                    className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full text-xs font-bold text-white bg-brand hover:bg-brand-light shadow-md shadow-brand/10 transition-all cursor-pointer hover:scale-[1.02]"
+                  >
+                    <Mail size={13} />
+                    <span>Prijavi se na newsletter</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
         </section>
 
         {/* Navigation Tabs */}
@@ -1046,6 +1215,17 @@ export default function ProfilePage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Newsletter Subscription Modal */}
+      {user && (
+        <NewsletterModal
+          isOpen={newsletterModalOpen}
+          onClose={() => setNewsletterModalOpen(false)}
+          initialEmail={user.email || ''}
+          initialName={user.displayName || ''}
+          onSuccess={handleNewsletterSuccess}
+        />
       )}
 
       <Footer />
