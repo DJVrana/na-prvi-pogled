@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
+import { checkNewsletterSubscription } from '../utils/newsletterStatus';
 
 interface NewsletterModalProps {
   isOpen: boolean;
@@ -49,6 +50,7 @@ export default function NewsletterModal({
   
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [alreadySubscribed, setAlreadySubscribed] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -60,7 +62,17 @@ export default function NewsletterModal({
         setGender(initialGender);
       }
       setSuccess(false);
+      setAlreadySubscribed(false);
       setErrorMessage(null);
+
+      const emailToCheck = (initialEmail || email).trim().toLowerCase();
+      if (emailToCheck.includes('@') && emailToCheck.includes('.')) {
+        checkNewsletterSubscription(emailToCheck).then(res => {
+          if (res.isSubscribed) {
+            setAlreadySubscribed(true);
+          }
+        });
+      }
     }
   }, [isOpen, initialEmail, initialName, initialAge, initialGender]);
 
@@ -119,6 +131,16 @@ export default function NewsletterModal({
     setLoading(true);
 
     try {
+      const checkRes = await checkNewsletterSubscription(cleanEmail);
+      if (checkRes.isSubscribed) {
+        setAlreadySubscribed(true);
+        setLoading(false);
+        if (onSuccess) {
+          onSuccess(checkRes.data?.ageGroups || selectedAgeGroups, checkRes.data?.exactAge || ageNum);
+        }
+        return;
+      }
+
       const emailDocId = cleanEmail.replace(/[^a-zA-Z0-9_.-]/g, '_');
       const docRef = doc(db, 'newsletter_subscribers', emailDocId);
 
@@ -182,7 +204,28 @@ export default function NewsletterModal({
 
         {/* Modal Body */}
         <div className="p-6 sm:p-8 overflow-y-auto space-y-6">
-          {success ? (
+          {alreadySubscribed ? (
+            <div className="bg-emerald-50 border border-emerald-200/80 rounded-2xl p-6 sm:p-8 text-center animate-fade-in-up space-y-3">
+              <div className="w-12 h-12 bg-emerald-500 text-white rounded-full flex items-center justify-center mx-auto shadow-md">
+                <Check size={24} />
+              </div>
+              <h4 className="font-serif text-xl font-bold text-emerald-950">
+                Već si prijavljen/a na newsletter! 🎉
+              </h4>
+              <p className="text-xs sm:text-sm text-emerald-800 leading-relaxed font-light max-w-sm mx-auto">
+                Tvoja e-mail adresa <strong className="font-semibold">{initialEmail || email}</strong> je već zabilježena u našoj bazi za obavijesti o novim terminima.
+              </p>
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="bg-brand hover:bg-brand-light text-white text-xs font-bold px-6 py-2.5 rounded-full shadow-md transition-all cursor-pointer"
+                >
+                  U redu, hvala
+                </button>
+              </div>
+            </div>
+          ) : success ? (
             <div className="bg-emerald-50 border border-emerald-200/80 rounded-2xl p-6 sm:p-8 text-center animate-fade-in-up space-y-3">
               <div className="w-12 h-12 bg-emerald-500 text-white rounded-full flex items-center justify-center mx-auto shadow-md">
                 <Check size={24} />

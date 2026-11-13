@@ -22,6 +22,7 @@ import Footer from '../components/Footer';
 import SEO from '../components/SEO';
 import FaqAccordion from '../components/FaqAccordion';
 import NewsletterSection from '../components/NewsletterSection';
+import { getEventsPageFaqItems, getFaqStructuredData } from '../data/faqData';
 import { formatPrice } from '../utils/formatters';
 import { isEventRegistrationOpen, syncEventLifecycle } from '../utils/eventLifecycle';
 import { matchesAgeFilter, getAvailableAgeCategories, type AgeCategoryOption } from '../utils/ageFilter';
@@ -134,7 +135,7 @@ export default function EventsPage() {
         title="Događaji i Termini | Na prvi pogled 💞 Speed Dating Zagreb"
         description="Pregledaj sve aktivne speed dating večeri u Zagrebu po dobnim skupinama. Prijavi se online na vrijeme – broj mjesta je ograničen radi jednakog omjera sudionika."
         canonical="https://naprvipogled.com/eventi"
-        structuredData={eventsStructuredData}
+        structuredData={[eventsStructuredData, getFaqStructuredData('https://naprvipogled.com/eventi#faq')]}
         keywords="speed dating zagreb termini, prijava na speed dating, upoznavanje zagreb događaji, na prvi pogled prijave"
       />
 
@@ -416,22 +417,7 @@ export default function EventsPage() {
             Najčešća pitanja
           </h2>
 
-          <FaqAccordion
-            items={[
-              {
-                question: 'Postoji li dress code?',
-                answer: 'Ne, dođi odjeven/a kako se najugodnije osjećaš.'
-              },
-              {
-                question: 'Kako funkcionira matching?',
-                answer: 'Nakon ili tijekom eventa označi tko ti se svidio te, ukoliko je osjećaj obostran, poslat će vam se poruka elektroničke pošte s kontaktima.'
-              },
-              {
-                question: 'Kakvo piće imam u izboru?',
-                answer: 'Imaš puno pića iz svih kategorija u izboru, gazirane i negazirane sokove, vodu, vino, pivo...'
-              }
-            ]}
-          />
+          <FaqAccordion items={getEventsPageFaqItems()} />
         </section>
 
         {/* Bottom Call to Action */}

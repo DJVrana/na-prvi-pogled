@@ -149,7 +149,6 @@ function buildWaitlistHtml(
       ${activeEvent.timeStr ? `<tr><td style="padding: 6px 0;">🕖</td><td><strong>${activeEvent.timeStr}</strong></td></tr>` : ''}
       ${activeEvent.location ? `<tr><td style="padding: 6px 0;">📍</td><td><strong>${activeEvent.location}</strong></td></tr>` : ''}
       ${activeEvent.ageGroup ? `<tr><td style="padding: 6px 0;">🎂</td><td>Dobna skupina: <strong>${activeEvent.ageGroup}</strong></td></tr>` : ''}
-      ${activeEvent.price ? `<tr><td style="padding: 6px 0;">💳</td><td>Kotizacija: <strong>${activeEvent.price}</strong></td></tr>` : ''}
     </table>
   </div>
   ` : ''}
@@ -1104,7 +1103,6 @@ export default function AdminDashboard() {
       <tr><td style="padding: 10px 0; font-size: 20px;">⏰</td><td style="padding: 10px 0; color: #E85D75; white-space: pre-wrap;">${timeNote}</td></tr>
       <tr><td style="padding: 10px 0; font-size: 20px;">📍</td><td style="padding: 10px 0;"><strong>${activeEvent.location || ''}</strong></td></tr>
       <tr><td style="padding: 10px 0; font-size: 20px;">🎂</td><td style="padding: 10px 0;">Dobna skupina: <strong>${activeEvent.ageGroup || ''}</strong></td></tr>
-      <tr><td style="padding: 10px 0; font-size: 20px;">💳</td><td style="padding: 10px 0;">Kotizacija: <strong>${activeEvent.price || ''}</strong></td></tr>
     </table>
   </div>
   
@@ -2262,7 +2260,6 @@ export default function AdminDashboard() {
                             </tr>
                             <tr><td className="py-2 text-lg">📍</td><td className="py-2"><strong>{newEvent.location || '[Lokacija]'}</strong></td></tr>
                             <tr><td className="py-2 text-lg">🎂</td><td className="py-2">Dobna skupina: <strong>{newEvent.ageGroup || '[Dob]'}</strong></td></tr>
-                            <tr><td className="py-2 text-lg">💳</td><td className="py-2">Kotizacija: <strong>{newEvent.price || '[Cijena]'}</strong></td></tr>
                           </tbody>
                         </table>
                       </div>

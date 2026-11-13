@@ -44,6 +44,7 @@ import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import SEO from '../components/SEO';
 import NewsletterModal from '../components/NewsletterModal';
+import { checkNewsletterSubscription } from '../utils/newsletterStatus';
 import { isEventMatchingActive } from '../utils/eventLifecycle';
 
 interface UserRegistration {
@@ -330,28 +331,9 @@ export default function ProfilePage() {
   const checkNewsletterStatus = async (userEmail: string) => {
     try {
       setNewsletterLoading(true);
-      const cleanEmail = userEmail.toLowerCase().trim();
-      const emailDocId = cleanEmail.replace(/[^a-zA-Z0-9_.-]/g, '_');
-
-      // Check direct document ID
-      const docRef = doc(db, 'newsletter_subscribers', emailDocId);
-      const docSnap = await getDoc(docRef);
-
-      if (docSnap.exists() && docSnap.data().active !== false) {
-        const d = docSnap.data();
-        setNewsletterSubscribed(true);
-        setNewsletterAgeGroups(Array.isArray(d.ageGroups) ? d.ageGroups : d.ageGroup ? [d.ageGroup] : []);
-        setNewsletterExactAge(d.exactAge || null);
-        return;
-      }
-
-      // Query in case stored with another ID
-      const q = query(collection(db, 'newsletter_subscribers'), where('email', '==', cleanEmail));
-      const qSnap = await getDocs(q);
-      const activeDoc = qSnap.docs.find(d => d.data().active !== false);
-
-      if (activeDoc) {
-        const d = activeDoc.data();
+      const res = await checkNewsletterSubscription(userEmail);
+      if (res.isSubscribed && res.data) {
+        const d = res.data;
         setNewsletterSubscribed(true);
         setNewsletterAgeGroups(Array.isArray(d.ageGroups) ? d.ageGroups : d.ageGroup ? [d.ageGroup] : []);
         setNewsletterExactAge(d.exactAge || null);
@@ -771,8 +753,7 @@ export default function ProfilePage() {
               const activeMatchingReg = registrations.find(r => 
                 r.eventDetails && 
                 isEventMatchingActive(r.eventDetails) && 
-                r.status !== 'cancelled' && 
-                r.status !== 'rejected'
+                r.status === 'accepted'
               );
               if (!activeMatchingReg) return null;
               return (
@@ -986,7 +967,7 @@ export default function ProfilePage() {
                         )}
 
                         {/* Matching Button if enabled */}
-                        {isMatchingActive && (status === 'accepted' || status === 'pending') && (
+                        {isMatchingActive && status === 'accepted' && (
                           <Link
                             to={`/matching?eventId=${reg.eventId}`}
                             className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-rose-600 via-pink-600 to-brand hover:from-rose-500 hover:to-brand-light text-white px-5 py-3 rounded-2xl text-xs font-bold shadow-md shadow-rose-500/25 hover:scale-[1.02] transition-all animate-pulse"

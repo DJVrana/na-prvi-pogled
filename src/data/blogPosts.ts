@@ -21,15 +21,36 @@ export interface BlogPost {
   };
 }
 
+export const CRO_MONTH_NAMES = [
+  'siječnja', 'veljače', 'ožujka', 'travnja', 'svibnja', 'lipnja',
+  'srpnja', 'kolovoza', 'rujna', 'listopada', 'studenoga', 'prosinca'
+];
+
+/**
+ * Formats ISO date string "2026-11-10" to Croatian format "10. studenoga 2026."
+ */
+export function formatBlogDate(dateStr: string): string {
+  if (!dateStr) return '';
+  const match = dateStr.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (match) {
+    const year = match[1];
+    const month = parseInt(match[2], 10) - 1;
+    const day = parseInt(match[3], 10);
+    const monthName = CRO_MONTH_NAMES[month] || '';
+    return `${day}. ${monthName} ${year}.`;
+  }
+  return dateStr;
+}
+
 export const BLOG_POSTS: BlogPost[] = [
   {
     id: '1',
     slug: 'kako-je-nastala-ideja-za-naprvipogled',
     title: 'Kako je nastala ideja za Naprvipogled?',
     category: 'Naša priča',
-    date: 'Ožujak 2026.',
+    date: '2026-11-05',
     readTime: '3 min čitanja',
-    image: `${import.meta.env.BASE_URL}images/hero-speed-dating.jpg`,
+    image: `${import.meta.env.BASE_URL}images/blog/post-01.png`,
     featured: true,
     excerpt: "Sve je počelo jedne sasvim obične večeri, uz razgovor dvojice prijatelja u McDonald'su o tome što danas ljudima u Hrvatskoj najviše nedostaje – upoznavanje novih ljudi i stvaranje iskrenih poznanstava.",
     content: {
@@ -62,8 +83,79 @@ Vjerujemo da jedno upoznavanje može biti početak lijepog prijateljstva, zaniml
       ],
       conclusion: 'Jer nikad ne znate što se može dogoditi – na prvi pogled. ❤️'
     }
+  },
+  {
+    id: '2',
+    slug: 'zasto-je-danas-toliko-tesko-upoznati-nekoga-uzivo',
+    title: 'Zašto je danas toliko teško upoznati nekoga uživo?',
+    category: 'Upoznavanje',
+    date: '2026-11-13',
+    readTime: '4 min čitanja',
+    image: `${import.meta.env.BASE_URL}images/blog/post-02.png`,
+    excerpt:
+      'Čini se da nikada nije bilo jednostavnije stupiti u kontakt s nekim, a istovremeno nikada nije bilo teže nekoga zaista upoznati. Evo zašto nam upoznavanje uživo danas sve teže polazi za rukom.',
+    content: {
+      intro:
+        'Čini se da nikada nije bilo jednostavnije stupiti u kontakt s nekim, a istovremeno nikada nije bilo teže nekoga zaista upoznati. Uz društvene mreže, aplikacije za upoznavanje i brojne načine komunikacije, mogućnosti za upoznavanje novih ljudi naizgled su beskonačne. Ipak, mnogi imaju osjećaj da im upravo onaj najjednostavniji dio – upoznavanje uživo – sve teže polazi za rukom.',
+      sections: [
+        {
+          heading: '1. Svakodnevica nam ostavlja sve manje prostora za nova poznanstva',
+          text: `Većina ljudi provodi dane između posla, fakulteta, obiteljskih obveza i svakodnevnih zadataka. Slobodno vrijeme često koristimo za odmor i druženje s ljudima koje već poznajemo. S vremenom se naš društveni krug počinje ponavljati, a prilike za upoznavanje nekoga novog postaju sve rjeđe.
+
+Često želimo upoznati nekoga novog, ali se pitamo gdje i kako. Izlazimo na ista mjesta, družimo se s istim ljudima i čekamo da se nešto spontano dogodi.`
+        },
+        {
+          heading: '2. Aplikacije za upoznavanje postale su dio svakodnevice',
+          text: `Aplikacije za upoznavanje značajno su promijenile način na koji ljudi traže potencijalne partnere. Jedan od najpoznatijih primjera svakako je Tinder, koji je dostupan u brojnim državama svijeta.
+
+Koliko je takav način upoznavanja raširen u Europi, pokazuje i službeni podatak Tindera: tijekom druge polovice 2025. aplikacija je imala manje od 15 milijuna mjesečno aktivnih korisnika samo na području Europske unije.
+
+Takve aplikacije omogućuju nam da u kratkom vremenu pregledamo velik broj profila, ali upoznavanje se često svodi na fotografije, kratke opise i nekoliko poruka. Nedostaju nam govor tijela, ton glasa, spontani osmijeh i ona energija koju možemo osjetiti tek kada smo s nekim u istoj prostoriji.
+
+Ponekad osoba koja nam na fotografiji ne bi odmah privukla pažnju uživo ostavi potpuno drugačiji dojam.`
+        },
+        {
+          heading: '3. Previše izbora ne znači nužno i lakši odabir',
+          text: `Zanimljivo je da se ovom pojavom bave i znanstvenici. Istraživanje objavljeno 2025. u časopisu Media Psychology proučavalo je kako broj profila na aplikacijama za upoznavanje utječe na donošenje odluka.
+
+U eksperimentu je sudjelovao 401 student. Sudionici su u simuliranoj aplikaciji pregledavali 11, 31 ili 91 profil. Oni koji su vidjeli 91 profil izvijestili su o većem mentalnom opterećenju od onih s manje profila, a stopa prihvaćanja bila im je niža.
+
+To ne znači da su imali manje opcija, nego da su postali probirljiviji. Ipak, veći izbor nije donio osjećaj da je odabir lakši, nego naprotiv, teži. Važno je i da je riječ o simuliranoj aplikaciji i studentima, pa se rezultati ne moraju izravno prenijeti na stvarno upoznavanje. Ipak, nalaz se uklapa u ideju da više izbora ne znači nužno i lakšu odluku.`
+        },
+        {
+          heading: '4. Strah od odbijanja i neugodne situacije',
+          text: `Pristupiti nepoznatoj osobi i započeti razgovor nije uvijek jednostavno. Često razmišljamo o tome što reći, kako će druga osoba reagirati i hoćemo li ispasti čudni ili nametljivi. Zbog straha od odbijanja mnogi radije odustanu od pokušaja nego da riskiraju neugodnu situaciju.
+
+A zapravo, upoznavanje novih ljudi ne mora biti toliko komplicirano. Ponekad je dovoljan samo jedan jednostavan razgovor.`
+        },
+        {
+          heading: '5. Zaboravljamo koliko spontana poznanstva mogu biti lijepa',
+          text: `Nekada su se ljudi upoznavali preko prijatelja, na izlascima, fakultetu, poslu ili sasvim slučajno. Takve situacije i dalje postoje, ali mnogi imaju osjećaj da ih je sve manje.
+
+Važno je stvarati nove prilike, izlaziti iz svakodnevne rutine i biti otvoren prema ljudima koje inače možda nikada ne bismo upoznali.`
+        },
+        {
+          heading: 'Pa gdje onda upoznati nekoga novog?',
+          text: `Možda odgovor nije u još jednoj aplikaciji, još jednoj poruci ili još jednom pregledavanju profila. Ponekad je dovoljno promijeniti način na koji pristupamo upoznavanju.
+
+Speed dating pruža upravo takvu priliku – upoznavanje uživo, kroz kratke razgovore s različitim ljudima, u opuštenoj atmosferi i bez pritiska da svaki susret mora rezultirati nečim konkretnim.
+
+Ne mora svaki susret završiti ljubavnom pričom. Možda upoznaš nekoga s kim ćeš ostati u kontaktu, možda stekneš novo prijateljstvo, a možda se dogodi i nešto više.
+
+Na kraju, najvažnije je biti otvoren prema novim poznanstvima i ne dopustiti da nam svakodnevna rutina ograniči prilike za upoznavanje zanimljivih ljudi.`
+        }
+      ],
+      conclusion: 'Jer nikada ne znamo kakva se priča može razviti iz jednog običnog upoznavanja. ❤️'
+    }
   }
 ];
+
+/**
+ * Returns blog posts sorted by date descending (newest first).
+ */
+export function getSortedBlogPosts(): BlogPost[] {
+  return [...BLOG_POSTS].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+}
 
 export function getBlogPostBySlug(slug: string): BlogPost | undefined {
   return BLOG_POSTS.find((p) => p.slug === slug);

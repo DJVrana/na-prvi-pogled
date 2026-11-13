@@ -1,37 +1,42 @@
 import { useState, useMemo } from 'react';
 import { Link } from 'react-router';
-import { 
-  BookOpen, 
-  Calendar, 
-  Clock, 
-  Sparkles, 
-  ArrowRight, 
-  Search, 
-  X, 
+import {
+  BookOpen,
+  Calendar,
+  Clock,
+  Sparkles,
+  ArrowRight,
+  Search,
+  X,
   ChevronRight
 } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import SEO from '../components/SEO';
-import { BLOG_POSTS, type BlogPost } from '../data/blogPosts';
+import { BLOG_POSTS, getSortedBlogPosts, formatBlogDate, type BlogPost } from '../data/blogPosts';
 
 export default function BlogPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('Sve teme');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const categories = ['Sve teme', 'Naša priča'];
+  const categories = useMemo(() => {
+    const cats = Array.from(new Set(BLOG_POSTS.map(p => p.category)));
+    return ['Sve teme', ...cats];
+  }, []);
+
+  const sortedPosts = useMemo(() => getSortedBlogPosts(), []);
 
   const filteredPosts = useMemo(() => {
-    return BLOG_POSTS.filter((post: BlogPost) => {
+    return sortedPosts.filter((post: BlogPost) => {
       const matchesCategory = selectedCategory === 'Sve teme' || post.category === selectedCategory;
-      const matchesSearch = 
+      const matchesSearch =
         post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         post.excerpt.toLowerCase().includes(searchQuery.toLowerCase());
       return matchesCategory && matchesSearch;
     });
   }, [selectedCategory, searchQuery]);
 
-  const featuredPost = BLOG_POSTS.find(p => p.featured) || BLOG_POSTS[0];
+  const featuredPost = sortedPosts.find(p => p.featured) || sortedPosts[0];
 
   const blogStructuredData = {
     "@context": "https://schema.org",
@@ -50,7 +55,7 @@ export default function BlogPage() {
         "headline": "Kako je nastala ideja za Naprvipogled?",
         "description": "Sve je počelo jedne sasvim obične večeri, uz razgovor dvojice prijatelja u McDonald'su...",
         "image": "https://naprvipogled.com/images/hero-speed-dating.jpg",
-        "datePublished": "2026-03-01",
+        "datePublished": featuredPost ? featuredPost.date : "2026-11-05",
         "author": {
           "@type": "Organization",
           "name": "Na prvi pogled tim"
@@ -61,8 +66,8 @@ export default function BlogPage() {
 
   return (
     <div className="min-h-screen bg-peach flex flex-col selection:bg-brand selection:text-white">
-      <SEO 
-        title="Blog & Naša priča | Na prvi pogled 💞 Zagreb"
+      <SEO
+        title="Blog i Naša priča | Na prvi pogled 💞 Zagreb"
         description="Kako je nastala ideja za Na prvi pogled speed dating susrete u Zagrebu i zašto vjerujemo u magiju susreta uživo."
         canonical="https://naprvipogled.com/blog"
         structuredData={blogStructuredData}
@@ -72,15 +77,15 @@ export default function BlogPage() {
       <Navbar />
 
       <main className="flex-1 pt-28 pb-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
-        
+
         {/* Page Header */}
         <section className="text-center max-w-3xl mx-auto mb-14 animate-fade-in-up">
           <div className="inline-flex items-center gap-2 bg-brand/10 text-brand px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider mb-4">
             <BookOpen size={14} className="text-brand-light" />
-            <span>Na prvi pogled Priče & Vodiči</span>
+            <span>Na prvi pogled Priče i Vodiči</span>
           </div>
           <h1 className="font-serif text-4xl sm:text-6xl font-bold text-brand tracking-tight mb-4">
-            Naša priča & Blog
+            Naša priča i Blog
           </h1>
           <p className="text-brand/80 text-base sm:text-lg leading-relaxed font-light">
             Saznaj kako je nastala ideja za Na prvi pogled i zašto vjerujemo u iskreno povezivanje i upoznavanje u stvarnom životu.
@@ -91,15 +96,15 @@ export default function BlogPage() {
         {featuredPost && selectedCategory === 'Sve teme' && !searchQuery && (
           <section className="mb-16">
             <div className="bg-white/80 backdrop-blur-xl rounded-3xl border border-white/90 shadow-xl shadow-brand/10 overflow-hidden grid grid-cols-1 lg:grid-cols-12 group transition-all duration-300 hover:shadow-2xl">
-              
-              <Link 
+
+              <Link
                 to={`/blog/${featuredPost.slug}`}
                 className="lg:col-span-7 relative h-72 sm:h-96 lg:h-auto overflow-hidden block"
               >
-                <img 
-                  src={featuredPost.image} 
+                <img
+                  src={featuredPost.image}
                   alt={featuredPost.title}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" 
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                 />
                 <div className="absolute top-4 left-4">
                   <span className="bg-brand text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-md">
@@ -139,7 +144,7 @@ export default function BlogPage() {
                     <span>Pročitaj cijelu priču</span>
                     <ArrowRight size={14} />
                   </Link>
-                  <span className="text-xs text-brand/60">{featuredPost.date}</span>
+                  <span className="text-xs text-brand/60">{formatBlogDate(featuredPost.date)}</span>
                 </div>
 
               </div>
@@ -150,7 +155,7 @@ export default function BlogPage() {
 
         {/* Filter Bar & Search Input */}
         <section className="flex flex-col md:flex-row items-center justify-between gap-4 mb-10 pb-6 border-b border-brand/10">
-          
+
           {/* Category Pills */}
           <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
             {categories.map((cat) => (
@@ -158,11 +163,10 @@ export default function BlogPage() {
                 key={cat}
                 type="button"
                 onClick={() => setSelectedCategory(cat)}
-                className={`px-4 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                  selectedCategory === cat
-                    ? 'bg-brand text-white shadow-md shadow-brand/20'
-                    : 'bg-white/70 hover:bg-white text-brand border border-white/80'
-                }`}
+                className={`px-4 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${selectedCategory === cat
+                  ? 'bg-brand text-white shadow-md shadow-brand/20'
+                  : 'bg-white/70 hover:bg-white text-brand border border-white/80'
+                  }`}
               >
                 {cat}
               </button>
@@ -195,16 +199,16 @@ export default function BlogPage() {
         {/* Article Cards Grid */}
         <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {filteredPosts.map((post) => (
-            <article 
+            <article
               key={post.id}
               className="bg-white/75 backdrop-blur-md rounded-3xl border border-white/90 shadow-md shadow-brand/5 overflow-hidden flex flex-col justify-between hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group"
             >
               <div>
                 <Link to={`/blog/${post.slug}`} className="block relative h-48 overflow-hidden">
-                  <img 
-                    src={post.image} 
+                  <img
+                    src={post.image}
                     alt={post.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   />
                   <span className="absolute top-3 left-3 bg-white/90 backdrop-blur-md text-brand text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider shadow-sm">
                     {post.category}
@@ -214,7 +218,7 @@ export default function BlogPage() {
                 <div className="p-6">
                   <div className="flex items-center gap-2 text-[11px] text-brand/60 mb-2">
                     <Calendar size={12} />
-                    <span>{post.date}</span>
+                    <span>{formatBlogDate(post.date)}</span>
                     <span>•</span>
                     <Clock size={12} />
                     <span>{post.readTime}</span>

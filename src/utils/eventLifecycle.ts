@@ -158,6 +158,7 @@ export function getMatchingCloseDate(event?: {
 
 /**
  * Checks whether matching is actively open for an event.
+ * Matching is active if isMatchingActive is true and matchingPhase is not closed.
  */
 export function isEventMatchingActive(event?: {
   isMatchingActive?: boolean;
@@ -168,17 +169,12 @@ export function isEventMatchingActive(event?: {
   if (!event || !event.isMatchingActive || event.matchingPhase === 'closed') {
     return false;
   }
-
-  const matchClose = getMatchingCloseDate(event);
-  if (matchClose && new Date() >= matchClose) {
-    return false;
-  }
-
   return true;
 }
 
 /**
- * Synchronizes expired event registration or matching state with Firestore in the background.
+ * Synchronizes expired event registration state with Firestore in the background.
+ * IMPORTANT: Matching state is strictly controlled by organizers and MUST NEVER be automatically closed by the client.
  */
 export async function syncEventLifecycle(
   db: Firestore,
@@ -195,21 +191,12 @@ export async function syncEventLifecycle(
 ): Promise<void> {
   try {
     const shouldCloseRegistration = event.isActive && !isEventRegistrationOpen(event);
-    const shouldCloseMatching = event.isMatchingActive && !isEventMatchingActive(event);
 
-    if (shouldCloseRegistration || shouldCloseMatching) {
-      const updates: Record<string, any> = {};
-      if (shouldCloseRegistration) {
-        updates.isActive = false;
-      }
-      if (shouldCloseMatching) {
-        updates.isMatchingActive = false;
-        updates.matchingPhase = 'closed';
-      }
-      await updateDoc(doc(db, 'events', event.id), updates);
+    if (shouldCloseRegistration) {
+      await updateDoc(doc(db, 'events', event.id), { isActive: false });
     }
   } catch (err) {
-    console.warn('[syncEventLifecycle] Error syncing expired event:', err);
+    console.warn('[syncEventLifecycle] Error syncing expired event registration:', err);
   }
 }
 

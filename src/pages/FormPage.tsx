@@ -45,6 +45,7 @@ import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import SEO from '../components/SEO';
 import NewsletterModal from '../components/NewsletterModal';
+import { checkNewsletterSubscription } from '../utils/newsletterStatus';
 import { formatPrice } from '../utils/formatters';
 import { isEventRegistrationOpen, syncEventLifecycle } from '../utils/eventLifecycle';
 
@@ -109,6 +110,22 @@ export default function FormPage() {
   const [checkRegistrationLoading, setCheckRegistrationLoading] = useState(false);
   const [newsletterModalOpen, setNewsletterModalOpen] = useState(false);
   const [newsletterSubscribedSuccess, setNewsletterSubscribedSuccess] = useState(false);
+  const [isNewsletterAlreadySubscribed, setIsNewsletterAlreadySubscribed] = useState(false);
+
+  useEffect(() => {
+    const checkSub = async () => {
+      const emailToCheck = existingRegistration?.email || user?.email || formData.email;
+      if (emailToCheck && emailToCheck.includes('@')) {
+        const res = await checkNewsletterSubscription(emailToCheck);
+        if (res.isSubscribed) {
+          setIsNewsletterAlreadySubscribed(true);
+        }
+      }
+    };
+    if (existingRegistration || user) {
+      checkSub();
+    }
+  }, [existingRegistration, user, formData.email]);
 
   const sendPaymentEmail = async (evt: ActiveEvent, recipientName: string, recipientEmail: string, gender: string) => {
     if (!evt.coreEventUrl || !evt.coreEventUrl.trim() || !recipientEmail) {
@@ -153,7 +170,6 @@ export default function FormPage() {
       <tr><td style="padding: 6px 0;">🕖</td><td style="padding: 6px 0;"><strong>${evt.timeStr ? evt.timeStr + ' h' : ''}</strong></td></tr>
       <tr><td style="padding: 6px 0;">📍</td><td style="padding: 6px 0;"><strong>${evt.location || ''}</strong></td></tr>
       <tr><td style="padding: 6px 0;">🎂</td><td style="padding: 6px 0;">Dobna skupina: <strong>${evt.ageGroup || ''}</strong></td></tr>
-      <tr><td style="padding: 6px 0;">💳</td><td style="padding: 6px 0;">Kotizacija: <strong>${evt.price || ''}</strong></td></tr>
     </table>
   </div>
 
@@ -839,7 +855,7 @@ export default function FormPage() {
                 </>
               )}
 
-              {existingRegistration.status !== 'rejected' && (
+              {existingRegistration.status !== 'rejected' && !isNewsletterAlreadySubscribed && !newsletterSubscribedSuccess && (
                 <div className="bg-gradient-to-br from-rose-50 via-white to-amber-50/70 border-2 border-brand/15 rounded-3xl p-6 sm:p-7 mb-8 text-center sm:text-left flex flex-col sm:flex-row items-center justify-between gap-5 shadow-md shadow-brand/5">
                   <div className="flex items-start gap-4">
                     <div className="w-12 h-12 rounded-2xl bg-brand/10 text-brand flex items-center justify-center shrink-0 mt-0.5 border border-brand/15">
@@ -1286,6 +1302,7 @@ export default function FormPage() {
         initialGender={existingRegistration?.spol || formData.spol || ''}
         onSuccess={() => {
           setNewsletterSubscribedSuccess(true);
+          setIsNewsletterAlreadySubscribed(true);
         }}
       />
 

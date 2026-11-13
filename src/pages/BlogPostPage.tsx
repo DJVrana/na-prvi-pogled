@@ -16,7 +16,7 @@ import { FaWhatsapp, FaFacebook } from 'react-icons/fa';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import SEO from '../components/SEO';
-import { getBlogPostBySlug } from '../data/blogPosts';
+import { getBlogPostBySlug, formatBlogDate } from '../data/blogPosts';
 
 export default function BlogPostPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -71,7 +71,7 @@ export default function BlogPostPage() {
     "headline": post.title,
     "description": post.excerpt,
     "image": `https://naprvipogled.com/images/hero-speed-dating.jpg`,
-    "datePublished": "2026-03-01",
+    "datePublished": post.date,
     "author": {
       "@type": "Organization",
       "name": "Na prvi pogled tim",
@@ -133,7 +133,7 @@ export default function BlogPostPage() {
             </span>
             <span>•</span>
             <span className="flex items-center gap-1.5">
-              <Calendar size={13} /> {post.date}
+              <Calendar size={13} /> {formatBlogDate(post.date)}
             </span>
             <span>•</span>
             <span className="flex items-center gap-1.5">

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Mail,
   Sparkles,
@@ -9,7 +9,9 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+import { db, auth } from '../firebase';
+import { checkNewsletterSubscription } from '../utils/newsletterStatus';
 
 interface NewsletterSectionProps {
   id?: string;
@@ -35,7 +37,29 @@ export default function NewsletterSection({ id = 'newsletter-sekcija', className
 
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [alreadySubscribed, setAlreadySubscribed] = useState(false);
+  const [subscribedEmail, setSubscribedEmail] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, async (currentUser) => {
+      if (currentUser?.email) {
+        setEmail(currentUser.email);
+        if (currentUser.displayName && !name) {
+          setName(currentUser.displayName);
+        }
+        const res = await checkNewsletterSubscription(currentUser.email);
+        if (res.isSubscribed) {
+          setAlreadySubscribed(true);
+          setSubscribedEmail(currentUser.email);
+          if (Array.isArray(res.data?.ageGroups) && res.data.ageGroups.length > 0) {
+            setSelectedAgeGroups(res.data.ageGroups);
+          }
+        }
+      }
+    });
+    return () => unsub();
+  }, []);
 
   const toggleAgeGroup = (group: string) => {
     if (group === 'Sve dobne skupine') {
@@ -90,6 +114,15 @@ export default function NewsletterSection({ id = 'newsletter-sekcija', className
     setLoading(true);
 
     try {
+      // Check if this email is already registered in the database
+      const checkRes = await checkNewsletterSubscription(cleanEmail);
+      if (checkRes.isSubscribed) {
+        setAlreadySubscribed(true);
+        setSubscribedEmail(cleanEmail);
+        setLoading(false);
+        return;
+      }
+
       // Use clean email hash/key to avoid duplicates
       const emailDocId = cleanEmail.replace(/[^a-zA-Z0-9_.-]/g, '_');
       const docRef = doc(db, 'newsletter_subscribers', emailDocId);
@@ -141,7 +174,35 @@ export default function NewsletterSection({ id = 'newsletter-sekcija', className
             </p>
           </div>
 
-          {success ? (
+          {alreadySubscribed ? (
+            <div className="bg-emerald-50 border border-emerald-200/80 rounded-2xl p-6 sm:p-8 text-center animate-fade-in-up">
+              <div className="w-14 h-14 bg-emerald-500 text-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-md shadow-emerald-500/20">
+                <Check size={28} />
+              </div>
+
+              <h3 className="font-serif text-2xl font-bold text-emerald-950 mb-2">
+                Već si prijavljen/a na newsletter obavijesti! 🎉
+              </h3>
+
+              <p className="text-emerald-800 text-sm sm:text-base leading-relaxed max-w-lg mx-auto mb-4 font-light">
+                Tvoja e-mail adresa <strong className="font-semibold text-emerald-950">{subscribedEmail || email}</strong> je već zabilježena u našoj bazi.
+                Čim raspišemo novi odgovarajući termin za speed dating, poslat ćemo ti obavijest!
+              </p>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setAlreadySubscribed(false);
+                  setEmail('');
+                  setName('');
+                  setExactAge('');
+                }}
+                className="text-xs font-semibold text-emerald-700 hover:text-emerald-900 underline cursor-pointer"
+              >
+                Prijavi drugu e-mail adresu
+              </button>
+            </div>
+          ) : success ? (
             <div className="bg-emerald-50 border border-emerald-200/80 rounded-2xl p-6 sm:p-8 text-center animate-fade-in-up">
               <div className="w-14 h-14 bg-emerald-500 text-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-md shadow-emerald-500/20">
                 <Check size={28} />

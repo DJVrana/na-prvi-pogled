@@ -62,29 +62,87 @@ export default function Navbar() {
     setMobileMenuOpen(false);
   };
 
-  // Check matching status
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [mobileMenuOpen]);
+
+  // Check matching status: only show matching entry to users registered for their active event
   useEffect(() => {
     const checkMatching = async () => {
+      // 1. If not logged in, NEVER show matching in navbar
+      if (!user) {
+        setMatchingEvent(null);
+        setShowLiveModal(false);
+        return;
+      }
+
       try {
         const q = query(collection(db, 'events'), where('isMatchingActive', '==', true));
         const snap = await getDocs(q);
-        if (!snap.empty) {
-          const evt = { id: snap.docs[0].id, ...(snap.docs[0].data() as any) };
-          syncEventLifecycle(db, evt);
+        if (snap.empty) {
+          setMatchingEvent(null);
+          setShowLiveModal(false);
+          return;
+        }
+
+        const activeList: ActiveMatchingEvent[] = [];
+        for (const docSnap of snap.docs) {
+          const evt = { id: docSnap.id, ...(docSnap.data() as any) };
           if (isEventMatchingActive(evt)) {
-            setMatchingEvent(evt);
-          } else {
-            setMatchingEvent(null);
+            activeList.push(evt);
           }
+        }
+
+        if (activeList.length === 0) {
+          setMatchingEvent(null);
+          setShowLiveModal(false);
+          return;
+        }
+
+        // Find which active matching event the user is registered for
+        const regQ = query(
+          collection(db, 'prijave'),
+          where('uid', '==', user.uid)
+        );
+        const regSnap = await getDocs(regQ);
+
+        let userMatchingEvent: ActiveMatchingEvent | null = null;
+        for (const regDoc of regSnap.docs) {
+          const regData = regDoc.data();
+          if (regData.status === 'accepted') {
+            const matchedEvt = activeList.find(e => e.id === regData.eventId);
+            if (matchedEvt) {
+              userMatchingEvent = matchedEvt;
+              break;
+            }
+          }
+        }
+
+        if (userMatchingEvent) {
+          setMatchingEvent(userMatchingEvent);
+        } else if (ADMIN_UIDS.includes(user.uid)) {
+          // Admin can see the first active event link if not personally registered as participant
+          setMatchingEvent(activeList[0]);
         } else {
           setMatchingEvent(null);
+          setShowLiveModal(false);
         }
-      } catch {
-        // Silently catch in navbar
+      } catch (err) {
+        console.warn('Navbar checkMatching error:', err);
+        setMatchingEvent(null);
+        setShowLiveModal(false);
       }
     };
+
     checkMatching();
-  }, []);
+  }, [user]);
 
   // Check whether to show the live matching modal (specifically on event day for registered attendees)
   useEffect(() => {
@@ -110,23 +168,9 @@ export default function Navbar() {
         // ignore storage errors
       }
 
-      // Verify the user is registered for this event
-      try {
-        const regQ = query(
-          collection(db, 'prijave'),
-          where('uid', '==', user.uid),
-          where('eventId', '==', matchingEvent.id)
-        );
-        const regSnap = await getDocs(regQ);
-        const isRegistered = !regSnap.empty && regSnap.docs.some(d => {
-          const data = d.data();
-          return data.status !== 'cancelled' && data.status !== 'rejected';
-        });
-
-        setShowLiveModal(isRegistered);
-      } catch (err) {
-        console.warn('Navbar checkLiveModal error:', err);
-      }
+      // Since matchingEvent is already filtered to only events the user is registered/accepted for (or admin),
+      // we can directly show the modal:
+      setShowLiveModal(true);
     };
 
     checkLiveModal();
@@ -403,14 +447,14 @@ export default function Navbar() {
       )}
 
 
-      {/* Mobile Drawer Navigation Menu */}
+            {/* Mobile Drawer Navigation Menu */}
       {mobileMenuOpen && (
         <div 
-          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm md:hidden animate-fade-in-up"
+          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm md:hidden"
           onClick={() => setMobileMenuOpen(false)}
         >
           <div 
-            className="fixed top-16 left-4 right-4 bg-peach/95 backdrop-blur-2xl rounded-3xl border border-white/80 shadow-2xl p-6 z-50 text-brand"
+            className="fixed top-[84px] sm:top-24 left-4 right-4 max-h-[calc(100dvh-6.5rem)] overflow-y-auto overscroll-contain bg-peach/95 backdrop-blur-2xl rounded-3xl border border-white/80 shadow-2xl p-5 sm:p-6 z-50 text-brand"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex flex-col gap-2 mb-6">
@@ -443,7 +487,7 @@ export default function Navbar() {
               {user ? (
                 <>
                   <div className="flex items-center justify-between bg-white/70 p-3 rounded-2xl border border-white/80">
-                    <Link to="/profil" className="flex items-center gap-3">
+                    <Link to="/profil" onClick={handleNavClick} className="flex items-center gap-3">
                       {user.photoURL ? (
                         <img 
                           src={user.photoURL} 
@@ -473,6 +517,7 @@ export default function Navbar() {
                   {ADMIN_UIDS.includes(user.uid) && (
                     <Link
                       to="/admin"
+                      onClick={handleNavClick}
                       className="flex items-center justify-center gap-2 py-2.5 rounded-xl bg-brand/10 text-brand font-bold text-xs uppercase tracking-wider"
                     >
                       <ShieldAlert size={16} /> Admin Kontrolna Ploča
@@ -490,6 +535,7 @@ export default function Navbar() {
 
               <Link
                 to="/eventi"
+                onClick={handleNavClick}
                 className="w-full flex items-center justify-center gap-2 bg-brand text-white p-3.5 rounded-2xl text-sm font-bold shadow-lg shadow-brand/20"
               >
                 <Sparkles size={16} className="text-amber-300" />

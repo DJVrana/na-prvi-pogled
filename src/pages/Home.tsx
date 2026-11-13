@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router';
 import {
+  BookOpen,
   Calendar,
   Clock,
   MapPin,
@@ -23,6 +24,8 @@ import Footer from '../components/Footer';
 import SEO from '../components/SEO';
 import FaqAccordion from '../components/FaqAccordion';
 import NewsletterSection from '../components/NewsletterSection';
+import { getHomePageFaqItems, getFaqStructuredData } from '../data/faqData';
+import { getSortedBlogPosts, formatBlogDate } from '../data/blogPosts';
 import { formatPrice } from '../utils/formatters';
 
 interface ActiveEvent {
@@ -91,6 +94,7 @@ export default function Home() {
   };
 
   const currentEvent = activeEvents.find(e => e.id === selectedEventId) || activeEvents[0] || null;
+  const latestBlogPosts = getSortedBlogPosts().slice(0, 2);
 
   const homeStructuredData = {
     "@context": "https://schema.org",
@@ -107,60 +111,7 @@ export default function Home() {
           "query-input": "required name=search_term_string"
         }
       },
-      {
-        "@type": "FAQPage",
-        "@id": "https://naprvipogled.com/#faq",
-        "mainEntity": [
-          {
-            "@type": "Question",
-            "name": "Kako se prijaviti na nadolazeći event?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Prijaviti se možete putem naše stranice Eventi ili na početnoj stranici klikom na termin eventa koji vam odgovara. Nakon odabira termina potrebno je ispuniti prijavnicu s traženim podacima. Po završetku prijave prikazat će vam se poveznica na CoreEvent, putem kojeg možete kupiti ulaznicu za odabrani event. VAŽNO: Ispunjavanje prijavnice samo po sebi ne osigurava mjesto na eventu. Vaša prijava smatra se potvrđenom tek nakon uspješne kupnje ulaznice putem CoreEventa i zaprimanja ulaznice. Tek tada imate osigurano mjesto na odabranom događaju."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "Postoji li dress code?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Preporučujemo da na event dođete uredno i pristojno odjeveni, u odjeći u kojoj se osjećate ugodno i samopouzdano. Ne postoji strogi dress code niti je potrebno posebno svečano odijevanje – najvažnije je da odaberete odjeću primjerenu prigodi i u kojoj se osjećate najbolje."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "Kako funkcionira matching sustav?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Matching sustav funkcionira na principu diskretnog dijeljenja kontaktnih podataka. Tijekom eventa, na svom profilu na našoj stranici možete označiti sudionike koji su vam se svidjeli. Ako je interes obostran, putem e-maila šaljemo vam međusobne kontaktne podatke kako biste mogli nastaviti komunikaciju. Na ovaj način osiguravamo da vaše kontaktne podatke dobije isključivo osoba kojoj ste ih i sami željeli podijeliti, uz obostrani interes."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "Kakvo piće imam u izboru?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Na našim eventima očekuje vas širok izbor pića kako bi svatko mogao pronaći nešto po svom ukusu. U ponudi su gazirani i negazirani sokovi, pivo, vino i druga pića, tako da ćete bez problema pronaći nešto za sebe. Želimo da se tijekom cijelog druženja osjećate ugodno i opušteno!"
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "Mogu li povesti nekoga kao podršku?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Naši eventi zamišljeni su kao druženja namijenjena isključivo prijavljenim sudionicima. Zbog ograničenog broja mjesta i želje da svima osiguramo ugodno iskustvo, nažalost nije moguće povesti dodatnu pratnju koja nije prijavljena na event. Želimo izbjeći nepotrebnu gužvu i osigurati dovoljno prostora za sve sudionike."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "Što ako ne znam o čemu razgovarati s drugom osobom?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Nema problema. Tijekom eventa na ekranima se vrte dvije prezentacije s pitanjima i prijedlozima tema za razgovor koje vam mogu pomoći da lakše započnete razgovor i razbijete početnu tremu."
-            }
-          }
-        ]
-      }
+      getFaqStructuredData('https://naprvipogled.com/#faq')
     ]
   };
 
@@ -786,6 +737,88 @@ export default function Home() {
         */}
 
         {/* ========================================================================= */}
+        {/* 8.5 NAŠ BLOG & PRIČE                                                      */}
+        {/* ========================================================================= */}
+        <section className="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10">
+            <div>
+              <div className="inline-flex items-center gap-2 bg-brand/10 text-brand px-3.5 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider mb-3">
+                <BookOpen size={14} className="text-brand-light" />
+                <span>Naš Blog & Priče</span>
+              </div>
+              <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold text-brand tracking-tight">
+                Zanimljivosti i savjeti za upoznavanje
+              </h2>
+              <p className="text-brand/80 text-sm sm:text-base font-light mt-2 max-w-xl">
+                Istraži naše priče, saznaj kako je nastala ideja i pročitaj korisne savjete kako se opustiti i uživati u upoznavanju uživo.
+              </p>
+            </div>
+            <Link
+              to="/blog"
+              className="inline-flex items-center gap-2 text-xs sm:text-sm font-bold text-brand hover:text-brand-light transition-colors group shrink-0"
+            >
+              <span>Svi članci na blogu</span>
+              <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {latestBlogPosts.map((post) => (
+              <article
+                key={post.id}
+                className="bg-white/80 backdrop-blur-md rounded-3xl border border-white/90 shadow-md shadow-brand/5 overflow-hidden flex flex-col justify-between hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group"
+              >
+                <div>
+                  <Link to={`/blog/${post.slug}`} className="block relative h-56 sm:h-64 overflow-hidden">
+                    <img
+                      src={post.image}
+                      alt={post.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                    <div className="absolute top-3.5 left-3.5">
+                      <span className="bg-brand text-white text-[11px] font-bold px-3 py-1 rounded-full shadow-md">
+                        {post.category}
+                      </span>
+                    </div>
+                  </Link>
+
+                  <div className="p-6 sm:p-7">
+                    <div className="flex items-center gap-2.5 text-xs text-brand/60 mb-2.5">
+                      <span className="flex items-center gap-1">
+                        <Clock size={13} /> {post.readTime}
+                      </span>
+                      <span>•</span>
+                      <span>{formatBlogDate(post.date)}</span>
+                    </div>
+
+                    <Link to={`/blog/${post.slug}`} className="block group/title">
+                      <h3 className="font-serif text-xl sm:text-2xl font-bold text-brand mb-2.5 group-hover/title:text-brand-light transition-colors leading-snug">
+                        {post.title}
+                      </h3>
+                    </Link>
+
+                    <p className="text-brand/80 text-sm leading-relaxed font-light line-clamp-3">
+                      {post.excerpt}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="px-6 sm:px-7 pb-6 pt-3 border-t border-brand/10 flex items-center justify-between">
+                  <Link
+                    to={`/blog/${post.slug}`}
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-brand hover:text-brand-light transition-colors group/link"
+                  >
+                    <span>Pročitaj cijelu priču</span>
+                    <ArrowRight size={14} className="group-hover/link:translate-x-1 transition-transform" />
+                  </Link>
+                  <span className="text-xs text-brand/50 font-medium">{formatBlogDate(post.date)}</span>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        {/* ========================================================================= */}
         {/* 9. HOME FAQ ACCORDION (Modern HTML details disclosure)                     */}
         {/* ========================================================================= */}
         <section className="py-20 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto">
@@ -798,45 +831,7 @@ export default function Home() {
             </p>
           </div>
 
-          <FaqAccordion
-            items={[
-              {
-                question: 'Kako se prijaviti na nadolazeći event?',
-                answer: (
-                  <span>
-                    Prijaviti se možete putem naše stranice{' '}
-                    <Link to="/eventi" className="font-semibold underline text-brand hover:text-brand-light">
-                      Eventi
-                    </Link>{' '}
-                    ili na početnoj stranici klikom na termin eventa koji vam odgovara. Nakon odabira termina potrebno je ispuniti prijavnicu s traženim podacima. Po završetku prijave prikazat će vam se poveznica na CoreEvent, putem kojeg možete kupiti ulaznicu za odabrani event.
-                    <span className="block mt-2 font-medium">
-                      <strong className="text-brand font-bold">VAŽNO:</strong> Ispunjavanje prijavnice samo po sebi ne osigurava mjesto na eventu. Vaša prijava smatra se potvrđenom tek nakon uspješne kupnje ulaznice putem CoreEventa i zaprimanja ulaznice. Tek tada imate osigurano mjesto na odabranom događaju.
-                    </span>
-                  </span>
-                )
-              },
-              {
-                question: 'Postoji li dress code?',
-                answer: 'Preporučujemo da na event dođete uredno i pristojno odjeveni, u odjeći u kojoj se osjećate ugodno i samopouzdano. Ne postoji strogi dress code niti je potrebno posebno svečano odijevanje – najvažnije je da odaberete odjeću primjerenu prigodi i u kojoj se osjećate najbolje.'
-              },
-              {
-                question: 'Kako funkcionira matching sustav?',
-                answer: 'Matching sustav funkcionira na principu diskretnog dijeljenja kontaktnih podataka. Tijekom eventa, na svom profilu na našoj stranici možete označiti sudionike koji su vam se svidjeli. Ako je interes obostran, putem e-maila šaljemo vam međusobne kontaktne podatke kako biste mogli nastaviti komunikaciju. Na ovaj način osiguravamo da vaše kontaktne podatke dobije isključivo osoba kojoj ste ih i sami željeli podijeliti, uz obostrani interes.'
-              },
-              {
-                question: 'Kakvo piće imam u izboru?',
-                answer: 'Na našim eventima očekuje vas širok izbor pića kako bi svatko mogao pronaći nešto po svom ukusu. U ponudi su gazirani i negazirani sokovi, pivo, vino i druga pića, tako da ćete bez problema pronaći nešto za sebe. Želimo da se tijekom cijelog druženja osjećate ugodno i opušteno!'
-              },
-              {
-                question: 'Mogu li povesti nekoga kao podršku?',
-                answer: 'Naši eventi zamišljeni su kao druženja namijenjena isključivo prijavljenim sudionicima. Zbog ograničenog broja mjesta i želje da svima osiguramo ugodno iskustvo, nažalost nije moguće povesti dodatnu pratnju koja nije prijavljena na event. Želimo izbjeći nepotrebnu gužvu i osigurati dovoljno prostora za sve sudionike.'
-              },
-              {
-                question: 'Što ako ne znam o čemu razgovarati s drugom osobom?',
-                answer: 'Nema problema. Tijekom eventa na ekranima se vrte dvije prezentacije s pitanjima i prijedlozima tema za razgovor koje vam mogu pomoći da lakše započnete razgovor i razbijete početnu tremu.'
-              }
-            ]}
-          />
+          <FaqAccordion items={getHomePageFaqItems()} />
         </section>
 
                 {/* ========================================================================= */}

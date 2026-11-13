@@ -41,6 +41,7 @@ import {
 } from 'lucide-react';
 import { FaInstagram, FaGoogle } from 'react-icons/fa';
 import { sendMatchEmail, sendFemaleMatchEmail } from '../utils/matchingEmails';
+import { isEventMatchingActive, syncEventLifecycle } from '../utils/eventLifecycle';
 
 const ADMIN_UIDS = ['iKe7lzl7Msf7hd3kWyHC1ysyS3C3', 'Izt37mNGtpY82AKZTbyYsnctoxJ2', 'JRms1cPi2Bc513TOW0WBEFZMzrC3'];
 
@@ -61,7 +62,6 @@ interface Candidate {
   godine: number;
   spol: string;
   email: string;
-  napomena?: string;
   contactHandle?: string;
   contactInstagram?: string;
   contactPhone?: string;
@@ -217,25 +217,87 @@ export default function MatchingPage() {
   // 2. Fetch Active Matching Event(s)
   useEffect(() => {
     const fetchEvents = async () => {
+      if (authLoading) return;
       setLoadingEvent(true);
+      setAccessError('');
+
       try {
         if (eventIdParam) {
+          // Specific event requested: /matching?eventId=XYZ
           const evDoc = await getDoc(doc(db, 'events', eventIdParam));
-          if (evDoc.exists()) {
-            setEvent({ id: evDoc.id, ...evDoc.data() } as EventItem);
-          } else {
+          if (!evDoc.exists()) {
             setAccessError("Događaj nije pronađen.");
+            setEvent(null);
+            return;
+          }
+
+          const evt = { id: evDoc.id, ...evDoc.data() } as EventItem;
+          if (!evt.isMatchingActive || evt.matchingPhase === 'closed') {
+            setAccessError("Matching za ovaj događaj trenutno nije aktivan. Administrator će ga aktivirati tijekom ili nakon susreta.");
+            setEvent(null);
+            return;
+          }
+
+          // STRICT CHECK: If user is logged in, verify accepted registration for THIS event
+          if (user) {
+            const regQ = query(
+              collection(db, 'prijave'),
+              where('eventId', '==', evt.id),
+              where('uid', '==', user.uid)
+            );
+            const regSnap = await getDocs(regQ);
+            if (regSnap.empty) {
+              setAccessError("Nisi prijavljen/a na ovaj događaj. Samo sudionici ovog događaja mogu pristupiti matchingu.");
+              setEvent(null);
+              return;
+            }
+            const regData = regSnap.docs[0].data();
+            if (regData.status !== 'accepted') {
+              setAccessError("Pristup matchingu moguć je isključivo za sudionike čija je prijava bila potvrđena od strane organizatora.");
+              setEvent(null);
+              return;
+            }
+          }
+
+          setEvent(evt);
+          return;
+        }
+
+        // No eventId in URL (/matching): find which active event the user has an accepted registration for
+        const q = query(collection(db, 'events'), where('isMatchingActive', '==', true));
+        const snap = await getDocs(q);
+        const list: EventItem[] = snap.docs
+          .map(d => ({ id: d.id, ...d.data() } as EventItem))
+          .filter(e => e.matchingPhase !== 'closed');
+
+        if (list.length === 0) {
+          setAccessError("Trenutno nema aktivnih speed dating matching sesija.");
+          setEvent(null);
+          return;
+        }
+
+        if (user) {
+          const regQ = query(
+            collection(db, 'prijave'),
+            where('uid', '==', user.uid)
+          );
+          const regSnap = await getDocs(regQ);
+          const acceptedEventIds = new Set(
+            regSnap.docs
+              .map(d => d.data())
+              .filter(r => r.status === 'accepted')
+              .map(r => r.eventId)
+          );
+
+          const matchedEvent = list.find(e => acceptedEventIds.has(e.id));
+          if (matchedEvent) {
+            setEvent(matchedEvent);
+          } else {
+            setAccessError("Nisi prijavljen/a na aktivan speed dating susret. Pristup matchingu omogućen je isključivo sudionicima prijavljenima na večerašnji susret.");
+            setEvent(null);
           }
         } else {
-          // Fetch events where matching is active
-          const q = query(collection(db, 'events'), where('isMatchingActive', '==', true));
-          const snap = await getDocs(q);
-          const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as EventItem));
           setAvailableEvents(list);
-
-          if (list.length === 1) {
-            setEvent(list[0]);
-          }
         }
       } catch (err) {
         console.error("Greška pri dohvaćanju događaja:", err);
@@ -245,7 +307,7 @@ export default function MatchingPage() {
     };
 
     fetchEvents();
-  }, [eventIdParam]);
+  }, [eventIdParam, user, authLoading]);
 
   // 3. Verify user has accepted registration for this event
   useEffect(() => {
@@ -259,13 +321,13 @@ export default function MatchingPage() {
       setAccessError('');
 
       try {
-        if (!event.isMatchingActive) {
+        if (!event.isMatchingActive || event.matchingPhase === 'closed') {
           setAccessError("Matching za ovaj događaj trenutno nije aktivan. Administrator će ga aktivirati tijekom ili nakon susreta.");
           setCheckingAccess(false);
           return;
         }
 
-        // Check user's registration
+        // Check user's registration STRICTLY for this event
         const q = query(
           collection(db, 'prijave'),
           where('eventId', '==', event.id),
@@ -320,7 +382,7 @@ export default function MatchingPage() {
         }
       } catch (err) {
         console.error("Greška pri provjeri prava pristupa:", err);
-        setAccessError("Došlo je do greške prilikom provjere pristupa.");
+        setAccessError("Greška pri provjeri prava pristupa.");
       } finally {
         setCheckingAccess(false);
       }
@@ -383,9 +445,10 @@ export default function MatchingPage() {
             ? (userVoteMap.get(data.uid) ? 'like' : 'pass')
             : 'unvoted';
 
+          const { napomena: _omittedNote, ...safeData } = (data as any);
           const candItem: Candidate = {
             id: d.id,
-            ...(data as any),
+            ...safeData,
             contactInstagram: cContactIg,
             contactPhone: cContactPhone,
             voteStatus
@@ -721,7 +784,7 @@ export default function MatchingPage() {
   }
 
   // Multiple events active and none selected
-  if (!event && availableEvents.length > 0) {
+  if (!event && availableEvents.length > 0 && ADMIN_UIDS.includes(user?.uid || '')) {
     return (
       <div className="min-h-screen py-12 px-4 flex justify-center items-center bg-peach text-brand font-sans">
         <div className="bg-white/70 backdrop-blur-xl p-8 rounded-3xl shadow-xl max-w-lg w-full border border-white">
@@ -873,8 +936,7 @@ export default function MatchingPage() {
     const cleanQuery = searchQuery.trim().toLowerCase();
     if (cleanQuery) {
       const nameMatch = c.imePrezime.toLowerCase().includes(cleanQuery);
-      const noteMatch = c.napomena?.toLowerCase().includes(cleanQuery);
-      if (!nameMatch && !noteMatch) return false;
+      if (!nameMatch) return false;
     }
 
     // Active tab filter
@@ -1333,12 +1395,6 @@ export default function MatchingPage() {
                       </span>
                     </div>
 
-                    {candidate.napomena && (
-                      <p className="text-xs text-brand/70 italic mt-0.5 line-clamp-2">
-                        "{candidate.napomena}"
-                      </p>
-                    )}
-
                     {candidate.customAnswers && candidate.customAnswers.length > 0 && (
                       <div className="flex flex-wrap gap-1.5 mt-2">
                         {candidate.customAnswers.slice(0, 2).map((ans, idx) => (
@@ -1458,12 +1514,6 @@ export default function MatchingPage() {
                         <Calendar size={12} className="text-brand-light" /> Sudionik susreta {event.title}
                       </p>
                     </div>
-
-                    {currentSwipeCandidate.napomena && (
-                      <div className="p-3.5 rounded-2xl bg-peach/60 border border-brand/10 text-xs text-brand/80 leading-relaxed italic">
-                        "{currentSwipeCandidate.napomena}"
-                      </div>
-                    )}
 
                     {currentSwipeCandidate.customAnswers && currentSwipeCandidate.customAnswers.length > 0 && (
                       <div className="space-y-2 pt-2 border-t border-brand/10">
