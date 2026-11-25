@@ -51,7 +51,6 @@ export const BLOG_POSTS: BlogPost[] = [
     date: '2026-11-05',
     readTime: '3 min čitanja',
     image: `${import.meta.env.BASE_URL}images/blog/post-01.png`,
-    featured: true,
     excerpt: "Sve je počelo jedne sasvim obične večeri, uz razgovor dvojice prijatelja u McDonald'su o tome što danas ljudima u Hrvatskoj najviše nedostaje – upoznavanje novih ljudi i stvaranje iskrenih poznanstava.",
     content: {
       intro: "Sve je počelo jedne sasvim obične večeri, uz razgovor dvojice prijatelja u McDonald'su.",
@@ -108,7 +107,7 @@ Vjerujemo da jedno upoznavanje može biti početak lijepog prijateljstva, zaniml
           heading: '2. Aplikacije za upoznavanje postale su dio svakodnevice',
           text: `Aplikacije za upoznavanje značajno su promijenile način na koji ljudi traže potencijalne partnere. Jedan od najpoznatijih primjera svakako je Tinder, koji je dostupan u brojnim državama svijeta.
 
-Koliko je takav način upoznavanja raširen u Europi, pokazuje i službeni podatak Tindera: tijekom druge polovice 2025. aplikacija je imala manje od 15 milijuna mjesečno aktivnih korisnika samo na području Europske unije.
+Koliko je takav način upoznavanja raširen u Europi, pokazuje i službeni podatak Tindera: tijekom druge polovice 2025. aplikacija je imala manje od [15 milijuna](https://policies.tinder.com/community/additional-information/disclosures/intl/en) mjesečno aktivnih korisnika samo na području Europske unije.
 
 Takve aplikacije omogućuju nam da u kratkom vremenu pregledamo velik broj profila, ali upoznavanje se često svodi na fotografije, kratke opise i nekoliko poruka. Nedostaju nam govor tijela, ton glasa, spontani osmijeh i ona energija koju možemo osjetiti tek kada smo s nekim u istoj prostoriji.
 
@@ -116,7 +115,7 @@ Ponekad osoba koja nam na fotografiji ne bi odmah privukla pažnju uživo ostavi
         },
         {
           heading: '3. Previše izbora ne znači nužno i lakši odabir',
-          text: `Zanimljivo je da se ovom pojavom bave i znanstvenici. Istraživanje objavljeno 2025. u časopisu Media Psychology proučavalo je kako broj profila na aplikacijama za upoznavanje utječe na donošenje odluka.
+          text: `Zanimljivo je da se ovom pojavom bave i znanstvenici. [Istraživanje](https://www.tandfonline.com/doi/full/10.1080/15213269.2025.2555430) objavljeno 2025. u časopisu Media Psychology proučavalo je kako broj profila na aplikacijama za upoznavanje utječe na donošenje odluka.
 
 U eksperimentu je sudjelovao 401 student. Sudionici su u simuliranoj aplikaciji pregledavali 11, 31 ili 91 profil. Oni koji su vidjeli 91 profil izvijestili su o većem mentalnom opterećenju od onih s manje profila, a stopa prihvaćanja bila im je niža.
 
@@ -146,6 +145,46 @@ Na kraju, najvažnije je biti otvoren prema novim poznanstvima i ne dopustiti da
         }
       ],
       conclusion: 'Jer nikada ne znamo kakva se priča može razviti iz jednog običnog upoznavanja. ❤️'
+    }
+  },
+  {
+    id: '3',
+    slug: 'najvece-ljubavne-drame-grcke-mitologije',
+    title: 'Najveće ljubavne drame grčke mitologije: od prevara do zabranjenih ljubavi',
+    category: 'Zanimljivosti',
+    date: '2026-11-25',
+    readTime: '3 min čitanja',
+    image: `${import.meta.env.BASE_URL}images/blog/post-03.png`,
+    featured: true,
+    excerpt:
+      'Ljubavne priče iz mitologije nisu uvijek bile bajkovite. Među bogovima i smrtnicima bilo je prevara, ljubomore, neuzvraćenih osjećaja i tragedija. Neke od tih priča zvuče kao prave ljubavne drame, a neke su aktualne i danas.',
+    content: {
+      intro:
+        'Ljubavne priče iz mitologije nisu uvijek bile bajkovite. Među bogovima i smrtnicima bilo je prevara, ljubomore, neuzvraćenih osjećaja i tragedija. Neke od tih priča zvuče kao prave ljubavne drame, a neke su aktualne i danas.',
+      sections: [
+        {
+          heading: '[Afrodita, Ares i Hefest: ljubavni trokut na Olimpu](https://www.theoi.com/Olympios/AresLoves.html)',
+          text: `Afrodita, božica ljubavi i ljepote, bila je udana za Hefesta, ali je ljubav pronašla u naručju Aresa, boga rata. Njihovu tajnu vezu otkrio je Helije, bog Sunca, i dojavio ju je Hefestu. On je ljubavnike uhvatio u nevidljivu mrežu i izložio ih pogledima ostalih bogova (Homer, *Odiseja*, 8. pjevanje).`
+        },
+        {
+          heading: '[Orfej i Euridika: ljubav jača od smrti](https://www.theoi.com/articles/the-tragic-myth-about-orpheus-and-eurydice/)',
+          text: `Orfej je toliko volio Euridiku da je nakon njezine smrti sišao u podzemni svijet kako bi je vratio. Dobio je priliku povesti je natrag, ali uz jedan uvjet: nije se smio okrenuti prema njoj dok ne izađu na svjetlo dana. Pred samim izlaskom nije izdržao, okrenuo se i Euridika je zauvijek nestala.`
+        },
+        {
+          heading: '[Apolon i Dafne: kada ljubav nije uzvraćena](https://www.theoi.com/Nymphe/NympheDaphne.html)',
+          text: `Prema Ovidiju, Eros je Apolona pogodio strijelom koja izaziva ljubav, a Dafne strijelom koja tjera ljubav. Apolon se tako strastveno zaljubio u nimfu Dafne, a ona je od njega bježala. Kad ju je gotovo sustigao, zamolila je oca, riječnog boga, za pomoć i pretvorila se u stablo lovora.`
+        },
+        {
+          heading: '[Eho i Narcis: kada je netko zaljubljen samo u sebe](https://www.nationalgallery.org.uk/paintings/glossary/echo-and-narcissus)',
+          text: `Nimfa Eho, koju je Hera kaznila tako da može ponavljati samo posljednje riječi koje čuje, zaljubila se u Narcisa, mladića opčinjenog vlastitom ljepotom. Narcis ju je odbio, a Eho je od tuge nestala, ostao je samo njezin glas, odjek. Narcis je, zaljubljen u vlastiti odraz, ostao uz vodu i na kraju umro (Ovidije, *Metamorfoze*).`
+        },
+        {
+          heading: '[Eros i Psiha: ljubav puna prepreka](https://www.theoi.com/Ouranios/Psykhe.html)',
+          text: `Psiha je bila toliko lijepa da je izazvala Afroditinu ljubomoru. Afrodita je poslala Erosa da je kazni, no on se sam zaljubio u nju. Njihova ljubav bila je puna iskušenja, a Psiha je morala proći niz teških zadataka koje joj je zadala Afrodita kako bi se ponovno sjedinila s Erosom (Apulej, *Metamorfoze*, 2. st.).`
+        }
+      ],
+      conclusion:
+        'Iako su nastale prije tisuća godina, ove priče i danas zvuče poznato. Ljubomora, neuzvraćena ljubav, povjerenje i strah od gubitka nisu nestali s Olimpa, samo su se preselili u naše svakodnevne živote. ❤️'
     }
   }
 ];

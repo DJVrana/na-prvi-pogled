@@ -16,6 +16,26 @@
     <priority>0.9</priority>
   </url>
   <url>
+    <loc>https://naprvipogled.com/blog</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://naprvipogled.com/blog/najvece-ljubavne-drame-grcke-mitologije</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://naprvipogled.com/blog/zasto-je-danas-toliko-tesko-upoznati-nekoga-uzivo</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://naprvipogled.com/blog/kako-je-nastala-ideja-za-naprvipogled</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://naprvipogled.com/kontakt</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>

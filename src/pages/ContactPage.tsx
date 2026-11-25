@@ -33,7 +33,16 @@ export default function ContactPage() {
   const [acceptedPrivacy, setAcceptedPrivacy] = useState(false);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [submittedEmail, setSubmittedEmail] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+
+  const escapeHtml = (str: string) =>
+    str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
 
   const subjects = [
     'Opći upit',
@@ -52,53 +61,95 @@ export default function ContactPage() {
       return;
     }
 
+    const senderName = formData.name.trim();
+    const senderEmail = formData.email.trim();
+    const senderPhone = formData.phone.trim();
+    const senderSubject = formData.subject;
+    const senderMessage = formData.message.trim();
+
     setLoading(true);
 
     try {
-      // 1. Uvijek sigurno spremamo upit u Firestore bazu 'contact_messages'
-      await addDoc(collection(db, 'contact_messages'), {
-        name: formData.name.trim(),
-        email: formData.email.trim(),
-        phone: formData.phone.trim() || null,
-        subject: formData.subject,
-        message: formData.message.trim(),
-        acceptedPrivacy: true,
-        consentedAt: serverTimestamp(),
-        createdAt: serverTimestamp(),
-        status: 'new'
-      });
-
-      // 2. Šaljemo obavijest organizatoru na email putem EmailJS-a
-      const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
-      if (publicKey) {
-        try {
-          await emailjs.send(
-            'default_service',
-            'template_uuvkcp3', // Koristi postojeći verificirani template
-            {
-              name: formData.name.trim(),
-              email: formData.email.trim(),
-              subject: `[Na prvi pogled UPIT] ${formData.subject} - ${formData.name.trim()}`,
-              html_message: `
-                <h3>Novi kontakt upit s web stranice Na prvi pogled</h3>
-                <p><strong>Ime i prezime:</strong> ${formData.name}</p>
-                <p><strong>Email:</strong> ${formData.email}</p>
-                <p><strong>Broj mobitela:</strong> ${formData.phone || 'Nije navedeno'}</p>
-                <p><strong>Kategorija / Predmet:</strong> ${formData.subject}</p>
-                <p><strong>Poruka:</strong></p>
-                <div style="background-color: #f7f0eb; padding: 16px; border-radius: 8px; font-style: italic;">
-                  ${formData.message.replace(/\n/g, '<br/>')}
-                </div>
-              `
-            },
-            publicKey
-          );
-        } catch (emailErr) {
-          console.warn("EmailJS slanje nije uspjelo, no poruka je uspješno spremljena u bazu:", emailErr);
-          // Čak i ako EmailJS javi grešku, poruka je u bazi tako da organizator ne gubi upit
-        }
+      // 1. Sigurnosna pohrana upita u Firestore bazu 'contact_messages' (ne blokira slanje maila ako baza zakaže)
+      let savedToDb = false;
+      try {
+        await addDoc(collection(db, 'contact_messages'), {
+          name: senderName,
+          email: senderEmail,
+          phone: senderPhone || null,
+          subject: senderSubject,
+          message: senderMessage,
+          acceptedPrivacy: true,
+          consentedAt: serverTimestamp(),
+          createdAt: serverTimestamp(),
+          status: 'new'
+        });
+        savedToDb = true;
+      } catch (dbErr) {
+        console.warn("Spremanje u contact_messages nije uspjelo, nastavljamo sa slanjem maila:", dbErr);
       }
 
+      // 2. Šaljemo upit ISKLJUČIVO organizatoru na naprvipogled.events@gmail.com
+      // VAŽNO: U EmailJS predlošku 'template_uuvkcp3' varijabla {{email}} je primatelj (To Email),
+      // stoga ona MORA biti naprvipogled.events@gmail.com kako mail ne bi otišao samom pošiljatelju!
+      const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
+      if (publicKey) {
+        const safeName = escapeHtml(senderName);
+        const safeEmail = escapeHtml(senderEmail);
+        const safePhone = senderPhone ? escapeHtml(senderPhone) : 'Nije navedeno';
+        const safeSubject = escapeHtml(senderSubject);
+        const safeMessage = escapeHtml(senderMessage).replace(/\n/g, '<br/>');
+
+        await emailjs.send(
+          'default_service',
+          'template_uuvkcp3',
+          {
+            name: 'Na prvi pogled Tim',
+            email: 'naprvipogled.events@gmail.com',
+            to_email: 'naprvipogled.events@gmail.com',
+            reply_to: senderEmail,
+            subject: `[Na prvi pogled UPIT] ${senderSubject} – ${senderName}`,
+            html_message: `
+              <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333333; line-height: 1.6; padding: 24px; background-color: #ffffff; border: 1px solid #ece4de; border-radius: 16px;">
+                <div style="border-bottom: 2px solid #7B1D29; padding-bottom: 14px; margin-bottom: 20px;">
+                  <h2 style="color: #7B1D29; margin: 0; font-size: 20px;">📩 Novi kontakt upit s web stranice</h2>
+                  <p style="color: #777777; font-size: 13px; margin: 4px 0 0 0;">Poslano putem kontakt obrasca na naprvipogled.com</p>
+                </div>
+                <table style="width: 100%; font-size: 14px; border-collapse: collapse; margin-bottom: 18px;">
+                  <tr>
+                    <td style="padding: 6px 0; color: #666666; width: 150px;"><strong>Ime i prezime:</strong></td>
+                    <td style="padding: 6px 0; color: #222222;">${safeName}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 6px 0; color: #666666;"><strong>E-mail pošiljatelja:</strong></td>
+                    <td style="padding: 6px 0;"><a href="mailto:${safeEmail}" style="color: #7B1D29; font-weight: bold;">${safeEmail}</a></td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 6px 0; color: #666666;"><strong>Broj mobitela:</strong></td>
+                    <td style="padding: 6px 0; color: #222222;">${safePhone}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 6px 0; color: #666666;"><strong>Predmet upita:</strong></td>
+                    <td style="padding: 6px 0; color: #222222;">${safeSubject}</td>
+                  </tr>
+                </table>
+                <p style="margin: 0 0 8px 0; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; color: #666666;"><strong>Poruka korisnika:</strong></p>
+                <div style="background-color: #faf5f2; border-left: 4px solid #7B1D29; padding: 16px; border-radius: 8px; font-size: 15px; color: #222222;">
+                  ${safeMessage}
+                </div>
+                <p style="margin-top: 20px; font-size: 12px; color: #888888;">
+                  💡 Za odgovor kliknite na <a href="mailto:${safeEmail}?subject=${encodeURIComponent('Re: ' + senderSubject + ' - Na prvi pogled')}" style="color: #7B1D29; font-weight: bold;">Odgovori korisniku (${safeEmail})</a>.
+                </p>
+              </div>
+            `
+          },
+          publicKey
+        );
+      } else if (!savedToDb) {
+        throw new Error("Nije moguće poslati upit.");
+      }
+
+      setSubmittedEmail(senderEmail);
       setSuccess(true);
       setAcceptedPrivacy(false);
       setFormData({
@@ -341,20 +392,20 @@ export default function ContactPage() {
             </div>
 
             {success ? (
-              <div className="bg-emerald-50 border border-emerald-200 p-8 rounded-2xl text-center space-y-4 animate-fade-in-up">
-                <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
+              <div role="status" aria-live="polite" className="bg-emerald-50 border border-emerald-200 p-8 rounded-2xl text-center space-y-4 animate-fade-in-up">
+                <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto shadow-xs">
                   <CheckCircle2 size={36} />
                 </div>
-                <h3 className="font-bold text-xl text-emerald-900">
-                  Poruka je uspješno poslana!
+                <h3 className="font-serif font-bold text-2xl text-emerald-950">
+                  Hvala ti! Tvoj upit je uspješno zaprimljen.
                 </h3>
-                <p className="text-sm text-emerald-800 max-w-md mx-auto leading-relaxed">
-                  Hvala ti na javljanju. Tvoj upit je zabilježen i naš tim će ti odgovoriti u najkraćem roku na navedenu email adresu.
+                <p className="text-sm text-emerald-900/90 max-w-md mx-auto leading-relaxed">
+                  Tvoja poruka je uspješno dostavljena našem timu. Javit ćemo ti se s odgovorom u najkraćem mogućem roku (obično unutar 24 sata) na tvoju e-mail adresu{submittedEmail ? <> <strong>{submittedEmail}</strong></> : ''}.
                 </p>
                 <button
                   type="button"
                   onClick={() => setSuccess(false)}
-                  className="mt-4 px-6 py-2.5 bg-brand text-white rounded-full text-xs font-bold hover:bg-brand-light transition-all"
+                  className="mt-4 px-6 py-2.5 bg-brand text-white rounded-full text-xs font-bold hover:bg-brand-light transition-all cursor-pointer"
                 >
                   Pošalji novu poruku
                 </button>
@@ -398,6 +449,9 @@ export default function ContactPage() {
                       required
                       inputMode="email"
                       autoComplete="email"
+                      autoCorrect="off"
+                      autoCapitalize="none"
+                      spellCheck={false}
                       value={formData.email}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                       placeholder="tvoj@email.com"

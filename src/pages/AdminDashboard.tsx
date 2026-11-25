@@ -4,7 +4,7 @@ import { db, auth } from '../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import type { User } from 'firebase/auth';
 import { Link, Navigate } from 'react-router';
-import { ArrowLeft, Users, Search, RefreshCw, UserRound, ArrowDown01, Loader2, Plus, Calendar as CalendarIcon, CheckCircle2, List, PlayCircle, StopCircle, Trash2, X, ChevronDown, Pencil, Clock, XCircle, Flame, Heart, UserX, Send, Sparkles, AlertCircle, Mail, Eye, FileText, UserCheck, Circle, CreditCard, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Users, Search, RefreshCw, UserRound, ArrowDown01, Loader2, Plus, Calendar as CalendarIcon, CheckCircle2, List, PlayCircle, StopCircle, Trash2, X, ChevronDown, Pencil, Clock, XCircle, Flame, Heart, UserX, Send, Sparkles, AlertCircle, Mail, Eye, FileText, UserCheck, Circle, CreditCard, MessageSquare, Copy, Archive } from 'lucide-react';
 import emailjs from '@emailjs/browser';
 import { EventAttendancePdfModal } from '../components/EventAttendancePdfModal';
 import { EventCheckInModal } from '../components/EventCheckInModal';
@@ -12,7 +12,7 @@ import { EventMatchesModal } from '../components/EventMatchesModal';
 import { EventFeedbackModal } from '../components/EventFeedbackModal';
 import { sendMatchEmail, sendFemaleMatchEmail } from '../utils/matchingEmails';
 import { calculateThreeDaysBefore, getDefaultCancelNote, getEmailSocialFooterHtml } from '../utils/formatters';
-import { isEventRegistrationOpen, isEventMatchingActive, syncEventLifecycle } from '../utils/eventLifecycle';
+import { isEventRegistrationOpen, isEventMatchingActive, syncEventLifecycle, isEventDayPassed, parseEventDate } from '../utils/eventLifecycle';
 import {
   REMINDER_TEMPLATES,
   type ReminderTemplate,
@@ -197,6 +197,9 @@ export default function AdminDashboard() {
   // New event form state
   const [showNewEventForm, setShowNewEventForm] = useState(false);
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
+  const [duplicatedFromTitle, setDuplicatedFromTitle] = useState<string | null>(null);
+  const [eventsSubTab, setEventsSubTab] = useState<'upcoming' | 'past'>('upcoming');
+  const [priceIncludesDrinks, setPriceIncludesDrinks] = useState<boolean>(true);
   const [previewGender, setPreviewGender] = useState<'M' | 'Ž'>('Ž');
   const [newEvent, setNewEvent] = useState({
     title: '',
@@ -361,6 +364,34 @@ export default function AdminDashboard() {
   const pendingFemaleCount = useMemo(() => {
     return pendingPrijave.filter(p => p.spol === 'Ž' || p.spol === 'Z' || p.spol?.toLowerCase() === 'žensko').length;
   }, [pendingPrijave]);
+
+  const { upcomingEvents, pastEvents, pastActiveMatchingCount } = useMemo(() => {
+    const upcoming: EventData[] = [];
+    const past: EventData[] = [];
+
+    for (const evt of events) {
+      if (isEventDayPassed(evt.dateStr)) {
+        past.push(evt);
+      } else {
+        upcoming.push(evt);
+      }
+    }
+
+    upcoming.sort((a, b) => {
+      const da = parseEventDate(a.dateStr)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+      const dbTime = parseEventDate(b.dateStr)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+      return da - dbTime;
+    });
+
+    past.sort((a, b) => {
+      const da = parseEventDate(a.dateStr)?.getTime() ?? 0;
+      const dbTime = parseEventDate(b.dateStr)?.getTime() ?? 0;
+      return dbTime - da;
+    });
+
+    const activeMatchingInPast = past.filter(e => e.isMatchingActive && e.matchingPhase !== 'closed').length;
+    return { upcomingEvents: upcoming, pastEvents: past, pastActiveMatchingCount: activeMatchingInPast };
+  }, [events]);
 
   // Sample recipient for live preview
   const sampleRecipient = useMemo(() => {
@@ -772,7 +803,8 @@ export default function AdminDashboard() {
       // Select the active event or the first one if none is selected
       if (!selectedEventId && data.length > 0) {
         const active = data.find(e => e.isActive);
-        setSelectedEventId(active ? active.id : data[0].id);
+        const firstUpcoming = data.find(e => !isEventDayPassed(e.dateStr));
+        setSelectedEventId(active ? active.id : (firstUpcoming ? firstUpcoming.id : data[0].id));
       }
     } catch (err) {
       console.error("Error fetching events:", err);
@@ -806,8 +838,25 @@ export default function AdminDashboard() {
     }
   };
 
+  const applyZagrebCafeDeParisPreset = () => {
+    setNewEvent(prev => ({
+      ...prev,
+      title: 'Speed dating Zagreb',
+      timeStr: '19:00',
+      location: 'Café de Paris, Selska cesta 215, Zagreb',
+      price: prev.price || (priceIncludesDrinks ? '15 € (uključena dva pića po izboru)' : '15 €')
+    }));
+  };
+
+  const handleSelectPresetPrice = (amount: number, includeDrinks = priceIncludesDrinks) => {
+    const formatted = includeDrinks ? `${amount} € (uključena dva pića po izboru)` : `${amount} €`;
+    setNewEvent(prev => ({ ...prev, price: formatted }));
+  };
+
   const openEditEvent = (eventToEdit: EventData) => {
+    setDuplicatedFromTitle(null);
     setEditingEventId(eventToEdit.id);
+    setPriceIncludesDrinks((eventToEdit.price || '').toLowerCase().includes('pić'));
     const threeDays = calculateThreeDaysBefore(eventToEdit.dateStr);
     const defaultNote = getDefaultCancelNote(eventToEdit.dateStr);
 
@@ -874,9 +923,53 @@ export default function AdminDashboard() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const openDuplicateEvent = (eventToCopy: EventData) => {
+    setEditingEventId(null);
+    setDuplicatedFromTitle(`${eventToCopy.title} (${eventToCopy.dateStr || 'bez datuma'})`);
+    setPriceIncludesDrinks((eventToCopy.price || '').toLowerCase().includes('pić'));
+
+    const defaultNote = getDefaultCancelNote(eventToCopy.dateStr);
+    const defaultIntroM = 'Hvala ti što si nam ukazao povjerenje i odlučio biti dio "Na prvi pogled" speed dating eventa!';
+    const defaultIntroZ = 'Hvala ti što si nam ukazala povjerenje i odlučila biti dio "Na prvi pogled" speed dating eventa!';
+    const defaultClosing = 'Program završavamo oko 21:00, a nakon toga ostavljamo vrijeme za neformalno druženje.';
+
+    setNewEvent({
+      title: eventToCopy.title,
+      ageGroup: eventToCopy.ageGroup,
+      dateStr: eventToCopy.dateStr,
+      timeStr: eventToCopy.timeStr,
+      location: eventToCopy.location,
+      price: eventToCopy.price,
+      coreEventUrl: eventToCopy.coreEventUrl || '',
+      maxRegistrations: eventToCopy.maxRegistrations ? String(eventToCopy.maxRegistrations) : '',
+      closeRegistrationsM: false,
+      closeRegistrationsZ: false,
+      introTextM: eventToCopy.introTextM || eventToCopy.introText || defaultIntroM,
+      introTextZ: eventToCopy.introTextZ || eventToCopy.introText || defaultIntroZ,
+      middleTextM: eventToCopy.middleTextM || eventToCopy.middleText || 'Mi ćemo se pobrinuti za organizaciju i tvoje iskustvo, a na tebi je samo da dođeš, opustiš se i budeš svoj.',
+      middleTextZ: eventToCopy.middleTextZ || eventToCopy.middleText || 'Mi ćemo se pobrinuti za organizaciju i tvoje iskustvo, a na tebi je samo da dođeš, opustiš se i budeš svoja.',
+      noteTextM: eventToCopy.noteTextM || eventToCopy.noteText || defaultNote,
+      noteTextZ: eventToCopy.noteTextZ || eventToCopy.noteText || defaultNote,
+      closingTextM: eventToCopy.closingTextM || eventToCopy.closingText || defaultClosing,
+      closingTextZ: eventToCopy.closingTextZ || eventToCopy.closingText || defaultClosing,
+      timeNoteM: eventToCopy.timeNoteM || eventToCopy.timeNote || 'Molimo te da dođeš 15 minuta ranije (18:45), radi evidencije.',
+      timeNoteZ: eventToCopy.timeNoteZ || eventToCopy.timeNote || 'Molimo te da dođeš 15 minuta ranije (18:45), radi evidencije.'
+    });
+    setNewCustomFields(
+      eventToCopy.customFields?.map((f, idx) => ({
+        ...f,
+        id: `cf_${Date.now()}_${idx}`,
+        rawOptions: f.options?.join(', ') || ''
+      })) || []
+    );
+    setShowNewEventForm(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const handleCancelEdit = () => {
     setShowNewEventForm(false);
     setEditingEventId(null);
+    setDuplicatedFromTitle(null);
     setNewEvent({
       title: '',
       ageGroup: '',
@@ -1924,18 +2017,29 @@ export default function AdminDashboard() {
         {activeTab === 'events' && (
           <div className="space-y-6">
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-bold font-serif text-brand">Događaji</h2>
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+                <div>
+                  <h2 className="text-xl font-bold font-serif text-brand">Upravljanje događajima</h2>
+                  <p className="text-xs text-gray-500 mt-0.5">Kreirajte nove termine, duplicirajte postojeće i pratite arhivu održanih susreta.</p>
+                </div>
                 <button
                   onClick={() => {
-                    if (showNewEventForm && !editingEventId) {
+                    if (showNewEventForm && !editingEventId && !duplicatedFromTitle) {
                       handleCancelEdit();
                     } else {
                       handleCancelEdit();
+                      setPriceIncludesDrinks(true);
+                      setNewEvent(prev => ({
+                        ...prev,
+                        title: 'Speed dating Zagreb',
+                        timeStr: '19:00',
+                        location: 'Café de Paris, Selska cesta 215, Zagreb',
+                        price: '15 € (uključena dva pića po izboru)'
+                      }));
                       setShowNewEventForm(true);
                     }
                   }}
-                  className="bg-brand text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-brand-light transition-colors flex items-center gap-2"
+                  className="bg-brand text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-brand-light transition-colors flex items-center justify-center gap-2 shadow-xs cursor-pointer"
                 >
                   <Plus size={16} /> Novi Događaj
                 </button>
@@ -1943,7 +2047,32 @@ export default function AdminDashboard() {
 
               {showNewEventForm && (
                 <form onSubmit={handleSaveEvent} className="bg-gray-50 p-6 rounded-xl border border-gray-200 mb-8 space-y-4 shadow-sm">
-                  <h3 className="font-semibold text-gray-800 mb-4">{editingEventId ? 'Uredi događaj' : 'Kreiraj novi događaj'}</h3>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-200">
+                    <div>
+                      <h3 className="font-semibold text-gray-800 text-lg">
+                        {editingEventId ? 'Uredi postojeći događaj' : duplicatedFromTitle ? 'Kreiraj novi događaj (Duplikat)' : 'Kreiraj novi događaj'}
+                      </h3>
+                      {duplicatedFromTitle && (
+                        <p className="text-xs text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-md mt-1 inline-flex items-center gap-1.5 font-medium">
+                          <Copy size={12} /> Kopirani su podaci iz: <strong>{duplicatedFromTitle}</strong> — izmijenite datum, dobnu skupinu i po potrebi CoreEvent link!
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Automatski prijedlog (Brzi predložak) */}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-xs font-semibold text-gray-500">Automatski prijedlog:</span>
+                      <button
+                        type="button"
+                        onClick={applyZagrebCafeDeParisPreset}
+                        className="px-3 py-1.5 rounded-lg text-xs font-bold bg-brand/10 hover:bg-brand text-brand hover:text-white border border-brand/25 transition-colors cursor-pointer flex items-center gap-1.5"
+                        title="Ispuni: Speed dating Zagreb • 19:00 • Café de Paris, Selska cesta 215, Zagreb"
+                      >
+                        <Sparkles size={13} />
+                        Opcija 1 – Zagreb (Café de Paris)
+                      </button>
+                    </div>
+                  </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-semibold text-gray-600 mb-1">Naziv događaja (npr. Speed Dating Zagreb)</label>
@@ -1989,8 +2118,52 @@ export default function AdminDashboard() {
                       <input required type="text" value={newEvent.location} onChange={e => setNewEvent({ ...newEvent, location: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-gray-300" />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-gray-600 mb-1">Cijena / Kotizacija (npr. 10 € (uključena 2 pića))</label>
-                      <input required type="text" value={newEvent.price} onChange={e => setNewEvent({ ...newEvent, price: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-gray-300" />
+                      <div className="flex flex-wrap items-center justify-between gap-1 mb-1">
+                        <label className="block text-xs font-semibold text-gray-600">Cijena / Kotizacija</label>
+                        <div className="flex items-center gap-1">
+                          {[10, 15, 20].map((amt) => {
+                            const isSelectedAmount = newEvent.price.trim().startsWith(`${amt}`);
+                            return (
+                              <button
+                                key={amt}
+                                type="button"
+                                onClick={() => handleSelectPresetPrice(amt)}
+                                className={`px-2.5 py-0.5 rounded-md text-xs font-bold border transition-colors cursor-pointer ${
+                                  isSelectedAmount
+                                    ? 'bg-brand text-white border-brand shadow-2xs'
+                                    : 'bg-white hover:bg-gray-100 text-gray-700 border-gray-300'
+                                }`}
+                              >
+                                {amt} €
+                              </button>
+                            );
+                          })}
+                          <label className="inline-flex items-center gap-1 ml-1.5 text-[11px] text-gray-600 cursor-pointer select-none">
+                            <input
+                              type="checkbox"
+                              checked={priceIncludesDrinks}
+                              onChange={(e) => {
+                                const checked = e.target.checked;
+                                setPriceIncludesDrinks(checked);
+                                const numMatch = newEvent.price.match(/^(\d+)\s*€?/);
+                                if (numMatch) {
+                                  handleSelectPresetPrice(Number(numMatch[1]), checked);
+                                }
+                              }}
+                              className="rounded border-gray-300 text-brand focus:ring-brand"
+                            />
+                            <span>+ 2 pića</span>
+                          </label>
+                        </div>
+                      </div>
+                      <input
+                        required
+                        type="text"
+                        value={newEvent.price}
+                        onChange={e => setNewEvent({ ...newEvent, price: e.target.value })}
+                        placeholder="Odaberi 10 €, 15 €, 20 € ili upiši vlastito..."
+                        className="w-full px-3 py-2 rounded-lg border border-gray-300"
+                      />
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-gray-600 mb-1">Maksimalan broj prijava (ostavi prazno za neograničeno)</label>
@@ -2302,13 +2475,87 @@ export default function AdminDashboard() {
                 </form>
               )}
 
-              <div className="space-y-4">
-                {eventsLoading ? (
-                  <p className="text-gray-500 py-4 flex items-center gap-2"><Loader2 className="animate-spin" size={16} /> Učitavanje...</p>
-                ) : events.length === 0 ? (
-                  <p className="text-gray-500 py-4">Nema kreiranih događaja.</p>
-                ) : (
-                  events.map(event => (
+              {/* Sub-tabs: Nadolazeći događaji vs Prošli događaji (Arhiva) */}
+              <div className="flex flex-wrap items-center gap-2 mb-5 border-b border-gray-200 pb-3">
+                <button
+                  type="button"
+                  onClick={() => setEventsSubTab('upcoming')}
+                  className={`px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 transition-all cursor-pointer ${
+                    eventsSubTab === 'upcoming'
+                      ? 'bg-brand text-white shadow-sm'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  <CalendarIcon size={15} />
+                  <span>Nadolazeći događaji</span>
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
+                    eventsSubTab === 'upcoming' ? 'bg-white/20 text-white' : 'bg-white text-gray-700'
+                  }`}>
+                    {upcomingEvents.length}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setEventsSubTab('past')}
+                  className={`px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 transition-all cursor-pointer ${
+                    eventsSubTab === 'past'
+                      ? 'bg-gray-800 text-white shadow-sm'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  <Archive size={15} />
+                  <span>Prošli događaji (Arhiva)</span>
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
+                    eventsSubTab === 'past' ? 'bg-white/20 text-white' : 'bg-white text-gray-700'
+                  }`}>
+                    {pastEvents.length}
+                  </span>
+                  {pastActiveMatchingCount > 0 && (
+                    <span className="bg-rose-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full animate-pulse" title="U arhivi postoji događaj s još uvijek otvorenim matchingom">
+                      Matching aktivan ({pastActiveMatchingCount})
+                    </span>
+                  )}
+                </button>
+              </div>
+
+              <div className={`rounded-2xl border-2 p-4 sm:p-5 ${
+                eventsSubTab === 'upcoming'
+                  ? 'border-brand/20 bg-brand/[0.02]'
+                  : 'border-gray-200 bg-gray-50/70'
+              }`}>
+                <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-200/80">
+                  <div className="flex items-center gap-2">
+                    {eventsSubTab === 'upcoming' ? (
+                      <>
+                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                        <h3 className="font-serif font-bold text-base sm:text-lg text-brand">Nadolazeći događaji</h3>
+                      </>
+                    ) : (
+                      <>
+                        <Archive size={16} className="text-gray-500" />
+                        <h3 className="font-serif font-bold text-base sm:text-lg text-gray-700">Prošli događaji (Arhiva)</h3>
+                      </>
+                    )}
+                  </div>
+                  <span className="text-xs text-gray-500">
+                    {eventsSubTab === 'upcoming'
+                      ? 'Aktivni i budući najavljeni susreti'
+                      : 'Završeni susreti — možete pregledati matcheve ili duplicirati događaj'}
+                  </span>
+                </div>
+
+                <div className="space-y-4">
+                  {eventsLoading ? (
+                    <p className="text-gray-500 py-4 flex items-center gap-2"><Loader2 className="animate-spin" size={16} /> Učitavanje...</p>
+                  ) : (eventsSubTab === 'upcoming' ? upcomingEvents : pastEvents).length === 0 ? (
+                    <div className="text-center py-8 text-gray-500 text-sm">
+                      {eventsSubTab === 'upcoming'
+                        ? 'Trenutno nema nadolazećih događaja. Kliknite na "+ Novi Događaj" ili duplicirajte postojeći iz arhive.'
+                        : 'Nema prošlih događaja u arhivi.'}
+                    </div>
+                  ) : (
+                    (eventsSubTab === 'upcoming' ? upcomingEvents : pastEvents).map(event => (
                     <div key={event.id} className={`p-4 rounded-xl border ${event.isActive ? 'border-brand bg-brand/5' : 'border-gray-200 bg-white'} flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all`}>
                       <div>
                         <div className="flex flex-wrap items-center gap-2 mb-1">
@@ -2458,8 +2705,15 @@ export default function AdminDashboard() {
                         )}
 
                         <button
+                          onClick={() => openDuplicateEvent(event)}
+                          className="px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-1.5 transition-colors bg-white hover:bg-blue-50 border border-blue-200 text-blue-700 cursor-pointer"
+                          title="Dupliciraj ovaj događaj i otvori formu s popunjenim podacima"
+                        >
+                          <Copy size={16} /> <span className="hidden sm:inline">Dupliciraj</span>
+                        </button>
+                        <button
                           onClick={() => openEditEvent(event)}
-                          className="px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-1.5 transition-colors bg-white hover:bg-gray-100 border border-gray-200 text-gray-700"
+                          className="px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-1.5 transition-colors bg-white hover:bg-gray-100 border border-gray-200 text-gray-700 cursor-pointer"
                         >
                           <Pencil size={16} /> <span className="hidden sm:inline">Uredi</span>
                         </button>
@@ -2491,6 +2745,7 @@ export default function AdminDashboard() {
                     </div>
                   ))
                 )}
+                </div>
               </div>
             </div>
           </div>
@@ -2530,7 +2785,12 @@ export default function AdminDashboard() {
                       >
                         -- Svi događaji (Stare prijave) --
                       </button>
-                      {events.map(e => (
+                      {upcomingEvents.length > 0 && (
+                        <div className="px-4 py-1.5 bg-brand/5 text-[10px] font-bold uppercase tracking-wider text-brand border-y border-brand/10">
+                          Nadolazeći događaji ({upcomingEvents.length})
+                        </div>
+                      )}
+                      {upcomingEvents.map(e => (
                         <button
                           key={e.id}
                           onClick={() => {
@@ -2540,8 +2800,28 @@ export default function AdminDashboard() {
                           className={`w-full text-left px-4 py-3 text-sm transition-colors flex flex-col ${selectedEventId === e.id ? 'bg-brand/5 text-brand font-semibold' : 'text-gray-700 hover:bg-gray-50'}`}
                         >
                           <span className="flex items-center justify-between w-full">
-                            <span className="truncate">{e.title}</span>
+                            <span className="truncate">{e.title} {e.ageGroup ? `(${e.ageGroup})` : ''}</span>
                             {e.isActive && <span className="bg-green-100 text-green-700 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ml-2">Aktivno</span>}
+                          </span>
+                          <span className="text-xs text-gray-400 font-normal mt-0.5">{e.dateStr}</span>
+                        </button>
+                      ))}
+                      {pastEvents.length > 0 && (
+                        <div className="px-4 py-1.5 bg-gray-100 text-[10px] font-bold uppercase tracking-wider text-gray-500 border-y border-gray-200">
+                          Prošli događaji ({pastEvents.length})
+                        </div>
+                      )}
+                      {pastEvents.map(e => (
+                        <button
+                          key={e.id}
+                          onClick={() => {
+                            setSelectedEventId(e.id);
+                            setFilterDropdownOpen(false);
+                          }}
+                          className={`w-full text-left px-4 py-3 text-sm transition-colors flex flex-col ${selectedEventId === e.id ? 'bg-brand/5 text-brand font-semibold' : 'text-gray-600 hover:bg-gray-50'}`}
+                        >
+                          <span className="flex items-center justify-between w-full">
+                            <span className="truncate">{e.title} {e.ageGroup ? `(${e.ageGroup})` : ''}</span>
                           </span>
                           <span className="text-xs text-gray-400 font-normal mt-0.5">{e.dateStr}</span>
                         </button>

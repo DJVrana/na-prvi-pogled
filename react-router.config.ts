@@ -11,6 +11,7 @@ export default {
     "/blog",
     "/blog/kako-je-nastala-ideja-za-naprvipogled",
     "/blog/zasto-je-danas-toliko-tesko-upoznati-nekoga-uzivo",
+    "/blog/najvece-ljubavne-drame-grcke-mitologije",
     "/kontakt",
     "/prijava",
     "/admin",

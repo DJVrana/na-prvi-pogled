@@ -57,6 +57,32 @@ export interface CustomField {
   required: boolean;
 }
 
+/**
+ * Parses event ageGroup string (e.g. "23-29", "30 – 38 godina", "45+") into strict numeric bounds.
+ */
+function parseEventAgeBounds(ageGroup?: string): { min: number; max: number; isRestricted: boolean } {
+  if (!ageGroup || !ageGroup.trim()) {
+    return { min: 18, max: 99, isRestricted: false };
+  }
+  const str = ageGroup.trim();
+  const rangeMatch = str.match(/(\d{2})\s*(?:[-–—/]|do)\s*(\d{2})/i);
+  if (rangeMatch) {
+    const a = parseInt(rangeMatch[1], 10);
+    const b = parseInt(rangeMatch[2], 10);
+    if (!isNaN(a) && !isNaN(b) && a >= 18 && b <= 99) {
+      return { min: Math.min(a, b), max: Math.max(a, b), isRestricted: true };
+    }
+  }
+  const plusMatch = str.match(/(\d{2})\s*\+/);
+  if (plusMatch) {
+    const a = parseInt(plusMatch[1], 10);
+    if (!isNaN(a) && a >= 18 && a <= 99) {
+      return { min: a, max: 99, isRestricted: true };
+    }
+  }
+  return { min: 18, max: 99, isRestricted: false };
+}
+
 interface ActiveEvent {
   id: string;
   title: string;
@@ -111,6 +137,22 @@ export default function FormPage() {
   const [newsletterModalOpen, setNewsletterModalOpen] = useState(false);
   const [newsletterSubscribedSuccess, setNewsletterSubscribedSuccess] = useState(false);
   const [isNewsletterAlreadySubscribed, setIsNewsletterAlreadySubscribed] = useState(false);
+  const [ageTouched, setAgeTouched] = useState(false);
+
+  const ageBounds = parseEventAgeBounds(activeEvent?.ageGroup);
+  const ageValidationError = (() => {
+    if (formData.godine === '') return null;
+    const n = Number(formData.godine);
+    if (isNaN(n) || !Number.isInteger(n) || n < ageBounds.min || n > ageBounds.max) {
+      if (ageBounds.isRestricted) {
+        return ageBounds.max === 99
+          ? `Ovaj događaj je namijenjen osobama od ${ageBounds.min}+ godina (unesite dob od ${ageBounds.min} nadalje).`
+          : `Za ovaj događaj mogu se prijaviti isključivo osobe u rasponu od ${ageBounds.min} do ${ageBounds.max} godina.`;
+      }
+      return `Molimo unesite valjani broj godina (između ${ageBounds.min} i ${ageBounds.max}).`;
+    }
+    return null;
+  })();
 
   useEffect(() => {
     const checkSub = async () => {
@@ -353,6 +395,7 @@ export default function FormPage() {
     }
     setIsEventFull(isFull);
     setCustomAnswers({});
+    setAgeTouched(false);
     setError('');
   };
 
@@ -394,6 +437,19 @@ export default function FormPage() {
 
     if (!formData.spol) {
       setError("Molimo odaberite spol (M ili Ž).");
+      return;
+    }
+
+    const ageNum = Number(formData.godine);
+    if (!formData.godine || isNaN(ageNum) || !Number.isInteger(ageNum) || ageNum < ageBounds.min || ageNum > ageBounds.max) {
+      setAgeTouched(true);
+      const ageErr = ageBounds.isRestricted
+        ? (ageBounds.max === 99
+            ? `Prijava nije moguća: ovaj događaj je namijenjen isključivo osobama od ${ageBounds.min}+ godina.`
+            : `Prijava nije moguća: ovaj događaj je namijenjen isključivo dobnoj skupini od ${ageBounds.min} do ${ageBounds.max} godina.`)
+        : `Molimo unesite valjani broj godina (${ageBounds.min}–${ageBounds.max}).`;
+      setError(ageErr);
+      document.getElementById('godine')?.focus();
       return;
     }
 
@@ -986,7 +1042,7 @@ export default function FormPage() {
                           setError("Prijave za muške sudionike za ovaj termin su popunjene.");
                           return;
                         }
-                        setError(null);
+                        setError('');
                         setFormData(prev => ({ ...prev, spol: 'M' }));
                       }}
                       className={`py-3 px-4 rounded-2xl border font-bold text-sm transition-all flex items-center justify-center gap-2 ${
@@ -1013,7 +1069,7 @@ export default function FormPage() {
                           setError("Prijave za ženske sudionike za ovaj termin su popunjene.");
                           return;
                         }
-                        setError(null);
+                        setError('');
                         setFormData(prev => ({ ...prev, spol: 'Ž' }));
                       }}
                       className={`py-3 px-4 rounded-2xl border font-bold text-sm transition-all flex items-center justify-center gap-2 ${
@@ -1060,18 +1116,47 @@ export default function FormPage() {
                   <label htmlFor="godine" className="block text-xs font-bold text-brand">
                     Koliko imaš godina? <span className="text-rose-600">*</span>
                   </label>
+                  <p id="godine-hint" className="text-[11px] text-brand/70 font-medium">
+                    {ageBounds.isRestricted
+                      ? (ageBounds.max === 99
+                          ? `Ovaj događaj namijenjen je dobnoj skupini ${ageBounds.min}+ godina.`
+                          : `Dozvoljeni raspon godina za ovaj događaj: od ${ageBounds.min} do ${ageBounds.max} godina.`)
+                      : 'Unesite svoje godine (18 – 99).'}
+                  </p>
                   <input
                     type="number"
                     id="godine"
                     name="godine"
-                    min="18"
-                    max="99"
+                    min={ageBounds.min}
+                    max={ageBounds.max}
+                    step={1}
+                    inputMode="numeric"
                     required
                     value={formData.godine}
                     onChange={handleChange}
-                    className="w-full px-4 py-3 rounded-2xl bg-white/90 border border-brand/15 focus:border-brand focus:ring-2 focus:ring-brand/15 text-sm font-medium outline-none transition-all placeholder:text-brand/35 text-brand shadow-xs"
-                    placeholder="Npr. 28"
+                    onBlur={() => {
+                      if (formData.godine !== '') setAgeTouched(true);
+                    }}
+                    onKeyDown={(e) => {
+                      if (['e', 'E', '+', '-', '.', ','].includes(e.key)) {
+                        e.preventDefault();
+                      }
+                    }}
+                    aria-invalid={ageTouched && !!ageValidationError ? 'true' : 'false'}
+                    aria-describedby={ageTouched && ageValidationError ? 'godine-hint godine-error' : 'godine-hint'}
+                    className={`w-full px-4 py-3 rounded-2xl bg-white/90 border text-sm font-medium outline-none transition-all placeholder:text-brand/35 text-brand shadow-xs ${
+                      ageTouched && ageValidationError
+                        ? 'border-rose-500 bg-rose-50/70 focus:border-rose-600 focus:ring-2 focus:ring-rose-500/20'
+                        : 'border-brand/15 focus:border-brand focus:ring-2 focus:ring-brand/15'
+                    }`}
+                    placeholder={ageBounds.isRestricted ? `Unesi dob (${ageBounds.min} – ${ageBounds.max})` : 'Npr. 28'}
                   />
+                  {ageTouched && ageValidationError && (
+                    <div id="godine-error" className="flex items-start gap-1.5 text-xs font-semibold text-rose-700 pt-0.5">
+                      <AlertCircle size={14} className="shrink-0 mt-0.5 text-rose-600" aria-label="Greška" role="img" />
+                      <span>{ageValidationError}</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Napomena */}

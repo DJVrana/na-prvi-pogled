@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useParams, Link } from 'react-router';
 import { 
   ArrowLeft, 
@@ -10,13 +10,66 @@ import {
   ChevronRight, 
   BookOpen,
   Sparkles,
-  ArrowRight
+  ArrowRight,
+  ExternalLink
 } from 'lucide-react';
 import { FaWhatsapp, FaFacebook } from 'react-icons/fa';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import SEO from '../components/SEO';
 import { getBlogPostBySlug, formatBlogDate } from '../data/blogPosts';
+
+/**
+ * Safely renders inline Markdown links [text](url) and *italics* as React elements.
+ */
+function renderRichText(text: string, isHeading = false): ReactNode[] {
+  const tokenRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|\*([^*]+)\*/g;
+  const parts: ReactNode[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  let keyIdx = 0;
+
+  while ((match = tokenRegex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(text.slice(lastIndex, match.index));
+    }
+
+    if (match[1] && match[2]) {
+      const label = match[1];
+      const url = match[2];
+      parts.push(
+        <a
+          key={`link-${keyIdx++}`}
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={
+            isHeading
+              ? 'inline-flex items-baseline gap-1.5 text-brand hover:text-brand-light underline decoration-brand/30 hover:decoration-brand-light underline-offset-4 transition-colors'
+              : 'text-brand font-medium underline decoration-brand-light/70 hover:text-brand-light hover:decoration-brand-light underline-offset-4 transition-colors'
+          }
+        >
+          <span>{label}</span>
+          {isHeading && <ExternalLink size={18} className="inline shrink-0 opacity-65 self-center" aria-hidden="true" />}
+        </a>
+      );
+    } else if (match[3]) {
+      parts.push(
+        <em key={`em-${keyIdx++}`} className="italic">
+          {match[3]}
+        </em>
+      );
+    }
+
+    lastIndex = tokenRegex.lastIndex;
+  }
+
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex));
+  }
+
+  return parts.length > 0 ? parts : [text];
+}
 
 export default function BlogPostPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -70,7 +123,7 @@ export default function BlogPostPage() {
     "@type": "BlogPosting",
     "headline": post.title,
     "description": post.excerpt,
-    "image": `https://naprvipogled.com/images/hero-speed-dating.jpg`,
+    "image": `https://naprvipogled.com/${post.image.replace(/^\//, '')}`,
     "datePublished": post.date,
     "author": {
       "@type": "Organization",
@@ -165,18 +218,18 @@ export default function BlogPostPage() {
             <section key={idx} className="space-y-4">
               {sec.heading && (
                 <h2 className="font-serif font-bold text-2xl sm:text-3xl text-brand pt-4">
-                  {sec.heading}
+                  {renderRichText(sec.heading, true)}
                 </h2>
               )}
               {sec.text.split('\n\n').map((paragraph, pIdx) => (
                 <p key={pIdx} className="leading-relaxed">
-                  {paragraph}
+                  {renderRichText(paragraph)}
                 </p>
               ))}
               {sec.bulletPoints && (
                 <ul className="list-disc list-inside space-y-2 pl-4 text-brand/80 font-normal">
                   {sec.bulletPoints.map((pt, pIdx) => (
-                    <li key={pIdx}>{pt}</li>
+                    <li key={pIdx}>{renderRichText(pt)}</li>
                   ))}
                 </ul>
               )}

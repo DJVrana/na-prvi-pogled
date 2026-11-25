@@ -49,19 +49,18 @@ export default function BlogPage() {
       "name": "Na prvi pogled",
       "logo": "https://naprvipogled.com/apple-touch-icon.png"
     },
-    "blogPost": [
-      {
-        "@type": "BlogPosting",
-        "headline": "Kako je nastala ideja za Naprvipogled?",
-        "description": "Sve je počelo jedne sasvim obične večeri, uz razgovor dvojice prijatelja u McDonald'su...",
-        "image": "https://naprvipogled.com/images/hero-speed-dating.jpg",
-        "datePublished": featuredPost ? featuredPost.date : "2026-11-05",
-        "author": {
-          "@type": "Organization",
-          "name": "Na prvi pogled tim"
-        }
+    "blogPost": sortedPosts.map((p) => ({
+      "@type": "BlogPosting",
+      "headline": p.title,
+      "description": p.excerpt,
+      "image": `https://naprvipogled.com/${p.image.replace(/^\//, '')}`,
+      "datePublished": p.date,
+      "url": `https://naprvipogled.com/blog/${p.slug}`,
+      "author": {
+        "@type": "Organization",
+        "name": "Na prvi pogled tim"
       }
-    ]
+    }))
   };
 
   return (

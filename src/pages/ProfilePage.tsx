@@ -816,7 +816,7 @@ export default function ProfilePage() {
               registrations.map(reg => {
                 const status = reg.status || 'pending';
                 const eventInfo = reg.eventDetails;
-                const isMatchingActive = eventInfo?.isMatchingActive;
+                const isMatchingActive = isEventMatchingActive(eventInfo);
 
                 return (
                   <div 

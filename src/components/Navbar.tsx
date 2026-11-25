@@ -125,11 +125,9 @@ export default function Navbar() {
           }
         }
 
+        // Prikazuj matching isključivo korisnicima koji imaju potvrđenu prijavu za taj konkretan event
         if (userMatchingEvent) {
           setMatchingEvent(userMatchingEvent);
-        } else if (ADMIN_UIDS.includes(user.uid)) {
-          // Admin can see the first active event link if not personally registered as participant
-          setMatchingEvent(activeList[0]);
         } else {
           setMatchingEvent(null);
           setShowLiveModal(false);

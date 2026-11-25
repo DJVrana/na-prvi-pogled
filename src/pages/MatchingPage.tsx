@@ -37,7 +37,8 @@ import {
   MessageSquare,
   ShieldCheck,
   Send,
-  Star
+  Star,
+  AlertCircle
 } from 'lucide-react';
 import { FaInstagram, FaGoogle } from 'react-icons/fa';
 import { sendMatchEmail, sendFemaleMatchEmail } from '../utils/matchingEmails';
@@ -78,6 +79,21 @@ interface MatchResult {
   partnerGender: string;
 }
 
+function cleanInstagramHandle(raw?: string | null): string {
+  if (!raw) return '';
+  const username = raw.trim().replace(/^@+/, '').trim();
+  if (username.length < 2 || /\s/.test(username)) return '';
+  return `@${username}`;
+}
+
+function cleanPhoneNumber(raw?: string | null): string {
+  if (!raw) return '';
+  const trimmed = raw.trim();
+  const digits = trimmed.replace(/\D/g, '');
+  if (digits.length < 6) return '';
+  return trimmed;
+}
+
 export default function MatchingPage() {
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -101,6 +117,7 @@ export default function MatchingPage() {
   const [hasConfirmedContact, setHasConfirmedContact] = useState(false);
   const [savingContact, setSavingContact] = useState(false);
   const [editContactModalOpen, setEditContactModalOpen] = useState(false);
+  const [contactError, setContactError] = useState<string | null>(null);
 
   // Candidates & Voting
   const [candidates, setCandidates] = useState<Candidate[]>([]);
@@ -297,7 +314,7 @@ export default function MatchingPage() {
             setEvent(null);
           }
         } else {
-          setAvailableEvents(list);
+          setAvailableEvents([]);
         }
       } catch (err) {
         console.error("Greška pri dohvaćanju događaja:", err);
@@ -354,31 +371,49 @@ export default function MatchingPage() {
           return;
         }
 
-        setMyRegistration({ id: snap.docs[0].id, ...regData });
+        const regDocId = snap.docs[0].id;
+        setMyRegistration({ id: regDocId, ...regData });
 
-        let currentIg = '';
-        let currentPhone = '';
+        const regIg = cleanInstagramHandle(
+          regData.contactInstagram || (regData.contactHandle?.startsWith('@') ? regData.contactHandle : '')
+        );
+        const regPhone = cleanPhoneNumber(
+          regData.contactPhone || (!regData.contactHandle?.startsWith('@') ? regData.contactHandle : '')
+        );
 
-        if (regData.contactInstagram) {
-          currentIg = regData.contactInstagram.startsWith('@') ? regData.contactInstagram : `@${regData.contactInstagram}`;
-        }
-        if (regData.contactPhone) {
-          currentPhone = regData.contactPhone;
-        }
-        if (!currentIg && !currentPhone && regData.contactHandle) {
-          if (regData.contactHandle.startsWith('@')) {
-            currentIg = regData.contactHandle;
-          } else {
-            currentPhone = regData.contactHandle;
+        let profIg = '';
+        let profPhone = '';
+        try {
+          const userDocSnap = await getDoc(doc(db, 'users', user.uid));
+          if (userDocSnap.exists()) {
+            const uData = userDocSnap.data();
+            profIg = cleanInstagramHandle(uData?.instagram);
+            profPhone = cleanPhoneNumber(uData?.phone);
           }
+        } catch (profErr) {
+          console.warn('Greška pri provjeri kontakata u profilu:', profErr);
         }
 
-        if (currentIg) setInstagram(currentIg);
-        if (currentPhone) setPhone(currentPhone);
+        const finalIg = regIg || profIg;
+        const finalPhone = regPhone || profPhone;
 
-        // If user already has contact info registered or in profile, allow immediate entry
-        if (currentIg || currentPhone || instagram || phone) {
+        setInstagram(finalIg);
+        setPhone(finalPhone);
+
+        if (finalIg || finalPhone) {
+          // Ako kontakt postoji u profilu, a još nije upisan na samoj prijavi za event, uskladi ga u pozadini
+          if (!regIg && !regPhone) {
+            const combinedHandle = [finalIg, finalPhone].filter(Boolean).join(' • ');
+            setDoc(doc(db, 'prijave', regDocId), {
+              contactInstagram: finalIg,
+              contactPhone: finalPhone,
+              contactHandle: combinedHandle
+            }, { merge: true }).catch(() => {});
+          }
           setHasConfirmedContact(true);
+        } else {
+          // Korisnik NEMA upisan nijedan kontakt podatak — sustav ga ne pušta u matching dok ga ne unese
+          setHasConfirmedContact(false);
         }
       } catch (err) {
         console.error("Greška pri provjeri prava pristupa:", err);
@@ -476,11 +511,21 @@ export default function MatchingPage() {
   // Handle Contact Save / Update
   const handleSaveContact = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    const cleanIg = instagram.trim() ? (instagram.trim().startsWith('@') ? instagram.trim() : `@${instagram.trim()}`) : '';
-    const cleanPhone = phone.trim();
+    setContactError(null);
+
+    const rawIgTrimmed = instagram.trim().replace(/^@+/, '').trim();
+    const rawPhoneTrimmed = phone.trim();
+    const cleanIg = cleanInstagramHandle(instagram);
+    const cleanPhone = cleanPhoneNumber(phone);
 
     if (!cleanIg && !cleanPhone) {
-      alert("Molimo unesite barem jedan kontakt podatak (Instagram ili broj mobitela).");
+      if (rawIgTrimmed.length > 0 && !cleanIg) {
+        setContactError("Unesi valjano Instagram korisničko ime (bez razmaka, barem 2 znaka).");
+      } else if (rawPhoneTrimmed.length > 0 && !cleanPhone) {
+        setContactError("Unesi valjani broj mobitela (barem 6 znamenki).");
+      } else {
+        setContactError("Za ulazak u matching obavezno je unijeti barem jedan kontakt podatak: Instagram (@profil) ili broj mobitela.");
+      }
       return;
     }
 
@@ -500,17 +545,19 @@ export default function MatchingPage() {
       // Save to user profile so it's remembered everywhere
       if (user) {
         await setDoc(doc(db, 'users', user.uid), {
-          ...(cleanIg ? { instagram: cleanIg } : {}),
-          ...(cleanPhone ? { phone: cleanPhone } : {}),
+          instagram: cleanIg,
+          phone: cleanPhone,
           updatedAt: new Date()
         }, { merge: true });
       }
 
+      setInstagram(cleanIg);
+      setPhone(cleanPhone);
       setHasConfirmedContact(true);
       setEditContactModalOpen(false);
     } catch (err) {
       console.error("Greška pri spremanju kontakta:", err);
-      alert("Došlo je do greške prilikom spremanja kontakta.");
+      setContactError("Došlo je do greške prilikom spremanja kontakta. Molimo pokušaj ponovno.");
     } finally {
       setSavingContact(false);
     }
@@ -518,7 +565,7 @@ export default function MatchingPage() {
 
   // Process Voting (Handles both Live & Post-Event phases)
   const handleVote = async (candidate: Candidate, liked: boolean) => {
-    if (!user || !event || !myRegistration) return;
+    if (!user || !event || !myRegistration || !hasConfirmedContact) return;
 
     // Optimistic state update
     setCandidates(prev => prev.map(c => {
@@ -863,29 +910,43 @@ export default function MatchingPage() {
             <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-rose-500 to-brand text-white mx-auto flex items-center justify-center mb-4 shadow-lg">
               <Sparkles size={28} />
             </div>
-            <span className="bg-brand/10 text-brand text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider mb-2 inline-block">
-              {event.title}
+            <span className="bg-amber-100 text-amber-900 border border-amber-200 text-[11px] font-bold px-3 py-1 rounded-full uppercase tracking-wider mb-2 inline-block">
+              Obavezno prije ulaska u Matching
             </span>
             <h1 className="text-2xl sm:text-3xl font-serif font-bold text-brand mt-1 mb-2">
-              Tvoji kontakti za Match
+              Navedi kontakt za Match
             </h1>
-            <p className="text-xs sm:text-sm text-brand/70 font-light leading-relaxed">
-              Unesi svoj Instagram profil i/ili broj mobitela. Ove informacije dijelimo <strong>isključivo s osobom s kojom ostvariš obostrani match</strong>!
+            <p className="text-xs sm:text-sm text-brand/80 font-light leading-relaxed">
+              Prije ulaska u matching za <strong>{event.title}</strong> obavezno je upisati <strong>barem jedan kontakt podatak</strong> (Instagram ili broj mobitela). Tvoj kontakt dijelimo <strong>isključivo s osobom s kojom ostvariš obostrani match</strong>!
             </p>
           </div>
 
           <form onSubmit={handleSaveContact} className="space-y-4">
+            {contactError && (
+              <div role="alert" className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-start gap-2">
+                <AlertCircle size={16} className="shrink-0 mt-0.5 text-rose-600" />
+                <span>{contactError}</span>
+              </div>
+            )}
+
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-brand/80 mb-1.5 flex items-center gap-1.5">
+              <label htmlFor="matching-ig" className="block text-xs font-bold uppercase tracking-wider text-brand/80 mb-1.5 flex items-center gap-1.5">
                 <FaInstagram size={14} className="text-pink-600" />
                 Instagram (@profil)
               </label>
               <div className="relative">
                 <span className="absolute left-3.5 top-3.5 text-brand/50 text-sm font-medium">@</span>
                 <input
+                  id="matching-ig"
                   type="text"
+                  autoCorrect="off"
+                  autoCapitalize="none"
+                  spellCheck={false}
                   value={instagram.startsWith('@') ? instagram.slice(1) : instagram}
-                  onChange={e => setInstagram(e.target.value ? (e.target.value.startsWith('@') ? e.target.value : `@${e.target.value}`) : '')}
+                  onChange={e => {
+                    setContactError(null);
+                    setInstagram(e.target.value ? (e.target.value.startsWith('@') ? e.target.value : `@${e.target.value}`) : '');
+                  }}
                   placeholder="tvoje_korisnicko_ime"
                   className="w-full pl-8 pr-4 py-3 rounded-2xl bg-white border border-brand/20 focus:border-brand focus:ring-2 focus:ring-brand/10 outline-none text-brand font-medium text-sm transition-all"
                 />
@@ -893,21 +954,27 @@ export default function MatchingPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-brand/80 mb-1.5 flex items-center gap-1.5">
+              <label htmlFor="matching-phone" className="block text-xs font-bold uppercase tracking-wider text-brand/80 mb-1.5 flex items-center gap-1.5">
                 <Phone size={14} className="text-green-600" />
-                Broj mobitela (WhatsApp)
+                Broj mobitela (WhatsApp / Poziv)
               </label>
               <input
-                type="text"
+                id="matching-phone"
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
                 value={phone}
-                onChange={e => setPhone(e.target.value)}
+                onChange={e => {
+                  setContactError(null);
+                  setPhone(e.target.value);
+                }}
                 placeholder="Npr. 091 123 4567"
                 className="w-full px-4 py-3 rounded-2xl bg-white border border-brand/20 focus:border-brand focus:ring-2 focus:ring-brand/10 outline-none text-brand font-medium text-sm transition-all"
               />
             </div>
 
-            <p className="text-[11px] text-brand/60 leading-relaxed font-light bg-brand/5 p-3 rounded-xl">
-              💡 Možeš unijeti oba kontakta ili samo jedan. Podatak se sigurno sprema za ovaj i buduće susrete.
+            <p className="text-[11px] text-brand/70 leading-relaxed font-medium bg-brand/5 p-3 rounded-xl border border-brand/10">
+              🔒 Sustav ne dopušta ulazak u matching bez barem jednog kontakta. Možeš upisati samo Instagram, samo broj mobitela ili oboje.
             </p>
 
             <button
@@ -1160,7 +1227,7 @@ export default function MatchingPage() {
         <div className="flex items-center gap-2">
           {/* Contact info quick badge */}
           <button
-            onClick={() => setEditContactModalOpen(true)}
+            onClick={() => { setContactError(null); setEditContactModalOpen(true); }}
             className="text-[11px] font-medium text-brand/70 hover:text-brand bg-white/70 hover:bg-white px-2.5 py-1 rounded-full border border-white transition-all flex items-center gap-1 cursor-pointer"
             title="Klikni za izmjenu svojih kontakata"
           >
@@ -1579,6 +1646,12 @@ export default function MatchingPage() {
             </p>
 
             <form onSubmit={handleSaveContact} className="space-y-4">
+              {contactError && (
+                <div role="alert" className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-start gap-2">
+                  <AlertCircle size={15} className="shrink-0 mt-0.5 text-rose-600" />
+                  <span>{contactError}</span>
+                </div>
+              )}
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-brand/80 mb-1 flex items-center gap-1.5">
                   <FaInstagram size={13} className="text-pink-600" /> Instagram (@profil)
