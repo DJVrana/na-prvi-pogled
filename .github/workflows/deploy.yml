@@ -15,10 +15,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -35,13 +32,13 @@ jobs:
 
       - name: Setup Pages
         id: pages
-        uses: actions/configure-pages@v4
+        uses: actions/configure-pages@v5
 
       - name: Determine Base Path
         id: config
         run: |
           RAW_BASE="${{ steps.pages.outputs.base_path }}"
-          if [ -z "${RAW_BASE}" ]; then
+          if [ -z "${{ steps.pages.outputs.base_path }}" ]; then
             APP_BASE="/"
           else
             APP_BASE="${RAW_BASE}/"
@@ -79,9 +76,11 @@ jobs:
             cp dist/client/index.html dist/client/404.html
           fi
 
+          # .nojekyll osigurava da GitHub Pages poslužuje datoteke bez Jekyll filtriranja
+          touch dist/client/.nojekyll
+
       - name: Sync with Persistent gh-pages Branch
         run: |
-          # Kloniraj postojeću gh-pages granu ili inicijaliziraj novu
           if git ls-remote --exit-code --heads origin gh-pages; then
             echo "Existing gh-pages branch found. Cloning..."
             git clone --single-branch --branch gh-pages "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" _site
@@ -95,14 +94,10 @@ jobs:
             cd ..
           fi
 
-          # Očisti postojeće datoteke i ukloni /dev direktorij, te postavi novi produkcijski build
-          find _site -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
+          find _site -mindepth 1 -maxdepth 1 ! -name '.git' ! -name 'CNAME' -exec rm -rf {} +
           cp -r dist/client/* _site/
-
-          # .nojekyll osigurava da GitHub Pages poslužuje datoteke bez Jekyll filtriranja
           touch _site/.nojekyll
 
-          # Commit i push novog stanja natrag na gh-pages granu
           cd _site
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -116,10 +111,17 @@ jobs:
           cd ..
 
       - name: Upload Pages Artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v4
         with:
-          path: '_site'
+          path: 'dist/client'
 
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
